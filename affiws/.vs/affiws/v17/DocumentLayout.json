@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\data\\repo\\affiliation-beauty\\affiws\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{7E7A69CB-B4BC-4526-9264-F97931F76954}|affiws\\affiws.csproj|c:\\data\\repo\\affiliation-beauty\\affiws\\affiws\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{7E7A69CB-B4BC-4526-9264-F97931F76954}|affiws\\affiws.csproj|solutionrelative:affiws\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{7E7A69CB-B4BC-4526-9264-F97931F76954}|affiws\\affiws.csproj|c:\\data\\repo\\affiliation-beauty\\affiws\\affiws\\controllers\\searchlinkcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7E7A69CB-B4BC-4526-9264-F97931F76954}|affiws\\affiws.csproj|solutionrelative:affiws\\controllers\\searchlinkcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -19,6 +23,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\data\\repo\\affiliation-beauty\\affiws\\affiws\\Dockerfile",
+              "RelativeDocumentMoniker": "affiws\\Dockerfile",
+              "ToolTip": "C:\\data\\repo\\affiliation-beauty\\affiws\\affiws\\Dockerfile",
+              "RelativeToolTip": "affiws\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-08-10T19:55:43.695Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "SearchLinkController.cs",
               "DocumentMoniker": "C:\\data\\repo\\affiliation-beauty\\affiws\\affiws\\Controllers\\SearchLinkController.cs",
               "RelativeDocumentMoniker": "affiws\\Controllers\\SearchLinkController.cs",

@@ -1,6 +1,0 @@
-@affibeauty_HostAddress = http://localhost:5238
-
-GET {{affibeauty_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -1,6 +1,0 @@
-@affiws_HostAddress = http://localhost:5145
-
-GET {{affiws_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -1,0 +1,58 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\data\\repo\\affiliation-beauty\\wsaffiliation\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{CFA563D5-4768-463A-90D8-38C9641230D4}|wsaffiliation\\wsaffiliation.csproj|c:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\controllers\\searchlinkcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CFA563D5-4768-463A-90D8-38C9641230D4}|wsaffiliation\\wsaffiliation.csproj|solutionrelative:wsaffiliation\\controllers\\searchlinkcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CFA563D5-4768-463A-90D8-38C9641230D4}|wsaffiliation\\wsaffiliation.csproj|c:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{CFA563D5-4768-463A-90D8-38C9641230D4}|wsaffiliation\\wsaffiliation.csproj|solutionrelative:wsaffiliation\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "SearchLinkController.cs",
+              "DocumentMoniker": "C:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\Controllers\\SearchLinkController.cs",
+              "RelativeDocumentMoniker": "wsaffiliation\\Controllers\\SearchLinkController.cs",
+              "ToolTip": "C:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\Controllers\\SearchLinkController.cs",
+              "RelativeToolTip": "wsaffiliation\\Controllers\\SearchLinkController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T14:28:58.544Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\Dockerfile",
+              "RelativeDocumentMoniker": "wsaffiliation\\Dockerfile",
+              "ToolTip": "C:\\data\\repo\\affiliation-beauty\\wsaffiliation\\wsaffiliation\\Dockerfile",
+              "RelativeToolTip": "wsaffiliation\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-08-11T03:22:59.942Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

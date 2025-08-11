@@ -1,0 +1,37 @@
+## Visual Studio temp folders
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results
+bin/
+obj/
+out/
+Debug/
+Release/
+
+## ASP.NET temp
+project.lock.json
+artifacts/
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+*.nuspec
+*.psmdcp
+
+## Logs
+*.log
+
+## Docker
+docker-compose.override.yml
+*.dockerignore
+*.env
+
+## OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db

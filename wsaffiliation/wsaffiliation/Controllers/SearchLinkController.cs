@@ -15,7 +15,7 @@ namespace wsaffiliation.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAsync([FromQuery] string affiliation, [FromQuery] string texteRecherche)
         {
-           
+            return BadRequest("Les paramètres 'affiliation' et 'texteRecherche' sont requis.");
             if (string.IsNullOrEmpty(affiliation) || string.IsNullOrEmpty(texteRecherche))
             {
                 return BadRequest("Les paramètres 'affiliation' et 'texteRecherche' sont requis.");

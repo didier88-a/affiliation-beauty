@@ -59,7 +59,8 @@ namespace wsaffiliation.Controllers
         {
 
             var builder = WebApplication.CreateBuilder();
-            var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
+            //var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
+            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
             var Model = "gpt-4o-mini"; // Ou "gpt-5-nano" si tu veux réduire le coût
 
             using var client = new HttpClient();

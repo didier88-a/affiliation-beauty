@@ -9,7 +9,8 @@ namespace wsaffiliation.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok("API is working very good!");
+            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+            return Ok("API is working very good!" + ApiKey);
         }
     }
 }

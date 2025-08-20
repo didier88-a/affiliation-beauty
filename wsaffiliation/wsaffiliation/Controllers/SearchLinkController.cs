@@ -37,7 +37,7 @@ namespace wsaffiliation.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERREUR] {ex.Message}\n{ex.StackTrace}");
-                return Problem("Erreur lors du traitement : " + ex.Message);
+                return Problem("Erreur inconnue lors du traitement : " + ex.Message);
             }
         }
 

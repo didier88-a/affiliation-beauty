@@ -61,7 +61,11 @@ namespace wsaffiliation.Controllers
         // 🔹 Appel OpenAI pour générer des mots-clés
         public static async Task<string> ObtenirMotsClesAvecGPT(string besoin)
         {
-            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+            var builder = WebApplication.CreateBuilder();
+
+            var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
+
+            //var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
             if (string.IsNullOrEmpty(ApiKey))
                 throw new Exception("Clé OpenAI introuvable dans les variables d'environnement !");
 

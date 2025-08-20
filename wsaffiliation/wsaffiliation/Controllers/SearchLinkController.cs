@@ -173,9 +173,77 @@ namespace wsaffiliation.Controllers
             return produits;
         }
 
+        public static async Task<List<object>> GetProduitsSephora(string recherche)
+        {
+            string apiKey = Environment.GetEnvironmentVariable("CJ_API_KEY");
+            string websiteId = Environment.GetEnvironmentVariable("CJ_WEBSITE_ID");
+
+            string url = $"https://link-search.api.cj.com/v2/product-search?website-id={websiteId}&advertiser-ids=joined&keywords={Uri.EscapeDataString(recherche)}";
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", apiKey);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            var response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(json);
+            var produits = new List<object>();
+
+            foreach (var item in doc.RootElement.GetProperty("products").EnumerateArray())
+            {
+                produits.Add(new
+                {
+                    nom = item.GetProperty("name").GetString(),
+                    description = item.GetProperty("description").GetString(),
+                    image = item.GetProperty("image-url").GetString(),
+                    prix = item.GetProperty("price").GetString(),
+                    lien = item.GetProperty("buy-url").GetString()
+                });
+            }
+
+            return produits;
+        }
+
+        public static async Task<List<object>> GetProduitsAwin(string recherche)
+        {
+            string apiKey = Environment.GetEnvironmentVariable("AWIN_API_KEY");
+            string websiteId = Environment.GetEnvironmentVariable("AWIN_WEBSITE_ID");
+
+            // Endpoint exemple (Product Search API)
+            string url = $"https://api.awin.com/publishers/{websiteId}/products?search={Uri.EscapeDataString(recherche)}&format=json";
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            var response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(json);
+            var produits = new List<object>();
+
+            foreach (var item in doc.RootElement.GetProperty("products").EnumerateArray())
+            {
+                produits.Add(new
+                {
+                    nom = item.GetProperty("name").GetString(),
+                    description = item.GetProperty("description").GetString(),
+                    image = item.GetProperty("imageUrl").GetString(),
+                    prix = item.GetProperty("price").GetString(),
+                    lien = item.GetProperty("affiliateUrl").GetString() // lien tracké AWIN
+                });
+            }
+
+            return produits;
+        }
 
 
-        
+
     }
 
     public class SearchLinkRequest

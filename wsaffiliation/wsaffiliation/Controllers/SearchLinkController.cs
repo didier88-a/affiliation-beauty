@@ -109,16 +109,19 @@ namespace wsaffiliation.Controllers
         // 🔹 Scraping Sephora
         public static async Task<List<object>> ScraperSephora(string recherche)
         {
+            Console.WriteLine($"[INFO] ScraperSephora : {recherche}");
             string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
-
+            Console.WriteLine($"[INFO] ScraperSephora : {urlRecherche}");
             using var client = new HttpClient();
             var html = await client.GetStringAsync(urlRecherche);
-
+            Console.WriteLine($"[INFO] apres GetStringAsync : {recherche}");
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
             var produits = new List<object>();
             var nodes = doc.DocumentNode.SelectNodes("//div[contains(@class,'product-tile')]");
+
+            Console.WriteLine($"[INFO] avant nodes : {produits}"); 
 
             if (nodes != null)
             {

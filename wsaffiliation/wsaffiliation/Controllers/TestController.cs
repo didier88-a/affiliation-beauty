@@ -9,7 +9,7 @@ namespace wsaffiliation.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok("API is working good!");
+            return Ok("API is working very good!");
         }
     }
 }

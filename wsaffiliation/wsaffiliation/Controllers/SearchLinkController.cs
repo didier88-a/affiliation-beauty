@@ -43,7 +43,7 @@ namespace wsaffiliation.Controllers
         {
             if (request == null || string.IsNullOrEmpty(request.Affiliation) || string.IsNullOrEmpty(request.TexteRecherche))
             {
-                return BadRequest("Les paramètres 'affiliation' et 'texteRecherche' sont requis dans le corps de la requête.");
+                return BadRequest("Les paramètres p 'affiliation' et 'texteRecherche' sont requis dans le corps de la requête.");
             }
 
             return Ok(new
@@ -59,7 +59,7 @@ namespace wsaffiliation.Controllers
         {
 
             var builder = WebApplication.CreateBuilder();
-            var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
+            //var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
             var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
             var Model = "gpt-4o-mini"; // Ou "gpt-5-nano" si tu veux réduire le coût
 

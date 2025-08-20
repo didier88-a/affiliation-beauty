@@ -106,75 +106,76 @@ namespace wsaffiliation.Controllers
                 .Trim();
         }
 
-        // 🔹 Scraping Sephora
+
         public static async Task<List<object>> ScraperSephora(string recherche)
         {
-            Console.WriteLine($"[INFO] ScraperSephora : {recherche}");
             string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
-            Console.WriteLine($"[INFO] ScraperSephora : {urlRecherche}");
+
             using var client = new HttpClient();
+
+            // 👉 Simuler un vrai navigateur
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/116.0.0.0 Safari/537.36");
+
+            client.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("gzip, deflate, br");
+            client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("fr-FR,fr;q=0.9");
+
             var html = await client.GetStringAsync(urlRecherche);
-            Console.WriteLine($"[INFO] apres GetStringAsync : {recherche}");
+
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
             var produits = new List<object>();
             var nodes = doc.DocumentNode.SelectNodes("//div[contains(@class,'product-tile')]");
 
-            Console.WriteLine($"[INFO] avant nodes : {produits}"); 
-
             if (nodes != null)
             {
                 foreach (var node in nodes.Take(10))
                 {
-                    try
+                    var aTag = node.SelectSingleNode(".//a[contains(@class,'product-tile-link')]");
+                    if (aTag == null) continue;
+
+                    var lien = aTag.GetAttributeValue("href", null);
+                    if (string.IsNullOrEmpty(lien)) continue;
+
+                    if (lien.StartsWith("/"))
+                        lien = "https://www.sephora.fr" + lien;
+
+                    var nom = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line-bold')]")?.InnerText.Trim();
+                    var description = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line') and not(contains(@class,'title-line-bold'))]")?.InnerText.Trim();
+
+                    var imageNode = node.SelectSingleNode(".//div[contains(@class,'product-image')]//div[contains(@class,'product-imgs')]//img[contains(@class,'product-first-img')]");
+                    var image = imageNode?.GetAttributeValue("src", null);
+
+                    if (!string.IsNullOrEmpty(image))
                     {
-                        var aTag = node.SelectSingleNode(".//a[contains(@class,'product-tile-link')]");
-                        if (aTag == null) continue;
-
-                        var lien = aTag.GetAttributeValue("href", null);
-                        if (string.IsNullOrEmpty(lien)) continue;
-
-                        if (lien.StartsWith("/"))
-                            lien = "https://www.sephora.fr" + lien;
-
-                        var nom = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line-bold')]")?.InnerText.Trim();
-                        var description = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line') and not(contains(@class,'title-line-bold'))]")?.InnerText.Trim();
-                        var imageNode = node.SelectSingleNode(".//div[contains(@class,'product-image')]//div[contains(@class,'product-imgs')]//img[contains(@class,'product-first-img')]");
-                        var image = imageNode?.GetAttributeValue("src", null);
-
-                        if (!string.IsNullOrEmpty(image))
-                        {
-                            if (image.StartsWith("//"))
-                                image = "https:" + image;
-                            else if (image.StartsWith("/"))
-                                image = "https://www.sephora.fr" + image;
-                        }
-
-                        // Vérifier que la page existe
-                        try
-                        {
-                            var produitHtml = await client.GetStringAsync(lien);
-                            if (produitHtml.Contains("Oups ! la page demandée n'existe plus")) continue;
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-
-                        produits.Add(new { nom, description, image, lien });
-
-                        if (produits.Count >= 5) break;
+                        if (image.StartsWith("//"))
+                            image = "https:" + image;
+                        else if (image.StartsWith("/"))
+                            image = "https://www.sephora.fr" + image;
                     }
-                    catch (Exception ex)
+
+                    produits.Add(new
                     {
-                        Console.WriteLine($"[SCRAPER ERREUR] {ex.Message}");
-                    }
+                        nom,
+                        description,
+                        image,
+                        lien
+                    });
+
+                    if (produits.Count >= 5) break;
                 }
             }
 
             return produits;
         }
+
+
+
+        
     }
 
     public class SearchLinkRequest

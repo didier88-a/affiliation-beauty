@@ -109,9 +109,7 @@ namespace wsaffiliation.Controllers
 
         public static async Task<List<object>> ScraperSephora(string recherche)
         {
-            //string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
-            string urlRecherche = "https://www.lookfantastic.fr/search/?q=" + Uri.EscapeDataString(recherche);
-            Console.WriteLine($"[INFO] Produits trouvés : {urlRecherche}");
+            string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
 
             using var client = new HttpClient();
 
@@ -144,7 +142,7 @@ namespace wsaffiliation.Controllers
                     if (string.IsNullOrEmpty(lien)) continue;
 
                     if (lien.StartsWith("/"))
-                        lien = "https://www.lookfantastic.fr" + lien;
+                        lien = "https://www.sephora.fr" + lien;
 
                     var nom = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line-bold')]")?.InnerText.Trim();
                     var description = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line') and not(contains(@class,'title-line-bold'))]")?.InnerText.Trim();
@@ -157,7 +155,7 @@ namespace wsaffiliation.Controllers
                         if (image.StartsWith("//"))
                             image = "https:" + image;
                         else if (image.StartsWith("/"))
-                            image = "https://www.lookfantastic.fr" + image;
+                            image = "https://www.sephora.fr" + image;
                     }
 
                     produits.Add(new

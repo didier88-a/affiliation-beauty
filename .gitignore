@@ -1,37 +1,46 @@
-## Visual Studio temp folders
+# Visual Studio
 .vs/
+*.db
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
 
-## Build results
+# Build results
 bin/
 obj/
 out/
 Debug/
 Release/
 
-## ASP.NET temp
-project.lock.json
-artifacts/
+# Rider / JetBrains
+.idea/
+*.sln.iml
 
-## NuGet
+# VS Code
+.vscode/
+.history/
+
+# NuGet
 *.nupkg
 *.snupkg
 packages/
-*.nuspec
-*.psmdcp
+project.lock.json
+project.fragment.lock.json
 
-## Logs
+# Logs
 *.log
+logs/
 
-## Docker
-docker-compose.override.yml
-*.dockerignore
-*.env
+# Other generated files
+*.tmp
+*.temp
+*.bak
+*.swp
 
-## OS generated files
-.DS_Store
-Thumbs.db
-ehthumbs.db
+# Render / Deployment
+*.pubxml
+*.PublishSettings
+appsettings.Development.json
+secrets.json
+

@@ -111,7 +111,8 @@ namespace wsaffiliation.Controllers
         {
             //string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
             string urlRecherche = "https://www.lookfantastic.fr/search/?q=" + Uri.EscapeDataString(recherche);
-            
+            Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
+
             using var client = new HttpClient();
 
             // 👉 Simuler un vrai navigateur

@@ -44,3 +44,4 @@ logs/
 appsettings.Development.json
 secrets.json
 
+".vs/" 

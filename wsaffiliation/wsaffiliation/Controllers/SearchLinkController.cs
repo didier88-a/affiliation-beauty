@@ -29,7 +29,7 @@ namespace wsaffiliation.Controllers
                 Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
                 // 2️⃣ Scraper Sephora
-                var produits = await ScraperLookFantastic(motsCles);
+                var produits = await ScraperSephora(motsCles);
                 Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
 
                 // 3️⃣ Retour JSON

@@ -29,7 +29,7 @@ namespace wsaffiliation.Controllers
                 Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
                 // 2️⃣ Scraper Sephora
-                var produits = await ScraperSephora(motsCles);
+                var produits = await ScraperLookFantastic(motsCles);
                 Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
 
                 // 3️⃣ Retour JSON
@@ -233,7 +233,56 @@ namespace wsaffiliation.Controllers
             return produits;
         }
 
+        public static async Task<List<object>> ScraperLookFantastic(string recherche)
+        {
+            string urlRecherche = "https://www.lookfantastic.fr/search/?q=" + Uri.EscapeDataString(recherche);
 
+            var apiKey = Environment.GetEnvironmentVariable("SCRAPINGBEE_API_KEY");
+
+            Console.WriteLine($"[INFO] SCRAPINGBEE_API_KEY : {apiKey}");
+            using var client = new HttpClient();
+
+            // ScrapingBee URL
+            var scrapingBeeUrl = $"https://app.scrapingbee.com/api/v1/?" +
+                                 $"api_key={apiKey}&url={Uri.EscapeDataString(urlRecherche)}";
+            Console.WriteLine($"[INFO] scrapingBeeUrl : {scrapingBeeUrl}");
+            var html = await client.GetStringAsync(scrapingBeeUrl);
+
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            var produits = new List<object>();
+            var nodes = doc.DocumentNode.SelectNodes("//div[contains(@class,'product-tile')]");
+
+            if (nodes != null)
+            {
+                foreach (var node in nodes.Take(5))
+                {
+                    var aTag = node.SelectSingleNode(".//a[contains(@class,'product-tile-link')]");
+                    if (aTag == null) continue;
+
+                    var lien = aTag.GetAttributeValue("href", null);
+                    if (string.IsNullOrEmpty(lien)) continue;
+                    if (lien.StartsWith("/"))
+                        lien = "https://www.lookfantastic.fr" + lien;
+
+                    var nom = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line-bold')]")?.InnerText.Trim();
+                    var description = node.SelectSingleNode(".//h3[contains(@class,'product-title')]//span[contains(@class,'title-line') and not(contains(@class,'title-line-bold'))]")?.InnerText.Trim();
+
+                    var imageNode = node.SelectSingleNode(".//img[contains(@class,'product-first-img')]");
+                    var image = imageNode?.GetAttributeValue("src", null);
+                    if (!string.IsNullOrEmpty(image))
+                    {
+                        if (image.StartsWith("//")) image = "https:" + image;
+                        else if (image.StartsWith("/")) image = "https://www.lookfantastic.fr" + image;
+                    }
+
+                    produits.Add(new { nom, description, image, lien });
+                }
+            }
+
+            return produits;
+        }
 
     }
 

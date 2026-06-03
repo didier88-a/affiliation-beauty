@@ -26,7 +26,7 @@ namespace wsaffiliation.Controllers
 
                 // 1️⃣ Générer des mots-clés via GPT
                 string motsCles = await ObtenirMotsClesAvecGPT(texteRecherche);
-                Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
+                //Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
                 // 2️⃣ Scraper Sephora
                 //var produits = await ScraperLookfantastic(motsCles);

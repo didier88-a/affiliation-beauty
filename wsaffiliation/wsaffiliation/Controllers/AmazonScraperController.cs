@@ -31,7 +31,7 @@ namespace wsaffiliation.Controllers
         public string Asin { get; set; }
     }
 
-    public class AmazonScraper
+    public class AmazonScraperController
     {
         public static async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {

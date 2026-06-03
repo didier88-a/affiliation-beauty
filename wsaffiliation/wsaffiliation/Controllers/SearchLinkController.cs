@@ -66,7 +66,7 @@ namespace wsaffiliation.Controllers
 
             // var ApiKey = builder.Configuration["ApiKeys:OpenAi"];
 
-            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API");
 
             Console.WriteLine($"[INFO] ApiKey : {ApiKey}");
 
@@ -110,7 +110,6 @@ namespace wsaffiliation.Controllers
                 .GetString()
                 .Trim();
         }
-
 
         public static async Task<List<object>> ScraperSephora1(string recherche)
         {
@@ -178,10 +177,6 @@ namespace wsaffiliation.Controllers
             return produits;
         }
 
-
-
-
-
         public static async Task<List<object>> ScraperSephora(string recherche)
         {
             string urlRecherche = "https://www.sephora.fr/recherche/?q=" + Uri.EscapeDataString(recherche);
@@ -233,7 +228,6 @@ namespace wsaffiliation.Controllers
             return produits;
         }
 
-
         public static async Task<List<object>> ScraperLookfantastic(string recherche)
         {
             string urlRecherche = "https://www.lookfantastic.fr/search?q=" + Uri.EscapeDataString(recherche);
@@ -284,7 +278,6 @@ namespace wsaffiliation.Controllers
 
             return produits;
         }
-
 
         public class SearchLinkRequest
         {

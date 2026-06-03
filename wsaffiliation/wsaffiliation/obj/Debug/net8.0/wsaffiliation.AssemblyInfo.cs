@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("wsaffiliation")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+36ccff54bcf6da6852a18aeb41aca92fa1d7d201")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d7b32e8ff52232b59e5d77182824ac5cad21495d")]
 [assembly: System.Reflection.AssemblyProductAttribute("wsaffiliation")]
 [assembly: System.Reflection.AssemblyTitleAttribute("wsaffiliation")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

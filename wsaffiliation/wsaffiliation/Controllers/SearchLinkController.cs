@@ -35,7 +35,7 @@ namespace wsaffiliation.Controllers
                 //Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
 
                 // 3️⃣ Retour JSON
-                return Ok(motsCles);
+                return Ok(produits);
             }
             catch (Exception ex)
             {

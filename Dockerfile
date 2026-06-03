@@ -9,15 +9,26 @@ WORKDIR /src
 
 COPY ["wsaffiliation/wsaffiliation/wsaffiliation.csproj", "wsaffiliation/wsaffiliation/"]
 RUN dotnet restore "wsaffiliation/wsaffiliation/wsaffiliation.csproj"
+
 COPY . .
+
 WORKDIR "/src/wsaffiliation/wsaffiliation"
+
 RUN dotnet build "wsaffiliation.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
+
 RUN dotnet publish "wsaffiliation.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+# Installation Playwright
+RUN dotnet tool install --global Microsoft.Playwright.CLI
+ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN playwright install --with-deps chromium
 
 FROM base AS final
 WORKDIR /app
+
 COPY --from=publish /app/publish .
+
 ENTRYPOINT ["dotnet", "wsaffiliation.dll"]

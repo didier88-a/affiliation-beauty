@@ -29,11 +29,11 @@ namespace wsaffiliation.Controllers
                 Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
                 // 2️⃣ Scraper Sephora
-                var produits = await ScraperLookfantastic(motsCles);
-                Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
+                //var produits = await ScraperLookfantastic(motsCles);
+                //Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");
 
                 // 3️⃣ Retour JSON
-                return Ok(produits);
+                return Ok("produits");
             }
             catch (Exception ex)
             {
@@ -60,7 +60,7 @@ namespace wsaffiliation.Controllers
         }
 
         // 🔹 Appel OpenAI pour générer des mots-clés
-        public static async Task<string> ObtenirMotsClesAvecGPT(string besoin)
+        public static async Task<string> ObtenirMotsClesAvecGPT1(string besoin)
         {
             //var builder = WebApplication.CreateBuilder();
 
@@ -110,6 +110,57 @@ namespace wsaffiliation.Controllers
                 .GetString()
                 .Trim();
         }
+
+        public static async Task<string> ObtenirMotsClesAvecGPT(string besoin)
+        {
+           
+
+            var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API");
+
+
+            Console.WriteLine($"[INFO] ApiKey : {ApiKey}");
+
+
+            if (string.IsNullOrEmpty(ApiKey))
+                throw new Exception("Clé OpenAI introuvable dans les variables d'environnement !");
+
+            var Model = "gpt-4o-mini"; // ou "gpt-5-nano"
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
+
+            var requestBody = new
+            {
+                model = Model,
+                messages = new[]
+                {
+                    new { role = "system", content = "Transforme le besoin du client en 10 mots-clés chaque mot separe par une virgule optimisés pour rechercher un produit sur amazon" },
+                    new { role = "user", content = besoin }
+                },
+                max_tokens = 50,
+                temperature = 0.3
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Erreur OpenAI ({response.StatusCode}) : {errorContent}");
+            }
+
+            var responseString = await response.Content.ReadAsStringAsync();
+            var result = JsonDocument.Parse(responseString);
+
+            return result.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString()
+                .Trim();
+        }
+
 
         public static async Task<List<object>> ScraperSephora1(string recherche)
         {

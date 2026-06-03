@@ -33,7 +33,7 @@ namespace wsaffiliation.Controllers
 
     public class AmazonScraperController
     {
-        public static async Task<List<AmazonProduct>> ScraperAmazon(string query)
+        public  async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {
             var results = new List<AmazonProduct>();
 

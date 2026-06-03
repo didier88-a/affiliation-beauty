@@ -28,6 +28,8 @@ namespace wsaffiliation.Controllers
                 string motsCles = await ObtenirMotsClesAvecGPT(texteRecherche);
                 //Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
+                var amazon = new AmazonScraperController();
+                var produits = await amazon.ScraperAmazon(motsCles);
                 // 2️⃣ Scraper Sephora
                 //var produits = await ScraperLookfantastic(motsCles);
                 //Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");

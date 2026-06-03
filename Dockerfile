@@ -21,6 +21,8 @@ ARG BUILD_CONFIGURATION=Release
 
 RUN dotnet publish "wsaffiliation.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+RUN cd /app/publish && pwsh playwright.ps1 install --with-deps chromium
+
 # Installation Playwright
 RUN dotnet tool install --global Microsoft.Playwright.CLI
 ENV PATH="${PATH}:/root/.dotnet/tools"

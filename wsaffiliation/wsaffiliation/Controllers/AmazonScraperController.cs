@@ -37,7 +37,7 @@ namespace wsaffiliation.Controllers
         public  async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {
             var results = new List<AmazonProduct>();
-
+            Console.WriteLine($"playwright : before");
             using var playwright = await Playwright.CreateAsync();
             Console.WriteLine($"playwright : after");
             await using var browser = await playwright.Chromium.LaunchAsync(new()

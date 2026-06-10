@@ -30,6 +30,8 @@ namespace wsaffiliation.Controllers
 
                 var amazon = new AmazonScraperController();
                 var produits = await amazon.ScraperAmazon(motsCles);
+
+
                 // 2️⃣ Scraper Sephora
                 //var produits = await ScraperLookfantastic(motsCles);
                 //Console.WriteLine($"[INFO] Produits trouvés : {produits.Count}");

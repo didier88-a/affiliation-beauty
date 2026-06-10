@@ -10,8 +10,6 @@ RUN dotnet restore
 RUN dotnet publish -c Release -o /app/publish
 
 WORKDIR /app/publish
-RUN playwright install chromium
-RUN ls -la /root/.cache/ms-playwright
 ENV ASPNETCORE_URLS=http://+:8080
 
 EXPOSE 8080

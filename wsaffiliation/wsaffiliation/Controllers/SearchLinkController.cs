@@ -132,13 +132,13 @@ namespace wsaffiliation.Controllers
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
-
+            var _content = "Génère 20 requêtes de recherche e-commerce françaises liées au sujet de la phrase " + besoin + " Retourne uniquement une liste, une ligne par terme, sans numérotation, sans doublons.";
             var requestBody = new
             {
                 model = Model,
                 messages = new[]
                 {
-                    new { role = "system", content = "Transforme le besoin du client en 10 mots-clés chaque mot separe par une virgule optimisés pour rechercher un produit sur amazon" },
+                    new { role = "system", content = _content },
                     new { role = "user", content = besoin }
                 },
                 max_tokens = 50,

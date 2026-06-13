@@ -24,13 +24,22 @@ namespace wsaffiliation.Controllers
             {
                 Console.WriteLine($"[INFO] Requête reçue → affiliation={affiliation}, texteRecherche={texteRecherche}");
 
+                DateTime startTime1 = DateTime.Now;
+
+                Console.WriteLine($"Start Time: {startTime1:yyyy-MM-dd HH:mm:ss}");
+
                 // 1️⃣ Générer des mots-clés via GPT
                 string motsCles = await ObtenirMotsClesAvecGPT(texteRecherche);
                 //Console.WriteLine($"[INFO] Mots-clés générés : {motsCles}");
 
+                DateTime startTime = DateTime.Now;
+
+                Console.WriteLine($"Start Time: {startTime:yyyy-MM-dd HH:mm:ss}");
                 var amazon = new AmazonScraperController();
                 var produits = await amazon.ScraperAmazon(motsCles);
 
+                DateTime startTime3 = DateTime.Now;
+                Console.WriteLine($"Start Time: {startTime3:yyyy-MM-dd HH:mm:ss}");
 
                 // 2️⃣ Scraper Sephora
                 //var produits = await ScraperLookfantastic(motsCles);

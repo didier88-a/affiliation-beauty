@@ -132,7 +132,7 @@ namespace wsaffiliation.Controllers
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
-            var _content = "Génère 20 requêtes de recherche e-commerce françaises liées au sujet de la phrase " + besoin + " Retourne uniquement une liste, une ligne par terme, sans numérotation, sans doublons.";
+            var _content = "Génère 20 requêtes de recherche e-commerce françaises liées au sujet de la phrase '" + besoin + "' . Retourne uniquement une liste, une ligne par terme, sans numérotation, sans doublons.";
             var requestBody = new
             {
                 model = Model,

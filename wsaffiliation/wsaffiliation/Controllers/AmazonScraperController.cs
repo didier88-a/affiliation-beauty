@@ -37,26 +37,26 @@ namespace wsaffiliation.Controllers
         public  async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {
             var results = new List<AmazonProduct>();
-            Console.WriteLine($"playwright : before");
+            
             using var playwright = await Playwright.CreateAsync();
-            Console.WriteLine($"playwright : after");
+            
             await using var browser = await playwright.Chromium.LaunchAsync(new()
             {
                 Headless = true
             });
-            Console.WriteLine($"playwright : after1");
+            
             var page = await browser.NewPageAsync();
 
             var url = $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
-            Console.WriteLine($"url : url");
+            
             await page.GotoAsync(url);
             await page.WaitForSelectorAsync("[data-component-type='s-search-result']");
-            Console.WriteLine($"data-component-type");
+            
             var html = await page.ContentAsync();
-            Console.WriteLine($"ContentAsync");
+           
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
-            Console.WriteLine($"LoadHtml");
+            
             var nodes = doc.DocumentNode.SelectNodes("//div[@data-component-type='s-search-result']");
 
             if (nodes == null) return results;

@@ -122,7 +122,7 @@ namespace wsaffiliation.Controllers
             var ApiKey = Environment.GetEnvironmentVariable("OPENAI_API");
 
 
-            Console.WriteLine($"[INFO] ApiKey : {ApiKey}");
+            //Console.WriteLine($"[INFO] ApiKey : {ApiKey}");
 
 
             if (string.IsNullOrEmpty(ApiKey))

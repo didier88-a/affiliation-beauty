@@ -34,7 +34,186 @@ namespace wsaffiliation.Controllers
 
     public class AmazonScraperController
     {
-        public  async Task<List<AmazonProduct>> ScraperAmazon(string query)
+    
+        
+
+        public async Task<List<AmazonProduct>> ScraperAmazon(string query)
+        {
+            var results = new List<AmazonProduct>();
+
+            using var playwright = await Playwright.CreateAsync();
+
+            await using var _browser = await playwright.Chromium.LaunchAsync(new()
+            {
+                Headless = true
+            });
+
+            var page = await _browser.NewPageAsync();
+
+            try
+            {
+                await page.RouteAsync("**/*", async route =>
+                {
+                    var type = route.Request.ResourceType;
+
+                    if (type == "image" ||
+                        type == "stylesheet" ||
+                        type == "font")
+                    {
+                        await route.AbortAsync();
+                        return;
+                    }
+
+                    await route.ContinueAsync();
+                });
+
+                var url =
+                    $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
+
+                await page.GotoAsync(url, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = 15000
+                });
+
+                await page.WaitForSelectorAsync(
+                    "[data-component-type='s-search-result']",
+                    new()
+                    {
+                        Timeout = 10000
+                    });
+
+                var products =
+                    await page.Locator("[data-component-type='s-search-result']")
+                        .AllAsync();
+
+                foreach (var product in products)
+                {
+                    try
+                    {
+                        var asin =
+                            await product.GetAttributeAsync("data-asin");
+
+                        if (string.IsNullOrWhiteSpace(asin))
+                            continue;
+
+                        var titleLocator = product.Locator("h2 span");
+
+                        if (await titleLocator.CountAsync() == 0)
+                            continue;
+
+                        var title =
+                            (await titleLocator.First.TextContentAsync())
+                            ?.Trim();
+
+                        if (string.IsNullOrWhiteSpace(title))
+                            continue;
+
+                        // IMAGE
+                        string? image = null;
+
+                        var imageLocator = product.Locator("img");
+
+                        if (await imageLocator.CountAsync() > 0)
+                        {
+                            image = await imageLocator.First
+                                .GetAttributeAsync("src");
+                        }
+
+                        // PRICE
+                        decimal? price = null;
+
+                        var wholeLocator =
+                            product.Locator(".a-price-whole");
+
+                        var fractionLocator =
+                            product.Locator(".a-price-fraction");
+
+                        if (await wholeLocator.CountAsync() > 0)
+                        {
+                            var whole =
+                                await wholeLocator.First.TextContentAsync();
+
+                            var fraction =
+                                await fractionLocator.First.TextContentAsync();
+
+                            if (!string.IsNullOrWhiteSpace(whole))
+                            {
+                                var clean =
+                                    whole.Replace(".", "")
+                                         .Replace(",", "")
+                                    + "," +
+                                    (fraction ?? "00");
+
+                                if (decimal.TryParse(
+                                        clean,
+                                        NumberStyles.Any,
+                                        new CultureInfo("fr-FR"),
+                                        out var parsed))
+                                {
+                                    price = parsed;
+                                }
+                            }
+                        }
+
+                        // RATING
+                        double? rating = null;
+
+                        var ratingLocator =
+                            product.Locator("span[aria-label*='out of 5']");
+
+                        if (await ratingLocator.CountAsync() > 0)
+                        {
+                            var ratingText =
+                                await ratingLocator.First
+                                    .GetAttributeAsync("aria-label");
+
+                            if (!string.IsNullOrWhiteSpace(ratingText))
+                            {
+                                var value =
+                                    ratingText.Split(' ')[0]
+                                              .Replace(",", ".");
+
+                                if (double.TryParse(
+                                        value,
+                                        NumberStyles.Any,
+                                        CultureInfo.InvariantCulture,
+                                        out var parsedRating))
+                                {
+                                    rating = parsedRating;
+                                }
+                            }
+                        }
+
+                        results.Add(new AmazonProduct
+                        {
+                            Name = title,
+                            Price = price,
+                            Rating = rating,
+                            Image = image,
+                            Asin = asin,
+                            AffiliateUrl =
+                                $"https://www.amazon.fr/dp/{asin}"
+                        });
+
+                        if (results.Count >= 10)
+                            break;
+                    }
+                    catch
+                    {
+                        // Ignore produit invalide
+                    }
+                }
+
+                return results;
+            }
+            finally
+            {
+                await page.CloseAsync();
+            }
+        }
+
+        public  async Task<List<AmazonProduct>> ScraperAmazon1(string query)
         {
             var results = new List<AmazonProduct>();
             

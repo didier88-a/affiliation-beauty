@@ -34,22 +34,45 @@ namespace wsaffiliation.Controllers
 
     public class AmazonScraperController
     {
-    
-        
+        private static IPlaywright? _playwright;
+        private static IBrowser? _browser;
+        private static readonly SemaphoreSlim _lock = new(1, 1);
+
+        private static async Task InitBrowserAsync()
+        {
+            if (_browser != null)
+                return;
+
+            await _lock.WaitAsync();
+
+            try
+            {
+                if (_browser == null)
+                {
+                    _playwright = await Playwright.CreateAsync();
+
+                    _browser = await _playwright.Chromium.LaunchAsync(new()
+                    {
+                        Headless = true
+                    });
+                }
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
 
         public async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {
             var results = new List<AmazonProduct>();
 
-            using var playwright = await Playwright.CreateAsync();
+            await InitBrowserAsync();
 
-            await using var _browser = await playwright.Chromium.LaunchAsync(new()
-            {
-                Headless = true
-            });
+            var context = await _browser!.NewContextAsync();
+            var page = await context.NewPageAsync();
 
-            var page = await _browser.NewPageAsync();
-
+            
             try
             {
                 await page.RouteAsync("**/*", async route =>
@@ -209,7 +232,7 @@ namespace wsaffiliation.Controllers
             }
             finally
             {
-                await page.CloseAsync();
+                await context.CloseAsync();
             }
         }
 

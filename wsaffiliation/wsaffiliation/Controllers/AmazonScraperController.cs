@@ -103,7 +103,7 @@ namespace wsaffiliation.Controllers
                     "[data-component-type='s-search-result']",
                     new()
                     {
-                        Timeout = 10000
+                        Timeout =30000
                     });
 
                 var products =

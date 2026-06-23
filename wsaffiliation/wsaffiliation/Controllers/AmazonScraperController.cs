@@ -128,7 +128,7 @@ namespace wsaffiliation.Controllers
         });
 }
 ");
-
+                Console.WriteLine(rawProducts);
                 Console.WriteLine($"EvaluateAsync : {sw.ElapsedMilliseconds} ms");
 
                 foreach (var p in rawProducts)

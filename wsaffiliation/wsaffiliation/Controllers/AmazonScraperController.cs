@@ -44,24 +44,44 @@ namespace wsaffiliation.Controllers
 
     public class AmazonScraperController
     {
+        private static IPlaywright? _playwright;
+        private static IBrowser? _browser;
+        private static readonly SemaphoreSlim _lock = new(1, 1);
+
+        private static async Task InitBrowserAsync()
+        {
+            if (_browser != null)
+                return;
+
+            await _lock.WaitAsync();
+
+            try
+            {
+                if (_browser == null)
+                {
+                    _playwright = await Playwright.CreateAsync();
+
+                    _browser = await _playwright.Chromium.LaunchAsync(new()
+                    {
+                        Headless = true
+                    });
+                }
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+
         public async Task<List<AmazonProduct>> ScraperAmazon(string query)
         {
             var results = new List<AmazonProduct>();
 
-            using var playwright = await Playwright.CreateAsync();
+            await InitBrowserAsync();
 
-            await using var browser = await playwright.Chromium.LaunchAsync(new()
-            {
-                Headless = true
-            });
-
-            var context = await browser.NewContextAsync(new()
-            {
-                UserAgent =
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
-            });
-
+            var context = await _browser!.NewContextAsync();
             var page = await context.NewPageAsync();
+
 
             try
             {
@@ -70,6 +90,7 @@ namespace wsaffiliation.Controllers
                     var type = route.Request.ResourceType;
 
                     if (type == "image" ||
+                        type == "stylesheet" ||
                         type == "font")
                     {
                         await route.AbortAsync();
@@ -82,129 +103,150 @@ namespace wsaffiliation.Controllers
                 var url =
                     $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
 
-                var sw = Stopwatch.StartNew();
-
                 await page.GotoAsync(url, new PageGotoOptions
                 {
                     WaitUntil = WaitUntilState.DOMContentLoaded,
                     Timeout = 15000
                 });
 
-                Console.WriteLine($"GotoAsync : {sw.ElapsedMilliseconds} ms");
-
                 await page.WaitForSelectorAsync(
                     "[data-component-type='s-search-result']",
                     new()
                     {
-                        Timeout = 10000
+                        Timeout = 30000
                     });
 
-                Console.WriteLine($"WaitForSelector : {sw.ElapsedMilliseconds} ms");
+                var products =
+                    await page.Locator("[data-component-type='s-search-result']")
+                        .AllAsync();
 
-                var rawProducts =
-                    await page.EvaluateAsync<List<AmazonProductRaw>>(@"
-() => {
-    return [...document.querySelectorAll('[data-component-type=""s-search-result""]')]
-        .slice(0,10)
-        .map(p => {
-
-            const whole =
-                p.querySelector('.a-price-whole')?.textContent?.trim() || '';
-
-            const fraction =
-                p.querySelector('.a-price-fraction')?.textContent?.trim() || '00';
-
-            const rating =
-                p.querySelector('span[aria-label*=""out of 5""]')
-                 ?.getAttribute('aria-label') || '';
-
-            return {
-                Name: p.querySelector('h2 span')?.textContent?.trim() || '',
-                Image: p.querySelector('img')?.src || '',
-                Asin: p.getAttribute('data-asin') || '',
-                PriceText: whole ? whole + ',' + fraction : '',
-                RatingText: rating
-            };
-        });
-}
-");
-                Console.WriteLine(rawProducts);
-                Console.WriteLine($"EvaluateAsync : {sw.ElapsedMilliseconds} ms");
-
-                foreach (var p in rawProducts)
+                foreach (var product in products)
                 {
                     try
                     {
-                        if (string.IsNullOrWhiteSpace(p.Asin))
+                        var asin =
+                            await product.GetAttributeAsync("data-asin");
+
+                        if (string.IsNullOrWhiteSpace(asin))
                             continue;
 
-                        if (string.IsNullOrWhiteSpace(p.Name))
+                        var titleLocator = product.Locator("h2 span");
+
+                        if (await titleLocator.CountAsync() == 0)
                             continue;
 
+                        var title =
+                            (await titleLocator.First.TextContentAsync())
+                            ?.Trim();
+
+                        if (string.IsNullOrWhiteSpace(title))
+                            continue;
+
+                        // IMAGE
+                        string? image = null;
+
+                        var imageLocator = product.Locator("img");
+
+                        if (await imageLocator.CountAsync() > 0)
+                        {
+                            image = await imageLocator.First
+                                .GetAttributeAsync("src");
+                        }
+
+                        // PRICE
                         decimal? price = null;
 
-                        if (!string.IsNullOrWhiteSpace(p.PriceText))
-                        {
-                            var clean = p.PriceText
-                                .Replace("€", "")
-                                .Replace(" ", "");
+                        var wholeLocator =
+                            product.Locator(".a-price-whole");
 
-                            if (decimal.TryParse(
-                                    clean,
-                                    NumberStyles.Any,
-                                    new CultureInfo("fr-FR"),
-                                    out var parsedPrice))
+                        var fractionLocator =
+                            product.Locator(".a-price-fraction");
+
+                        if (await wholeLocator.CountAsync() > 0)
+                        {
+                            var whole =
+                                await wholeLocator.First.TextContentAsync();
+
+                            var fraction =
+                                await fractionLocator.First.TextContentAsync();
+
+                            if (!string.IsNullOrWhiteSpace(whole))
                             {
-                                price = parsedPrice;
+                                var clean =
+                                    whole.Replace(".", "")
+                                         .Replace(",", "")
+                                    + "," +
+                                    (fraction ?? "00");
+
+                                if (decimal.TryParse(
+                                        clean,
+                                        NumberStyles.Any,
+                                        new CultureInfo("fr-FR"),
+                                        out var parsed))
+                                {
+                                    price = parsed;
+                                }
                             }
                         }
 
+                        // RATING
                         double? rating = null;
 
-                        if (!string.IsNullOrWhiteSpace(p.RatingText))
-                        {
-                            var firstPart =
-                                p.RatingText.Split(' ')[0]
-                                            .Replace(",", ".");
+                        var ratingLocator =
+                            product.Locator("span[aria-label*='out of 5']");
 
-                            if (double.TryParse(
-                                    firstPart,
-                                    NumberStyles.Any,
-                                    CultureInfo.InvariantCulture,
-                                    out var parsedRating))
+                        if (await ratingLocator.CountAsync() > 0)
+                        {
+                            var ratingText =
+                                await ratingLocator.First
+                                    .GetAttributeAsync("aria-label");
+
+                            if (!string.IsNullOrWhiteSpace(ratingText))
                             {
-                                rating = parsedRating;
+                                var value =
+                                    ratingText.Split(' ')[0]
+                                              .Replace(",", ".");
+
+                                if (double.TryParse(
+                                        value,
+                                        NumberStyles.Any,
+                                        CultureInfo.InvariantCulture,
+                                        out var parsedRating))
+                                {
+                                    rating = parsedRating;
+                                }
                             }
                         }
 
                         results.Add(new AmazonProduct
                         {
-                            Name = p.Name,
+                            Name = title,
                             Price = price,
                             Rating = rating,
-                            Image = p.Image,
-                            Asin = p.Asin,
-                            AffiliateUrl = $"https://www.amazon.fr/dp/{p.Asin}"
+                            Image = image,
+                            Asin = asin,
+                            AffiliateUrl =
+                                $"https://www.amazon.fr/dp/{asin}"
                         });
+
+                        if (results.Count >= 10)
+                            break;
                     }
                     catch
                     {
+                        // Ignore produit invalide
                     }
                 }
-
-                Console.WriteLine($"Total : {sw.ElapsedMilliseconds} ms");
 
                 return results;
             }
             finally
             {
-                await page.CloseAsync();
                 await context.CloseAsync();
             }
         }
 
-
-        public async Task<List<AmazonProduct>> ScraperAmazon2(string query)
+        public async Task<List<AmazonProduct>> ScraperAmazon3(string query)
         {
             DateTime startTime = DateTime.Now;
             var results = new List<AmazonProduct>();

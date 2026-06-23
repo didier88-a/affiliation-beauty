@@ -70,24 +70,28 @@ namespace wsaffiliation.Controllers
 
                 var url =
                     $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
-                Console.WriteLine($"Start Time1: {startTime:yyyy-MM-dd HH:mm:ss}");
+                DateTime startTime1 = DateTime.Now;
+                Console.WriteLine($"Start Time1: {startTime1:yyyy-MM-dd HH:mm:ss}");
                 await page.GotoAsync(url, new PageGotoOptions
                 {
                     WaitUntil = WaitUntilState.DOMContentLoaded,
                     Timeout = 15000
                 });
-                Console.WriteLine($"Start Time2: {startTime:yyyy-MM-dd HH:mm:ss}");
+                DateTime startTime2 = DateTime.Now;
+                Console.WriteLine($"Start Time2: {startTime2:yyyy-MM-dd HH:mm:ss}");
                 await page.WaitForSelectorAsync(
                     "[data-component-type='s-search-result']",
                     new()
                     {
                         Timeout = 10000
                     });
-                Console.WriteLine($"Start Time3: {startTime:yyyy-MM-dd HH:mm:ss}");
+                DateTime startTime3 = DateTime.Now;
+                Console.WriteLine($"Start Time3: {startTime3:yyyy-MM-dd HH:mm:ss}");
                 var products =
                     await page.Locator("[data-component-type='s-search-result']")
                         .AllAsync();
-                Console.WriteLine($"Start Time4: {startTime:yyyy-MM-dd HH:mm:ss}");
+                DateTime startTime4 = DateTime.Now;
+                Console.WriteLine($"Start Time4: {startTime4:yyyy-MM-dd HH:mm:ss}");
                 foreach (var product in products)
                 {
                     try
@@ -205,7 +209,8 @@ namespace wsaffiliation.Controllers
                         // Ignore produit invalide
                     }
                 }
-                Console.WriteLine($"Start Time5: {startTime:yyyy-MM-dd HH:mm:ss}");
+                DateTime startTime5 = DateTime.Now;
+                Console.WriteLine($"Start Time5: {startTime5:yyyy-MM-dd HH:mm:ss}");
                 return results;
             }
             finally

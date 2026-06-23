@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -13,6 +14,15 @@ using System.Threading.Tasks;
 
 namespace wsaffiliation.Controllers
 {
+
+    public class AmazonProductRaw
+    {
+        public string? Name { get; set; }
+        public string? Image { get; set; }
+        public string? Asin { get; set; }
+        public string? PriceText { get; set; }
+        public string? RatingText { get; set; }
+    }
     public class AmazonProduct
     {
         public string Name { get; set; }
@@ -34,10 +44,167 @@ namespace wsaffiliation.Controllers
 
     public class AmazonScraperController
     {
-
-
-
         public async Task<List<AmazonProduct>> ScraperAmazon(string query)
+        {
+            var results = new List<AmazonProduct>();
+
+            using var playwright = await Playwright.CreateAsync();
+
+            await using var browser = await playwright.Chromium.LaunchAsync(new()
+            {
+                Headless = true
+            });
+
+            var context = await browser.NewContextAsync(new()
+            {
+                UserAgent =
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+            });
+
+            var page = await context.NewPageAsync();
+
+            try
+            {
+                await page.RouteAsync("**/*", async route =>
+                {
+                    var type = route.Request.ResourceType;
+
+                    if (type == "image" ||
+                        type == "font")
+                    {
+                        await route.AbortAsync();
+                        return;
+                    }
+
+                    await route.ContinueAsync();
+                });
+
+                var url =
+                    $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
+
+                var sw = Stopwatch.StartNew();
+
+                await page.GotoAsync(url, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = 15000
+                });
+
+                Console.WriteLine($"GotoAsync : {sw.ElapsedMilliseconds} ms");
+
+                await page.WaitForSelectorAsync(
+                    "[data-component-type='s-search-result']",
+                    new()
+                    {
+                        Timeout = 10000
+                    });
+
+                Console.WriteLine($"WaitForSelector : {sw.ElapsedMilliseconds} ms");
+
+                var rawProducts =
+                    await page.EvaluateAsync<List<AmazonProductRaw>>(@"
+() => {
+    return [...document.querySelectorAll('[data-component-type=""s-search-result""]')]
+        .slice(0,10)
+        .map(p => {
+
+            const whole =
+                p.querySelector('.a-price-whole')?.textContent?.trim() || '';
+
+            const fraction =
+                p.querySelector('.a-price-fraction')?.textContent?.trim() || '00';
+
+            const rating =
+                p.querySelector('span[aria-label*=""out of 5""]')
+                 ?.getAttribute('aria-label') || '';
+
+            return {
+                Name: p.querySelector('h2 span')?.textContent?.trim() || '',
+                Image: p.querySelector('img')?.src || '',
+                Asin: p.getAttribute('data-asin') || '',
+                PriceText: whole ? whole + ',' + fraction : '',
+                RatingText: rating
+            };
+        });
+}
+");
+
+                Console.WriteLine($"EvaluateAsync : {sw.ElapsedMilliseconds} ms");
+
+                foreach (var p in rawProducts)
+                {
+                    try
+                    {
+                        if (string.IsNullOrWhiteSpace(p.Asin))
+                            continue;
+
+                        if (string.IsNullOrWhiteSpace(p.Name))
+                            continue;
+
+                        decimal? price = null;
+
+                        if (!string.IsNullOrWhiteSpace(p.PriceText))
+                        {
+                            var clean = p.PriceText
+                                .Replace("€", "")
+                                .Replace(" ", "");
+
+                            if (decimal.TryParse(
+                                    clean,
+                                    NumberStyles.Any,
+                                    new CultureInfo("fr-FR"),
+                                    out var parsedPrice))
+                            {
+                                price = parsedPrice;
+                            }
+                        }
+
+                        double? rating = null;
+
+                        if (!string.IsNullOrWhiteSpace(p.RatingText))
+                        {
+                            var firstPart =
+                                p.RatingText.Split(' ')[0]
+                                            .Replace(",", ".");
+
+                            if (double.TryParse(
+                                    firstPart,
+                                    NumberStyles.Any,
+                                    CultureInfo.InvariantCulture,
+                                    out var parsedRating))
+                            {
+                                rating = parsedRating;
+                            }
+                        }
+
+                        results.Add(new AmazonProduct
+                        {
+                            Name = p.Name,
+                            Price = price,
+                            Rating = rating,
+                            Image = p.Image,
+                            Asin = p.Asin,
+                            AffiliateUrl = $"https://www.amazon.fr/dp/{p.Asin}"
+                        });
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                Console.WriteLine($"Total : {sw.ElapsedMilliseconds} ms");
+
+                return results;
+            }
+            finally
+            {
+                await page.CloseAsync();
+                await context.CloseAsync();
+            }
+        }
+
+
+        public async Task<List<AmazonProduct>> ScraperAmazon2(string query)
         {
             DateTime startTime = DateTime.Now;
             var results = new List<AmazonProduct>();
@@ -92,6 +259,10 @@ namespace wsaffiliation.Controllers
                         .AllAsync();
                 DateTime startTime4 = DateTime.Now;
                 Console.WriteLine($"Start Time4: {startTime4:yyyy-MM-dd HH:mm:ss}");
+
+
+
+
                 foreach (var product in products)
                 {
                     try

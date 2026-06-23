@@ -135,12 +135,17 @@ namespace wsaffiliation.Controllers
                     var url =
                         $"https://www.amazon.fr/s?k={Uri.EscapeDataString(query)}";
 
-                    await page.GotoAsync(url, new PageGotoOptions
-                    {
-                        WaitUntil = WaitUntilState.DOMContentLoaded,
-                        Timeout = 15000
-                    });
+                    //await page.GotoAsync(url, new PageGotoOptions
+                    //{
+                    //    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    //    Timeout = 15000
+                    //});
 
+                    await page.GotoAsync(url, new()
+                    {
+                        WaitUntil = WaitUntilState.Load,
+                        Timeout = 30000
+                    });
                     await page.WaitForSelectorAsync(
                         "[data-component-type='s-search-result']",
                         new()

@@ -348,5 +348,163 @@ namespace wsaffiliation.Controllers
             public string? Affiliation { get; set; }
             public string? TexteRecherche { get; set; }
         }
+
+
+        public static async Task<string> GenererFicheProduit(string produit)
+        {
+            var apiKey = Environment.GetEnvironmentVariable("OPENAI_API");
+
+            if (string.IsNullOrEmpty(apiKey))
+                throw new Exception("Clé OpenAI introuvable.");
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", apiKey);
+
+            const string model = "gpt-5-mini";
+
+            var jsonSchema = new
+            {
+                type = "object",
+                properties = new
+                {
+                    title = new { type = "string" },
+                    subtitle = new { type = "string" },
+                    description = new { type = "string" },
+
+                    products = new
+                    {
+                        type = "array",
+                        minItems = 5,
+                        maxItems = 5,
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                rank = new { type = "integer" },
+                                badge = new { type = "string" },
+                                asin = new { type = "string" },
+                                name = new { type = "string" },
+                                brand = new { type = "string" },
+                                image = new { type = "string" },
+                                price = new { type = "number" },
+                                oldPrice = new { type = "number" },
+                                currency = new { type = "string" },
+                                rating = new { type = "number" },
+                                reviews = new { type = "integer" },
+                                amazonUrl = new { type = "string" },
+                                summary = new { type = "string" },
+                                pros = new
+                                {
+                                    type = "array",
+                                    items = new { type = "string" }
+                                },
+                                cons = new
+                                {
+                                    type = "array",
+                                    items = new { type = "string" }
+                                },
+                                specifications = new
+                                {
+                                    type = "object",
+                                    properties = new
+                                    {
+                                        technology = new { type = "string" },
+                                        powerLevels = new { type = "integer" },
+                                        batteryLife = new { type = "string" },
+                                        charging = new { type = "string" },
+                                        waterproof = new { type = "boolean" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+
+                    faq = new
+                    {
+                        type = "array",
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                question = new { type = "string" },
+                                answer = new { type = "string" }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var requestBody = new
+            {
+                model,
+
+                messages = new object[]
+                {
+            new
+            {
+                role = "system",
+                content = """
+                            Tu es un expert Amazon et SEO.
+
+                            Génère uniquement un JSON valide.
+
+                            Ne mets aucun commentaire.
+
+                            Ne mets pas de markdown.
+
+                            Utilise uniquement des vrais produits Amazon.
+
+                            Si tu ne connais pas un ASIN ou une URL Amazon, laisse la chaîne vide.
+                            """
+            },
+
+            new
+            {
+                role = "user",
+                content = $"Génère une fiche complète pour : {produit}"
+            }
+                },
+
+                response_format = new
+                {
+                    type = "json_schema",
+                    json_schema = new
+                    {
+                        name = "product_page",
+                        schema = jsonSchema
+                    }
+                },
+
+                temperature = 0.2
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await client.PostAsync(
+                "https://api.openai.com/v1/chat/completions",
+                content);
+
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            var doc = JsonDocument.Parse(json);
+
+            return doc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+        }
+
+
+
+
     }
 }

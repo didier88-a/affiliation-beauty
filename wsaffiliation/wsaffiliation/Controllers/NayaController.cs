@@ -25,7 +25,7 @@ namespace wsaffiliation.Controllers
 
 
             var url =
-                $"{supabaseUrl}/rest/v1/get_popular_guides";
+                $"{supabaseUrl}/rest/v1/rpc/get_popular_guides";
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
@@ -75,7 +75,7 @@ namespace wsaffiliation.Controllers
             try
             {
                 var url =
-                    $"{supabaseUrl}/rest/v1/rpc/GuideViliora" +
+                    $"{supabaseUrl}/rest/v1/GuideViliora" +
                     $"?select=json_str&slug=eq.{Uri.EscapeDataString(slug)}";
 
                 using var request =

@@ -75,7 +75,7 @@ namespace wsaffiliation.Controllers
             try
             {
                 var url =
-                    $"{supabaseUrl}/rest/v1/GuideViliora" +
+                    $"{supabaseUrl}/rest/v1/rpc/GuideViliora" +
                     $"?select=json_str&slug=eq.{Uri.EscapeDataString(slug)}";
 
                 using var request =

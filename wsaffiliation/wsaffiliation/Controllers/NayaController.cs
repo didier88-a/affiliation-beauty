@@ -9,8 +9,7 @@ namespace wsaffiliation.Controllers
     public class NayaController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly string supabaseUrl = "TON_SUPABASE_URL";
-        private readonly string supabaseKey = "TA_SUPABASE_KEY";
+       
 
         public NayaController(IConfiguration configuration)
         {
@@ -70,6 +69,9 @@ namespace wsaffiliation.Controllers
         [HttpGet("guide/{slug}")]
         public async Task<IActionResult> GetGuide(string slug)
         {
+            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
             try
             {
                 var url =

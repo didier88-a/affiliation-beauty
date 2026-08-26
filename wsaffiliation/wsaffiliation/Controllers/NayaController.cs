@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace wsaffiliation.Controllers
@@ -222,6 +223,150 @@ namespace wsaffiliation.Controllers
             );
         }
 
+        [HttpGet("getguidebycategory/{category}")]
+        public async Task<IActionResult> GetGuideByCategory(string category)
+        {
+            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(category))
+                {
+                    return BadRequest(new
+                    {
+                        message = "La catégorie est obligatoire"
+                    });
+                }
+
+
+                // =====================================================
+                // SUPABASE RPC
+                // =====================================================
+
+                var url =
+                    $"{supabaseUrl}/rest/v1/rpc/get_guide_by_category";
+
+
+                // =====================================================
+                // PARAMETRE DE LA FONCTION
+                // =====================================================
+
+                var body = new
+                {
+                    p_category = category
+                };
+
+
+                var json =
+                    JsonSerializer.Serialize(body);
+
+
+                using var request =
+                    new HttpRequestMessage(
+                        HttpMethod.Post,
+                        url
+                    );
+
+
+                // =====================================================
+                // HEADERS
+                // =====================================================
+
+                request.Headers.Add(
+                    "apikey",
+                    supabaseKey
+                );
+
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue(
+                        "Bearer",
+                        supabaseKey
+                    );
+
+
+                // =====================================================
+                // BODY
+                // =====================================================
+
+                request.Content =
+                    new StringContent(
+                        json,
+                        Encoding.UTF8,
+                        "application/json"
+                    );
+
+
+                // =====================================================
+                // APPEL SUPABASE
+                // =====================================================
+
+                using var httpClient =
+                    new HttpClient();
+
+
+                var response =
+                    await httpClient.SendAsync(
+                        request
+                    );
+
+
+                var responseContent =
+                    await response.Content.ReadAsStringAsync();
+
+
+                // =====================================================
+                // ERREUR SUPABASE
+                // =====================================================
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine(
+                        "SUPABASE ERROR: " +
+                        responseContent
+                    );
+
+                    return StatusCode(
+                        (int)response.StatusCode,
+                        new
+                        {
+                            message =
+                                "Erreur lors de la récupération des guides",
+                            error =
+                                responseContent
+                        }
+                    );
+                }
+
+
+                // =====================================================
+                // RETOURNER LES GUIDES
+                // =====================================================
+
+                return Content(
+                    responseContent,
+                    "application/json"
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    "GET GUIDE BY CATEGORY ERROR: " +
+                    ex
+                );
+
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message =
+                            "Erreur lors de la récupération des guides",
+                        error =
+                            ex.Message
+                    }
+                );
+            }
+        }
 
     }
 }

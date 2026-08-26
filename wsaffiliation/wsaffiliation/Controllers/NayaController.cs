@@ -223,15 +223,15 @@ namespace wsaffiliation.Controllers
             );
         }
 
-        [HttpGet("getguidebycategory/{category}")]
-        public async Task<IActionResult> GetGuideByCategory(string category)
+        [HttpGet("getguidebycategory/{categoryName}")]
+        public async Task<IActionResult> GetGuideByCategory(string categoryName)
         {
             var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
             var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
 
             try
             {
-                if (string.IsNullOrWhiteSpace(category))
+                if (string.IsNullOrWhiteSpace(categoryName))
                 {
                     return BadRequest(new
                     {
@@ -254,7 +254,7 @@ namespace wsaffiliation.Controllers
 
                 var body = new
                 {
-                    p_category = category
+                    p_category = categoryName
                 };
 
 

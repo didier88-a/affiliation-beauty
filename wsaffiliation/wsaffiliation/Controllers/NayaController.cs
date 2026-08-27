@@ -489,8 +489,11 @@ namespace wsaffiliation.Controllers
             // 4. Envoyer la requête
             // =====================================================
 
+            using var httpClient =
+                    new HttpClient();
+
             using var response =
-                await _httpClient.SendAsync(request);
+                await httpClient.SendAsync(request);
 
 
             var result =

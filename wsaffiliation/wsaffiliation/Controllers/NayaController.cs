@@ -589,16 +589,32 @@ namespace wsaffiliation.Controllers
         // Ton système actuel de génération d'embedding
         // =========================================================
 
-        public static async Task<float[]> GetEmbedding(string text)
-        {            
-            var apiKey = Environment.GetEnvironmentVariable("OPENAI_API");
+        private static readonly HttpClient HttpClient =
+     new HttpClient();
 
-            using var client = new HttpClient();
+        public static async Task<float[]> GetEmbedding(
+            string text
+        )
+        {
+            var apiKey =
+                Environment.GetEnvironmentVariable(
+                    "OPENAI_API"
+                );
 
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue(
-                    "Bearer",
-                    apiKey);
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                throw new Exception(
+                    "OPENAI_API est introuvable."
+                );
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                throw new Exception(
+                    "Le texte pour l'embedding est vide."
+                );
+            }
+
 
             var requestBody = new
             {
@@ -606,67 +622,189 @@ namespace wsaffiliation.Controllers
                 input = text
             };
 
-            var json =
-                JsonSerializer.Serialize(requestBody);
 
-            for (int attempt = 1; attempt <= 4; attempt++)
+            var json =
+                JsonSerializer.Serialize(
+                    requestBody
+                );
+
+
+            for (
+                int attempt = 1;
+                attempt <= 5;
+                attempt++
+            )
             {
-                using var content =
+                using var request =
+                    new HttpRequestMessage(
+                        HttpMethod.Post,
+                        "https://api.openai.com/v1/embeddings"
+                    );
+
+
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue(
+                        "Bearer",
+                        apiKey
+                    );
+
+
+                request.Content =
                     new StringContent(
                         json,
                         Encoding.UTF8,
-                        "application/json");
-
-                var response =
-                    await client.PostAsync(
-                        "https://api.openai.com/v1/embeddings",
-                        content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseString =
-                        await response.Content.ReadAsStringAsync();
-
-                    using var doc =
-                        JsonDocument.Parse(responseString);
-
-                    var values =
-                        doc.RootElement
-                           .GetProperty("data")[0]
-                           .GetProperty("embedding");
-
-                    return values
-                        .EnumerateArray()
-                        .Select(x => x.GetSingle())
-                        .ToArray();
-                }
-
-                if ((int)response.StatusCode == 429)
-                {
-                    var error =
-                        await response.Content.ReadAsStringAsync();
-
-                    Console.WriteLine(
-                        $"OpenAI 429 - tentative {attempt}/4"
+                        "application/json"
                     );
 
-                    Console.WriteLine(error);
+
+                try
+                {
+                    var response =
+                        await HttpClient.SendAsync(
+                            request
+                        );
+
+
+                    var responseString =
+                        await response.Content
+                            .ReadAsStringAsync();
+
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        using var doc =
+                            JsonDocument.Parse(
+                                responseString
+                            );
+
+
+                        var values =
+                            doc.RootElement
+                               .GetProperty("data")[0]
+                               .GetProperty("embedding");
+
+
+                        return values
+                            .EnumerateArray()
+                            .Select(
+                                x => x.GetSingle()
+                            )
+                            .ToArray();
+                    }
+
+
+                    /*
+                     * ============================
+                     * RATE LIMIT
+                     * ============================
+                     */
+
+                    if (
+                        response.StatusCode ==
+                        System.Net.HttpStatusCode
+                            .TooManyRequests
+                    )
+                    {
+                        Console.WriteLine(
+                            $"OpenAI 429 - tentative {attempt}/5"
+                        );
+
+                        Console.WriteLine(
+                            responseString
+                        );
+
+
+                        /*
+                         * Si OpenAI indique Retry-After,
+                         * on utilise cette valeur.
+                         */
+
+                        var retryAfter =
+                            response.Headers
+                                .RetryAfter?
+                                .Delta;
+
+
+                        if (
+                            retryAfter == null
+                        )
+                        {
+                            /*
+                             * Backoff progressif :
+                             *
+                             * tentative 1 → 2 secondes
+                             * tentative 2 → 4 secondes
+                             * tentative 3 → 8 secondes
+                             * tentative 4 → 16 secondes
+                             * tentative 5 → erreur
+                             */
+
+                            retryAfter =
+                                TimeSpan.FromSeconds(
+                                    Math.Pow(
+                                        2,
+                                        attempt
+                                    )
+                                );
+                        }
+
+
+                        if (attempt < 5)
+                        {
+                            Console.WriteLine(
+                                $"Nouvelle tentative dans " +
+                                $"{retryAfter.Value.TotalSeconds} secondes"
+                            );
+
+
+                            await Task.Delay(
+                                retryAfter.Value
+                            );
+
+                            continue;
+                        }
+                    }
+
+
+                    /*
+                     * ============================
+                     * AUTRES ERREURS
+                     * ============================
+                     */
+
+                    throw new Exception(
+                        $"OpenAI erreur " +
+                        $"{(int)response.StatusCode}: " +
+                        responseString
+                    );
+                }
+                catch (
+                    HttpRequestException ex
+                )
+                {
+                    Console.WriteLine(
+                        $"Erreur réseau OpenAI : " +
+                        ex.Message
+                    );
+
+
+                    if (attempt == 5)
+                    {
+                        throw;
+                    }
+
 
                     await Task.Delay(
                         TimeSpan.FromSeconds(
-                            attempt * 3
-                        ));
-
-                    continue;
+                            Math.Pow(
+                                2,
+                                attempt
+                            )
+                        )
+                    );
                 }
-
-                var otherError =
-                    await response.Content.ReadAsStringAsync();
-
-                throw new Exception(
-                    $"OpenAI erreur {response.StatusCode}: {otherError}"
-                );
             }
+
 
             throw new Exception(
                 "OpenAI : trop de requêtes après plusieurs tentatives."

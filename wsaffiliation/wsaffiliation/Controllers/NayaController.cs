@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace wsaffiliation.Controllers
 {
@@ -10,6 +11,29 @@ namespace wsaffiliation.Controllers
     public class NayaController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+
+        public class KashCashWebhook
+        {
+            [JsonPropertyName("transactionId")]
+            public string TransactionId { get; set; } = string.Empty;
+
+            [JsonPropertyName("status")]
+            public int Status { get; set; }
+
+            [JsonPropertyName("externalId")]
+            public string ExternalId { get; set; } = string.Empty;
+
+            [JsonPropertyName("amount")]
+            public decimal Amount { get; set; }
+
+            [JsonPropertyName("genericParams")]
+            public string? GenericParams { get; set; }
+
+            [JsonPropertyName("type")]
+            public int Type { get; set; }
+
+        }
+
 
 
         public NayaController(IConfiguration configuration)

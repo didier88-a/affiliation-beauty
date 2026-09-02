@@ -35,9 +35,17 @@ public class KashCashWebhookController : ControllerBase
         return Ok("KashCash webhook is working");
     }
 
-    // SafeCash appelle cette URL en POST
     [HttpPost("callback")]
-    public IActionResult Callback(
+    public IActionResult Callback()
+    {
+        Console.WriteLine("🔥🔥🔥 WEBHOOK RECEIVED 🔥🔥🔥");
+
+        return Ok();
+    }
+
+    // SafeCash appelle cette URL en POST
+    [HttpPost("callback1")]
+    public IActionResult Callback1(
         [FromBody] KashCashWebhook webhook)
     {
         Console.WriteLine("=== KASHCASH WEBHOOK RECEIVED ===");

@@ -811,7 +811,64 @@ namespace wsaffiliation.Controllers
             );
         }
 
+        [ApiController]
+        [Route("api/kashcash")]
+        public class KashCashWebhookController : ControllerBase
+        {
+            [HttpPost("callback")]
+            public IActionResult Callback(
+                [FromBody] KashCashWebhook webhook)
+            {
+                Console.WriteLine("=== KASHCASH WEBHOOK RECEIVED ===");
 
+                Console.WriteLine(
+                    $"TransactionId: {webhook.TransactionId}");
+
+                Console.WriteLine(
+                    $"ExternalId: {webhook.ExternalId}");
+
+                Console.WriteLine(
+                    $"Status: {webhook.Status}");
+
+                Console.WriteLine(
+                    $"Amount: {webhook.Amount}");
+
+                switch (webhook.Status)
+                {
+                    case 1:
+                        Console.WriteLine("PAYMENT APPROVED");
+
+                        // TODO:
+                        // Mettre la transaction en SUCCESS
+                        // dans ta base de données
+
+                        break;
+
+                    case 2:
+                        Console.WriteLine("PAYMENT CANCELED");
+
+                        // TODO:
+                        // Mettre la transaction en CANCELED
+
+                        break;
+
+                    case 3:
+                        Console.WriteLine("PAYMENT REJECTED");
+
+                        // TODO:
+                        // Mettre la transaction en REJECTED
+
+                        break;
+
+                    default:
+                        Console.WriteLine("UNKNOWN STATUS");
+                        break;
+                }
+
+                // SafeCash reçoit HTTP 200
+                return Ok();
+            }
+        }
 
     }
 }

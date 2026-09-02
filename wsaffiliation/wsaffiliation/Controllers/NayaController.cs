@@ -815,6 +815,12 @@ namespace wsaffiliation.Controllers
         [Route("api/kashcash")]
         public class KashCashWebhookController : ControllerBase
         {
+            [HttpGet("callback")]
+            public IActionResult Test()
+            {
+                return Ok("KashCash webhook is working");
+            }
+
             [HttpPost("callback")]
             public IActionResult Callback(
                 [FromBody] KashCashWebhook webhook)

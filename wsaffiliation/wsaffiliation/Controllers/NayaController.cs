@@ -815,7 +815,163 @@ namespace wsaffiliation.Controllers
             );
         }
 
-        
+        [HttpGet("search-marketplace")]
+        public async Task<IActionResult> SearchGuidesByMarketplace([FromQuery] string marketplace)
+        {
+            // =====================================================
+            // 1. Vérifier le marketplace
+            // =====================================================
+
+            if (string.IsNullOrWhiteSpace(marketplace))
+            {
+                return BadRequest(
+                    "marketplace est obligatoire."
+                );
+            }
+
+            marketplace =
+                marketplace.Trim();
+
+
+            // =====================================================
+            // 2. Récupérer la configuration Supabase
+            // =====================================================
+
+            var supabaseUrl =
+                Environment.GetEnvironmentVariable(
+                    "SUPABASE_URL"
+                );
+
+            var supabaseKey =
+                Environment.GetEnvironmentVariable(
+                    "SUPABASE_KEY"
+                );
+
+
+            if (string.IsNullOrWhiteSpace(
+                supabaseUrl))
+            {
+                return StatusCode(
+                    500,
+                    "Supabase URL non configurée."
+                );
+            }
+
+
+            if (string.IsNullOrWhiteSpace(
+                supabaseKey))
+            {
+                return StatusCode(
+                    500,
+                    "Supabase Key non configurée."
+                );
+            }
+
+
+            // =====================================================
+            // 3. Appeler Supabase RPC
+            // =====================================================
+
+            var url =
+                $"{supabaseUrl}/rest/v1/rpc/get_guides_by_marketplace";
+
+
+            var requestBody = new
+            {
+                p_marketplace = marketplace
+            };
+
+
+            var requestJson =
+                JsonSerializer.Serialize(
+                    requestBody
+                );
+
+
+            using var request =
+                new HttpRequestMessage(
+                    HttpMethod.Post,
+                    url
+                );
+
+
+            request.Headers.Add(
+                "apikey",
+                supabaseKey
+            );
+
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue(
+                    "Bearer",
+                    supabaseKey
+                );
+
+
+            request.Content =
+                new StringContent(
+                    requestJson,
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+
+            // =====================================================
+            // 4. Envoyer la requête
+            // =====================================================
+
+            using var httpClient =
+                new HttpClient();
+
+
+            using var response =
+                await httpClient.SendAsync(
+                    request
+                );
+
+
+            var result =
+                await response.Content
+                    .ReadAsStringAsync();
+
+
+            // =====================================================
+            // 5. Vérifier l'erreur Supabase
+            // =====================================================
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode(
+                    (int)response.StatusCode,
+                    new
+                    {
+                        error = "Erreur Supabase",
+                        details = result
+                    }
+                );
+            }
+
+
+            // =====================================================
+            // 6. Retourner les guides
+            // =====================================================
+
+            try
+            {
+                var guides =
+                    JsonSerializer.Deserialize<JsonElement>(
+                        result
+                    );
+
+                return Ok(guides);
+            }
+            catch
+            {
+                return Ok(result);
+            }
+        }
+
+
 
     }
 }

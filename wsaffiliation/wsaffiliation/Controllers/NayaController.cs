@@ -174,9 +174,7 @@ namespace wsaffiliation.Controllers
                 // 1. Slug reçu depuis l'URL
                 // =========================================================
 
-                var cleanSlug = slug
-                    .Trim()
-                    .ToLowerInvariant();
+                var cleanSlug = CreateSlug(slug);
 
 
                 // =========================================================

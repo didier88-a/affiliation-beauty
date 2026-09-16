@@ -170,34 +170,25 @@ namespace wsaffiliation.Controllers
                     return BadRequest("Slug manquant");
                 }
 
-                // =========================================================
-                // 1. Slug reçu depuis l'URL
-                // =========================================================
-
-                var cleanSlug = CreateSlug(slug);
-
+                using var httpClient = new HttpClient();
 
                 // =========================================================
-                // 2. Première recherche : slug exact
+                // 1. Recherche exacte
                 // =========================================================
 
-                var url =
+                var exactUrl =
                     $"{supabaseUrl}/rest/v1/GuideViliora" +
                     $"?select=json_str,slug" +
-                    $"&slug=eq.{Uri.EscapeDataString(slug)}";
-
-                using var httpClient = new HttpClient();
+                    $"&slug=eq.{Uri.EscapeDataString(slug)}" +
+                    $"&limit=1";
 
                 using var request =
                     new HttpRequestMessage(
                         HttpMethod.Get,
-                        url
+                        exactUrl
                     );
 
-                request.Headers.Add(
-                    "apikey",
-                    supabaseKey
-                );
+                request.Headers.Add("apikey", supabaseKey);
 
                 request.Headers.Authorization =
                     new AuthenticationHeaderValue(
@@ -219,28 +210,24 @@ namespace wsaffiliation.Controllers
                     );
                 }
 
+                var data =
+                    JsonSerializer.Deserialize<JsonElement>(result);
 
                 // =========================================================
-                // 3. Lecture du résultat
+                // 2. Guide trouvé avec slug exact
                 // =========================================================
-
-                JsonElement data =
-                    JsonSerializer.Deserialize<JsonElement>(
-                        result
-                    );
-
 
                 if (
                     data.ValueKind == JsonValueKind.Array &&
                     data.GetArrayLength() > 0
                 )
                 {
-                    string? jsonStr =
+                    var jsonStr =
                         data[0]
                             .GetProperty("json_str")
                             .GetString();
 
-                    if (!string.IsNullOrEmpty(jsonStr))
+                    if (!string.IsNullOrWhiteSpace(jsonStr))
                     {
                         return Content(
                             jsonStr,
@@ -249,20 +236,31 @@ namespace wsaffiliation.Controllers
                     }
                 }
 
-
                 // =========================================================
-                // 4. Si slug exact introuvable :
-                //    récupérer les guides et comparer les slugs normalisés
+                // 3. Recherche de l'ancien slug
+                //
+                // On transforme :
+                // dior-sauvage-elixir-parfum-pour-homme
+                //
+                // en :
+                // DIOR - Sauvage Elixir - Parfum pour homme
+                //
+                // puis recherche exacte.
                 // =========================================================
 
-                var allGuidesUrl =
+                string readableSlug =
+                    SlugToReadableText(slug);
+
+                var fallbackUrl =
                     $"{supabaseUrl}/rest/v1/GuideViliora" +
-                    $"?select=json_str,slug";
+                    $"?select=json_str,slug" +
+                    $"&slug=eq.{Uri.EscapeDataString(readableSlug)}" +
+                    $"&limit=1";
 
                 using var fallbackRequest =
                     new HttpRequestMessage(
                         HttpMethod.Get,
-                        allGuidesUrl
+                        fallbackUrl
                     );
 
                 fallbackRequest.Headers.Add(
@@ -292,81 +290,36 @@ namespace wsaffiliation.Controllers
                     );
                 }
 
-
-                JsonElement guides =
+                var fallbackData =
                     JsonSerializer.Deserialize<JsonElement>(
                         fallbackResult
                     );
 
-
                 if (
-                    guides.ValueKind != JsonValueKind.Array
+                    fallbackData.ValueKind == JsonValueKind.Array &&
+                    fallbackData.GetArrayLength() > 0
                 )
                 {
-                    return NotFound(
-                        new
-                        {
-                            message = "Guide introuvable",
-                            slug = slug
-                        }
-                    );
-                }
+                    var jsonStr =
+                        fallbackData[0]
+                            .GetProperty("json_str")
+                            .GetString();
 
-
-                // =========================================================
-                // 5. Comparaison slug normalisé
-                // =========================================================
-
-                foreach (var guide in guides.EnumerateArray())
-                {
-                    if (!guide.TryGetProperty(
-                            "slug",
-                            out JsonElement slugElement))
+                    if (!string.IsNullOrWhiteSpace(jsonStr))
                     {
-                        continue;
-                    }
-
-                    var databaseSlug =
-                        slugElement.GetString();
-
-                    if (string.IsNullOrWhiteSpace(databaseSlug))
-                    {
-                        continue;
-                    }
-
-                    var normalizedDatabaseSlug =
-                        CreateSlug(databaseSlug);
-
-                    if (
-                        normalizedDatabaseSlug ==
-                        cleanSlug
-                    )
-                    {
-                        var jsonStr =
-                            guide
-                                .GetProperty("json_str")
-                                .GetString();
-
-                        if (!string.IsNullOrEmpty(jsonStr))
-                        {
-                            return Content(
-                                jsonStr,
-                                "application/json"
-                            );
-                        }
+                        return Content(
+                            jsonStr,
+                            "application/json"
+                        );
                     }
                 }
-
-
-                // =========================================================
-                // 6. Rien trouvé
-                // =========================================================
 
                 return NotFound(
                     new
                     {
                         message = "Guide introuvable",
-                        slug = slug
+                        slug = slug,
+                        readableSlug = readableSlug
                     }
                 );
             }
@@ -378,12 +331,60 @@ namespace wsaffiliation.Controllers
                     {
                         message =
                             "Erreur lors de la récupération du guide",
-
-                        error =
-                            ex.Message
+                        error = ex.Message
                     }
                 );
             }
+        }
+
+
+        private static string SlugToReadableText(string slug)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+                return "";
+
+            var words =
+                slug
+                    .Split(
+                        '-',
+                        StringSplitOptions.RemoveEmptyEntries
+                    );
+
+            var text =
+                string.Join(
+                    " ",
+                    words
+                );
+
+            // Cas DIOR
+            if (
+                text.StartsWith(
+                    "dior ",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                text =
+                    "DIOR " +
+                    text.Substring(5);
+            }
+
+            // Première lettre de chaque mot en majuscule
+            var culture =
+                System.Globalization.CultureInfo.InvariantCulture;
+
+            text =
+                culture.TextInfo.ToTitleCase(
+                    text.ToLowerInvariant()
+                );
+
+            // Correction DIOR après TitleCase
+            text = text.Replace(
+                "Dior ",
+                "DIOR "
+            );
+
+            return text;
         }
 
 

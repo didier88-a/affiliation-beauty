@@ -21,6 +21,19 @@ namespace wsaffiliation.Controllers
             _configuration = configuration;
         }
 
+
+        [HttpGet]
+        [Route("~/api/shopify/proxy/{*path}")]
+        public IActionResult ShopifyProxy(string? path)
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "NAYA GUIDE PROXY OK",
+                path = path
+            });
+        }
+
         [HttpGet("popular-guides")]
         public async Task<IActionResult> GetPopularGuides()
         {

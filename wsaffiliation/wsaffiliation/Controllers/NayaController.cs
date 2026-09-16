@@ -24,7 +24,7 @@ namespace wsaffiliation.Controllers
 
         [HttpGet]
         [Route("~/api/shopify/proxy/{*path}")]
-        public async Task<IActionResult> ShopifyProxy(string? path)
+        public IActionResult ShopifyProxy(string? path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
@@ -33,19 +33,26 @@ namespace wsaffiliation.Controllers
 
             var slug = path.Trim('/');
 
-            var shopifyUrl =
-                "https://kfkxeh-41.myshopify.com/pages/page-guide-viliora?slug=" +
-                Uri.EscapeDataString(slug);
+            var liquid = $@"
+                    {{% section 'naya-ai-search' %}}
+                    {{% section 'naya-guides-results' %}}
+                    {{% section 'viliora-guide-hero' %}}
+                    {{% section 'viliora-top-5' %}}
+                    {{% section 'viliora-comparison' %}}
+                    {{% section 'viliora-reviews' %}}
+                    {{% section 'viliora-evaluation' %}}
+                    {{% section 'viliora-guide-info' %}}
+                    {{% section 'viliora-final-verdict' %}}
 
-            using var httpClient = new HttpClient();
+                    <script>
+                        window.NAYA_PROXY_SLUG = {System.Text.Json.JsonSerializer.Serialize(slug)};
+                    </script>
+                    ";
 
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "Mozilla/5.0"
+            return Content(
+                liquid,
+                "application/liquid"
             );
-
-            var html = await httpClient.GetStringAsync(shopifyUrl);
-
-            return Content(html, "text/html; charset=utf-8");
         }
 
         [HttpGet("popular-guides")]

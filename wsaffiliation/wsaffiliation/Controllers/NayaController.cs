@@ -24,23 +24,28 @@ namespace wsaffiliation.Controllers
 
         [HttpGet]
         [Route("~/api/shopify/proxy/{*path}")]
-        public IActionResult ShopifyProxy(string? path)
+        public async Task<IActionResult> ShopifyProxy(string? path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest("Slug manquant");
             }
 
-            // Le path reçu par Shopify est :
-            // dior-sauvage-elixir-parfum-pour-homme
-
             var slug = path.Trim('/');
 
             var shopifyUrl =
-                "/pages/page-guide-viliora?slug=" +
+                "https://kfkxeh-41.myshopify.com/pages/page-guide-viliora?slug=" +
                 Uri.EscapeDataString(slug);
 
-            return Redirect(shopifyUrl);
+            using var httpClient = new HttpClient();
+
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0"
+            );
+
+            var html = await httpClient.GetStringAsync(shopifyUrl);
+
+            return Content(html, "text/html; charset=utf-8");
         }
 
         [HttpGet("popular-guides")]

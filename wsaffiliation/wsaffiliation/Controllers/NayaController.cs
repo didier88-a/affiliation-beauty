@@ -154,18 +154,41 @@ namespace wsaffiliation.Controllers
         }
 
 
-
         [HttpGet("guide/{slug}")]
         public async Task<IActionResult> GetGuide(string slug)
         {
-            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
-            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+            var supabaseUrl =
+                Environment.GetEnvironmentVariable("SUPABASE_URL");
+
+            var supabaseKey =
+                Environment.GetEnvironmentVariable("SUPABASE_KEY");
 
             try
             {
+                if (string.IsNullOrWhiteSpace(slug))
+                {
+                    return BadRequest("Slug manquant");
+                }
+
+                // =========================================================
+                // 1. Slug reçu depuis l'URL
+                // =========================================================
+
+                var cleanSlug = slug
+                    .Trim()
+                    .ToLowerInvariant();
+
+
+                // =========================================================
+                // 2. Première recherche : slug exact
+                // =========================================================
+
                 var url =
                     $"{supabaseUrl}/rest/v1/GuideViliora" +
-                    $"?select=json_str&slug=eq.{Uri.EscapeDataString(slug)}";
+                    $"?select=json_str,slug" +
+                    $"&slug=eq.{Uri.EscapeDataString(slug)}";
+
+                using var httpClient = new HttpClient();
 
                 using var request =
                     new HttpRequestMessage(
@@ -184,9 +207,6 @@ namespace wsaffiliation.Controllers
                         supabaseKey
                     );
 
-                using var httpClient =
-                    new HttpClient();
-
                 var response =
                     await httpClient.SendAsync(request);
 
@@ -202,15 +222,87 @@ namespace wsaffiliation.Controllers
                 }
 
 
-                // Aucun guide trouvé
+                // =========================================================
+                // 3. Lecture du résultat
+                // =========================================================
+
                 JsonElement data =
                     JsonSerializer.Deserialize<JsonElement>(
                         result
                     );
 
+
                 if (
-                    data.ValueKind != JsonValueKind.Array ||
-                    data.GetArrayLength() == 0
+                    data.ValueKind == JsonValueKind.Array &&
+                    data.GetArrayLength() > 0
+                )
+                {
+                    string? jsonStr =
+                        data[0]
+                            .GetProperty("json_str")
+                            .GetString();
+
+                    if (!string.IsNullOrEmpty(jsonStr))
+                    {
+                        return Content(
+                            jsonStr,
+                            "application/json"
+                        );
+                    }
+                }
+
+
+                // =========================================================
+                // 4. Si slug exact introuvable :
+                //    récupérer les guides et comparer les slugs normalisés
+                // =========================================================
+
+                var allGuidesUrl =
+                    $"{supabaseUrl}/rest/v1/GuideViliora" +
+                    $"?select=json_str,slug";
+
+                using var fallbackRequest =
+                    new HttpRequestMessage(
+                        HttpMethod.Get,
+                        allGuidesUrl
+                    );
+
+                fallbackRequest.Headers.Add(
+                    "apikey",
+                    supabaseKey
+                );
+
+                fallbackRequest.Headers.Authorization =
+                    new AuthenticationHeaderValue(
+                        "Bearer",
+                        supabaseKey
+                    );
+
+                var fallbackResponse =
+                    await httpClient.SendAsync(
+                        fallbackRequest
+                    );
+
+                var fallbackResult =
+                    await fallbackResponse.Content.ReadAsStringAsync();
+
+                if (!fallbackResponse.IsSuccessStatusCode)
+                {
+                    return StatusCode(
+                        (int)fallbackResponse.StatusCode,
+                        fallbackResult
+                    );
+                }
+
+
+                JsonElement guides =
+                    JsonSerializer.Deserialize<JsonElement>(
+                        fallbackResult
+                    );
+
+
+                if (
+                    guides.ValueKind != JsonValueKind.Array
                 )
                 {
                     return NotFound(
@@ -223,29 +315,61 @@ namespace wsaffiliation.Controllers
                 }
 
 
-                // Récupération du json_str
-                string? jsonStr =
-                    data[0]
-                        .GetProperty("json_str")
-                        .GetString();
+                // =========================================================
+                // 5. Comparaison slug normalisé
+                // =========================================================
 
-
-                if (string.IsNullOrEmpty(jsonStr))
+                foreach (var guide in guides.EnumerateArray())
                 {
-                    return NotFound(
-                        new
+                    if (!guide.TryGetProperty(
+                            "slug",
+                            out JsonElement slugElement))
+                    {
+                        continue;
+                    }
+
+                    var databaseSlug =
+                        slugElement.GetString();
+
+                    if (string.IsNullOrWhiteSpace(databaseSlug))
+                    {
+                        continue;
+                    }
+
+                    var normalizedDatabaseSlug =
+                        CreateSlug(databaseSlug);
+
+                    if (
+                        normalizedDatabaseSlug ==
+                        cleanSlug
+                    )
+                    {
+                        var jsonStr =
+                            guide
+                                .GetProperty("json_str")
+                                .GetString();
+
+                        if (!string.IsNullOrEmpty(jsonStr))
                         {
-                            message = "JSON du guide introuvable",
-                            slug = slug
+                            return Content(
+                                jsonStr,
+                                "application/json"
+                            );
                         }
-                    );
+                    }
                 }
 
 
-                // Retourne directement le JSON du guide
-                return Content(
-                    jsonStr,
-                    "application/json"
+                // =========================================================
+                // 6. Rien trouvé
+                // =========================================================
+
+                return NotFound(
+                    new
+                    {
+                        message = "Guide introuvable",
+                        slug = slug
+                    }
                 );
             }
             catch (Exception ex)
@@ -254,12 +378,159 @@ namespace wsaffiliation.Controllers
                     500,
                     new
                     {
-                        message = "Erreur lors de la récupération du guide",
-                        error = ex.Message
+                        message =
+                            "Erreur lors de la récupération du guide",
+
+                        error =
+                            ex.Message
                     }
                 );
             }
         }
+
+
+        private static string CreateSlug(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return "";
+            }
+
+            var normalized =
+                text.Normalize(
+                    System.Text.NormalizationForm.FormD
+                );
+
+            var chars =
+                normalized
+                    .Where(c =>
+                        System.Globalization.CharUnicodeInfo
+                            .GetUnicodeCategory(c)
+                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    .ToArray();
+
+            var result =
+                new string(chars)
+                    .ToLowerInvariant();
+
+            result =
+                System.Text.RegularExpressions.Regex.Replace(
+                    result,
+                    @"[^a-z0-9]+",
+                    "-"
+                );
+
+            result =
+                result.Trim('-');
+
+            return result;
+        }
+
+        //[HttpGet("guide/{slug}")]
+        //public async Task<IActionResult> GetGuide(string slug)
+        //{
+        //    var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+        //    var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+        //    try
+        //    {
+        //        var url =
+        //            $"{supabaseUrl}/rest/v1/GuideViliora" +
+        //            $"?select=json_str&slug=eq.{Uri.EscapeDataString(slug)}";
+
+        //        using var request =
+        //            new HttpRequestMessage(
+        //                HttpMethod.Get,
+        //                url
+        //            );
+
+        //        request.Headers.Add(
+        //            "apikey",
+        //            supabaseKey
+        //        );
+
+        //        request.Headers.Authorization =
+        //            new AuthenticationHeaderValue(
+        //                "Bearer",
+        //                supabaseKey
+        //            );
+
+        //        using var httpClient =
+        //            new HttpClient();
+
+        //        var response =
+        //            await httpClient.SendAsync(request);
+
+        //        var result =
+        //            await response.Content.ReadAsStringAsync();
+
+        //        if (!response.IsSuccessStatusCode)
+        //        {
+        //            return StatusCode(
+        //                (int)response.StatusCode,
+        //                result
+        //            );
+        //        }
+
+
+        //        // Aucun guide trouvé
+        //        JsonElement data =
+        //            JsonSerializer.Deserialize<JsonElement>(
+        //                result
+        //            );
+
+        //        if (
+        //            data.ValueKind != JsonValueKind.Array ||
+        //            data.GetArrayLength() == 0
+        //        )
+        //        {
+        //            return NotFound(
+        //                new
+        //                {
+        //                    message = "Guide introuvable",
+        //                    slug = slug
+        //                }
+        //            );
+        //        }
+
+
+        //        // Récupération du json_str
+        //        string? jsonStr =
+        //            data[0]
+        //                .GetProperty("json_str")
+        //                .GetString();
+
+
+        //        if (string.IsNullOrEmpty(jsonStr))
+        //        {
+        //            return NotFound(
+        //                new
+        //                {
+        //                    message = "JSON du guide introuvable",
+        //                    slug = slug
+        //                }
+        //            );
+        //        }
+
+
+        //        // Retourne directement le JSON du guide
+        //        return Content(
+        //            jsonStr,
+        //            "application/json"
+        //        );
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(
+        //            500,
+        //            new
+        //            {
+        //                message = "Erreur lors de la récupération du guide",
+        //                error = ex.Message
+        //            }
+        //        );
+        //    }
+        //}
 
 
         [HttpGet("category-guides")]

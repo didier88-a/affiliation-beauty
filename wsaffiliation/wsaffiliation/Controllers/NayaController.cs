@@ -26,12 +26,21 @@ namespace wsaffiliation.Controllers
         [Route("~/api/shopify/proxy/{*path}")]
         public IActionResult ShopifyProxy(string? path)
         {
-            return Ok(new
+            if (string.IsNullOrWhiteSpace(path))
             {
-                success = true,
-                message = "NAYA GUIDE PROXY OK",
-                path = path
-            });
+                return BadRequest("Slug manquant");
+            }
+
+            // Le path reçu par Shopify est :
+            // dior-sauvage-elixir-parfum-pour-homme
+
+            var slug = path.Trim('/');
+
+            var shopifyUrl =
+                "/pages/page-guide-viliora?slug=" +
+                Uri.EscapeDataString(slug);
+
+            return Redirect(shopifyUrl);
         }
 
         [HttpGet("popular-guides")]

@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
+
 namespace wsaffiliation.Controllers
 {
     [ApiController]
@@ -1445,164 +1446,503 @@ namespace wsaffiliation.Controllers
     string cleanSlug,
     string storefrontOrigin)
         {
-            using var document =
+            using var doc =
                 JsonDocument.Parse(jsonStr);
 
             var root =
-                document.RootElement;
-
-            var guide =
-                root.GetProperty("guide");
-
+                doc.RootElement;
 
             // =========================================================
             // GUIDE
             // =========================================================
 
-            var guideTitle =
-                guide.TryGetProperty(
-                    "title",
-                    out var titleElement)
-                    ? titleElement.GetString() ?? ""
-                    : "";
-
-            var guideDescription =
-                guide.TryGetProperty(
-                    "description",
-                    out var descriptionElement)
-                    ? descriptionElement.GetString() ?? ""
-                    : "";
-
-            var heroImage = "";
+            JsonElement guide;
 
             if (
-                guide.TryGetProperty(
-                    "hero",
-                    out var heroElement) &&
-                heroElement.TryGetProperty(
-                    "image",
-                    out var imageElement)
+                root.TryGetProperty(
+                    "guide",
+                    out var guideElement
+                )
             )
             {
-                heroImage =
-                    imageElement.GetString() ?? "";
+                guide = guideElement;
+            }
+            else
+            {
+                guide = root;
             }
 
 
             // =========================================================
-            // TITLE SEO
+            // GUIDE TITLE
             // =========================================================
 
-            var metaTitle =
-                string.IsNullOrWhiteSpace(guideTitle)
-                    ? "Guide beauté | Naya"
-                    : $"{guideTitle} | Naya";
+            var guideTitle =
+                guide.TryGetProperty(
+                    "title",
+                    out var titleElement
+                )
+                ? titleElement.GetString() ?? ""
+                : "";
 
 
             // =========================================================
-            // DESCRIPTION SEO
+            // GUIDE DESCRIPTION
             // =========================================================
 
-            var metaDescription =
-                string.IsNullOrWhiteSpace(
-                    guideDescription)
-                    ? "Découvrez notre guide Naya avec sélection, comparaison et conseils."
-                    : guideDescription.Trim();
+            var guideDescription =
+                guide.TryGetProperty(
+                    "description",
+                    out var descriptionElement
+                )
+                ? descriptionElement.GetString() ?? ""
+                : "";
+
+
+            // =========================================================
+            // HERO IMAGE
+            // =========================================================
+
+            string? heroImage = null;
+
+            if (
+                guide.TryGetProperty(
+                    "hero",
+                    out var heroElement
+                )
+                &&
+                heroElement.ValueKind ==
+                    JsonValueKind.Object
+                &&
+                heroElement.TryGetProperty(
+                    "image",
+                    out var heroImageElement
+                )
+            )
+            {
+                heroImage =
+                    heroImageElement.GetString();
+            }
 
 
             // =========================================================
             // PRODUCTS
             // =========================================================
 
-            var products =
-                new List<GuideSeoProduct>();
+            var itemList =
+                new List<object>();
+
+            var productCount = 0;
 
             if (
                 guide.TryGetProperty(
                     "products",
-                    out var productsElement) &&
+                    out var productsElement
+                )
+                &&
                 productsElement.ValueKind ==
-                JsonValueKind.Array
+                    JsonValueKind.Array
             )
             {
                 foreach (
                     var product
-                    in productsElement.EnumerateArray())
+                    in productsElement.EnumerateArray()
+                )
                 {
-                    var seoProduct =
-                        new GuideSeoProduct();
+                    productCount++;
 
-                    if (product.TryGetProperty(
+                    var productName =
+                        product.TryGetProperty(
                             "name",
-                            out var productName))
-                    {
-                        seoProduct.Name =
-                            productName.GetString() ?? "";
-                    }
+                            out var nameElement
+                        )
+                        ? nameElement.GetString() ?? ""
+                        : "";
 
-                    if (product.TryGetProperty(
+                    var productBrand =
+                        product.TryGetProperty(
                             "brand",
-                            out var brand))
-                    {
-                        seoProduct.Brand =
-                            brand.GetString() ?? "";
-                    }
+                            out var brandElement
+                        )
+                        ? brandElement.GetString() ?? ""
+                        : "";
 
-                    if (product.TryGetProperty(
+                    var productImage =
+                        product.TryGetProperty(
                             "image",
-                            out var productImage))
-                    {
-                        seoProduct.Image =
-                            productImage.GetString() ?? "";
-                    }
+                            out var imageElement
+                        )
+                        ? imageElement.GetString()
+                        : null;
 
-                    if (product.TryGetProperty(
+                    var productUrl =
+                        product.TryGetProperty(
                             "sephora_url",
-                            out var productUrl))
+                            out var urlElement
+                        )
+                        ? urlElement.GetString()
+                        : null;
+
+
+                    // =====================================================
+                    // PRODUCT
+                    // =====================================================
+
+                    var productData =
+                        new Dictionary<string, object?>();
+
+
+                    if (!string.IsNullOrWhiteSpace(productName))
                     {
-                        seoProduct.Url =
-                            productUrl.GetString() ?? "";
+                        productData["name"] =
+                            productName;
                     }
 
-                    if (product.TryGetProperty(
+
+                    if (!string.IsNullOrWhiteSpace(productImage))
+                    {
+                        productData["image"] =
+                            productImage;
+                    }
+
+
+                    if (!string.IsNullOrWhiteSpace(productBrand))
+                    {
+                        productData["brand"] =
+                            new Dictionary<string, object?>
+                            {
+                                ["@type"] = "Brand",
+                                ["name"] = productBrand
+                            };
+                    }
+
+
+                    // =====================================================
+                    // RATING
+                    // =====================================================
+
+                    double? ratingValue =
+                        null;
+
+                    int? reviewCount =
+                        null;
+
+
+                    if (
+                        product.TryGetProperty(
                             "rating",
-                            out var rating) &&
-                        rating.ValueKind ==
-                        JsonValueKind.Number)
+                            out var ratingElement
+                        )
+                    )
                     {
-                        seoProduct.Rating =
-                            rating.GetDouble();
+                        if (
+                            ratingElement.ValueKind ==
+                            JsonValueKind.Number
+                        )
+                        {
+                            if (
+                                ratingElement.TryGetDouble(
+                                    out var rating
+                                )
+                            )
+                            {
+                                ratingValue =
+                                    rating;
+                            }
+                        }
+                        else if (
+                            ratingElement.ValueKind ==
+                            JsonValueKind.String
+                        )
+                        {
+                            var ratingText =
+                                ratingElement.GetString();
+
+                            if (
+                                double.TryParse(
+                                    ratingText,
+                                    NumberStyles.Any,
+                                    CultureInfo.InvariantCulture,
+                                    out var rating
+                                )
+                            )
+                            {
+                                ratingValue =
+                                    rating;
+                            }
+                        }
                     }
 
-                    if (product.TryGetProperty(
+
+                    if (
+                        product.TryGetProperty(
                             "reviews",
-                            out var reviews) &&
-                        reviews.ValueKind ==
-                        JsonValueKind.Number)
+                            out var reviewsElement
+                        )
+                    )
                     {
-                        seoProduct.Reviews =
-                            reviews.GetInt32();
+                        if (
+                            reviewsElement.ValueKind ==
+                            JsonValueKind.Number
+                        )
+                        {
+                            if (
+                                reviewsElement.TryGetInt32(
+                                    out var reviews
+                                )
+                            )
+                            {
+                                reviewCount =
+                                    reviews;
+                            }
+                        }
+                        else if (
+                            reviewsElement.ValueKind ==
+                            JsonValueKind.String
+                        )
+                        {
+                            var reviewsText =
+                                reviewsElement.GetString();
+
+                            if (
+                                int.TryParse(
+                                    reviewsText,
+                                    NumberStyles.Any,
+                                    CultureInfo.InvariantCulture,
+                                    out var reviews
+                                )
+                            )
+                            {
+                                reviewCount =
+                                    reviews;
+                            }
+                        }
                     }
 
-                    if (product.TryGetProperty(
+
+                    // =====================================================
+                    // AGGREGATE RATING
+                    // =====================================================
+
+                    if (
+                        ratingValue.HasValue &&
+                        reviewCount.HasValue &&
+                        reviewCount.Value > 0
+                    )
+                    {
+                        productData["aggregateRating"] =
+                            new Dictionary<string, object?>
+                            {
+                                ["@type"] =
+                                    "AggregateRating",
+
+                                ["ratingValue"] =
+                                    ratingValue.Value,
+
+                                ["reviewCount"] =
+                                    reviewCount.Value,
+
+                                ["bestRating"] =
+                                    5,
+
+                                ["worstRating"] =
+                                    1
+                            };
+                    }
+
+
+                    // =====================================================
+                    // OFFER / PRICE
+                    // =====================================================
+
+                    decimal? priceValue =
+                        null;
+
+                    var currency =
+                        "EUR";
+
+
+                    if (
+                        product.TryGetProperty(
                             "price",
-                            out var price) &&
-                        price.ValueKind ==
-                        JsonValueKind.Number)
+                            out var priceElement
+                        ))
                     {
-                        seoProduct.Price =
-                            price.GetDecimal();
+                        if (
+                            priceElement.ValueKind ==
+                            JsonValueKind.Number
+                        )
+                        {
+                            if (
+                                priceElement.TryGetDecimal(
+                                    out var price
+                                )
+                            )
+                            {
+                                priceValue =
+                                    price;
+                            }
+                        }
+                        else if (
+                            priceElement.ValueKind ==
+                            JsonValueKind.String
+                        )
+                        {
+                            var priceText =
+                                priceElement.GetString();
+
+                            if (
+                                !string.IsNullOrWhiteSpace(
+                                    priceText
+                                )
+                            )
+                            {
+                                // Nettoyage d'un prix du type :
+                                // "129,90 €"
+                                // "129.90"
+                                // "129,90"
+
+                                var cleanedPrice =
+                                    priceText
+                                        .Replace(
+                                            "€",
+                                            ""
+                                        )
+                                        .Replace(
+                                            "\u00A0",
+                                            ""
+                                        )
+                                        .Trim()
+                                        .Replace(
+                                            ",",
+                                            "."
+                                        );
+
+                                if (
+                                    decimal.TryParse(
+                                        cleanedPrice,
+                                        NumberStyles.Any,
+                                        CultureInfo.InvariantCulture,
+                                        out var price
+                                    )
+                                )
+                                {
+                                    priceValue =
+                                        price;
+                                }
+                            }
+                        }
                     }
 
-                    if (product.TryGetProperty(
+
+                    if (
+                        product.TryGetProperty(
                             "currency",
-                            out var currency))
+                            out var currencyElement
+                        )
+                    )
                     {
-                        seoProduct.Currency =
-                            currency.GetString() ?? "";
+                        var currencyText =
+                            currencyElement.GetString();
+
+                        if (
+                            !string.IsNullOrWhiteSpace(
+                                currencyText
+                            )
+                        )
+                        {
+                            currency =
+                                currencyText;
+                        }
                     }
 
-                    products.Add(seoProduct);
+
+                    // =====================================================
+                    // OFFER
+                    // =====================================================
+
+                    if (
+                        priceValue.HasValue ||
+                        !string.IsNullOrWhiteSpace(productUrl)
+                    )
+                    {
+                        var offer =
+                            new Dictionary<string, object?>
+                            {
+                                ["@type"] =
+                                    "Offer"
+                            };
+
+
+                        if (
+                            priceValue.HasValue
+                        )
+                        {
+                            offer["price"] =
+                                priceValue.Value;
+
+                            offer["priceCurrency"] =
+                                currency;
+                        }
+
+
+                        if (
+                            !string.IsNullOrWhiteSpace(productUrl)
+                        )
+                        {
+                            offer["url"] =
+                                productUrl;
+                        }
+
+
+                        productData["offers"] =
+                            offer;
+                    }
+
+
+                    // =====================================================
+                    // LIST ITEM
+                    // =====================================================
+
+                    var listItem =
+                        new Dictionary<string, object?>
+                        {
+                            ["@type"] =
+                                "ListItem",
+
+                            ["position"] =
+                                productCount,
+
+                            ["item"] =
+                                productData
+                        };
+
+
+                    if (
+                        !string.IsNullOrWhiteSpace(
+                            productName
+                        )
+                    )
+                    {
+                        listItem["name"] =
+                            productName;
+                    }
+
+
+                    if (
+                        !string.IsNullOrWhiteSpace(
+                            productUrl
+                        )
+                    )
+                    {
+                        listItem["url"] =
+                            productUrl;
+                    }
+
+
+                    itemList.Add(
+                        listItem
+                    );
                 }
             }
 
@@ -1610,32 +1950,6 @@ namespace wsaffiliation.Controllers
             // =========================================================
             // JSON-LD
             // =========================================================
-
-            var itemList =
-                new List<Dictionary<string, object?>>();
-
-            for (int i = 0; i < products.Count; i++)
-            {
-                var product =
-                    products[i];
-
-                var item =
-                    new Dictionary<string, object?>
-                    {
-                        ["@type"] = "ListItem",
-                        ["position"] = i + 1,
-                        ["name"] = product.Name
-                    };
-
-                if (!string.IsNullOrWhiteSpace(product.Url))
-                {
-                    item["url"] =
-                        product.Url;
-                }
-
-                itemList.Add(item);
-            }
-
 
             var jsonLd =
                 new Dictionary<string, object?>
@@ -1653,9 +1967,9 @@ namespace wsaffiliation.Controllers
                         guideDescription,
 
                     ["url"] =
-                            storefrontOrigin +
-                            "/apps/naya-guide/" +
-                            cleanSlug,
+                        storefrontOrigin +
+                        "/apps/naya-guide/" +
+                        cleanSlug,
 
                     ["mainEntity"] =
                         new Dictionary<string, object?>
@@ -1667,13 +1981,17 @@ namespace wsaffiliation.Controllers
                                 guideTitle,
 
                             ["numberOfItems"] =
-                                products.Count,
+                                itemList.Count,
 
                             ["itemListElement"] =
                                 itemList
                         }
                 };
 
+
+            // =========================================================
+            // SERIALIZE JSON-LD
+            // =========================================================
 
             var jsonLdString =
                 JsonSerializer.Serialize(
@@ -1686,13 +2004,29 @@ namespace wsaffiliation.Controllers
                 );
 
 
+            // =========================================================
+            // SEO TITLE
+            // =========================================================
+
+            var metaTitle =
+                string.IsNullOrWhiteSpace(
+                    guideTitle
+                )
+                ? "Guide beauté | Naya"
+                : $"{guideTitle} | Naya";
+
+
+            // =========================================================
+            // RETURN
+            // =========================================================
+
             return new GuideSeoPayload
             {
                 Title =
                     metaTitle,
 
                 Description =
-                    metaDescription,
+                    guideDescription,
 
                 Image =
                     heroImage,

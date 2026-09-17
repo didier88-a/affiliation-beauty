@@ -62,6 +62,17 @@ namespace wsaffiliation.Controllers
                 return BadRequest("Slug invalide");
             }
 
+            var forwardedHost =
+                     Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(forwardedHost))
+            {
+                forwardedHost =
+                    Request.Host.Host;
+            }
+
+            var storefrontOrigin =
+                "https://" + forwardedHost;
 
             // =========================================================
             // Récupération du JSON du guide
@@ -89,7 +100,8 @@ namespace wsaffiliation.Controllers
             var seo =
                 BuildGuideSeo(
                     jsonStr,
-                    cleanSlug
+                    cleanSlug,
+                    storefrontOrigin
                 );
 
 
@@ -1430,7 +1442,8 @@ namespace wsaffiliation.Controllers
 
         private static GuideSeoPayload BuildGuideSeo(
     string jsonStr,
-    string cleanSlug)
+    string cleanSlug,
+    string storefrontOrigin)
         {
             using var document =
                 JsonDocument.Parse(jsonStr);
@@ -1482,8 +1495,8 @@ namespace wsaffiliation.Controllers
 
             var metaTitle =
                 string.IsNullOrWhiteSpace(guideTitle)
-                    ? "Guide beauté | Viliora"
-                    : $"{guideTitle} | Viliora";
+                    ? "Guide beauté | Naya"
+                    : $"{guideTitle} | Naya";
 
 
             // =========================================================
@@ -1493,7 +1506,7 @@ namespace wsaffiliation.Controllers
             var metaDescription =
                 string.IsNullOrWhiteSpace(
                     guideDescription)
-                    ? "Découvrez notre guide Viliora avec sélection, comparaison et conseils."
+                    ? "Découvrez notre guide Naya avec sélection, comparaison et conseils."
                     : guideDescription.Trim();
 
 
@@ -1640,7 +1653,9 @@ namespace wsaffiliation.Controllers
                         guideDescription,
 
                     ["url"] =
-                        "/apps/naya-guide/" + cleanSlug,
+                            storefrontOrigin +
+                            "/apps/naya-guide/" +
+                            cleanSlug,
 
                     ["mainEntity"] =
                         new Dictionary<string, object?>

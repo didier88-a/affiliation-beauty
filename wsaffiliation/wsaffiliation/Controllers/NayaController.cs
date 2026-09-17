@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -12,7 +14,26 @@ namespace wsaffiliation.Controllers
     {
         private readonly IConfiguration _configuration;
 
-        
+        private class GuideSeoPayload
+        {
+            public string Title { get; set; } = "";
+            public string Description { get; set; } = "";
+            public string Image { get; set; } = "";
+            public string CanonicalPath { get; set; } = "";
+            public string JsonLd { get; set; } = "";
+        }
+
+        private class GuideSeoProduct
+        {
+            public string Name { get; set; } = "";
+            public string Brand { get; set; } = "";
+            public string Image { get; set; } = "";
+            public string Url { get; set; } = "";
+            public double? Rating { get; set; }
+            public int Reviews { get; set; }
+            public decimal? Price { get; set; }
+            public string Currency { get; set; } = "";
+        }
 
 
 
@@ -24,14 +45,67 @@ namespace wsaffiliation.Controllers
 
         [HttpGet]
         [Route("~/api/shopify/proxy/{*path}")]
-        public IActionResult ShopifyProxy(string? path)
+        public async Task<IActionResult> ShopifyProxy(
+    string? path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest("Slug manquant");
             }
 
-            var slug = path.Trim('/');
+            var cleanSlug =
+                NormalizeGuideSlug(path.Trim('/'));
+
+            if (string.IsNullOrWhiteSpace(cleanSlug))
+            {
+                return BadRequest("Slug invalide");
+            }
+
+
+            // =========================================================
+            // Récupération du JSON du guide
+            // =========================================================
+
+            var jsonStr =
+                await GetGuideJsonByCleanSlug(cleanSlug);
+
+            if (string.IsNullOrWhiteSpace(jsonStr))
+            {
+                return NotFound(
+                    new
+                    {
+                        message = "Guide introuvable",
+                        slug = cleanSlug
+                    }
+                );
+            }
+
+
+            // =========================================================
+            // SEO
+            // =========================================================
+
+            var seo =
+                BuildGuideSeo(
+                    jsonStr,
+                    cleanSlug
+                );
+
+
+            var seoJson =
+                JsonSerializer.Serialize(
+                    seo,
+                    new JsonSerializerOptions
+                    {
+                        Encoder =
+                            JavaScriptEncoder.Default
+                    }
+                );
+
+
+            // =========================================================
+            // Liquid Shopify
+            // =========================================================
 
             var liquid = $@"
                     {{% section 'naya-ai-search' %}}
@@ -45,7 +119,8 @@ namespace wsaffiliation.Controllers
                     {{% section 'viliora-final-verdict' %}}
 
                     <script>
-                        window.NAYA_PROXY_SLUG = {System.Text.Json.JsonSerializer.Serialize(slug)};
+                    window.NAYA_PROXY_SLUG = {JsonSerializer.Serialize(cleanSlug)};
+                    window.VILIORA_SEO = {seoJson};
                     </script>
                     ";
 
@@ -54,6 +129,42 @@ namespace wsaffiliation.Controllers
                 "application/liquid"
             );
         }
+
+        //[HttpGet]
+        //[Route("~/api/shopify/proxy/{*path}")]
+        //public IActionResult ShopifyProxy(string? path)
+        //{
+        //    if (string.IsNullOrWhiteSpace(path))
+        //    {
+        //        return BadRequest("Slug manquant");
+        //    }
+
+        //    var slug = path.Trim('/');
+
+        //    var liquid = $@"
+        //            {{% section 'naya-ai-search' %}}
+        //            {{% section 'naya-guides-results' %}}
+        //            {{% section 'viliora-guide-hero' %}}
+        //            {{% section 'viliora-top-5' %}}
+        //            {{% section 'viliora-comparison' %}}
+        //            {{% section 'viliora-reviews' %}}
+        //            {{% section 'viliora-evaluation' %}}
+        //            {{% section 'viliora-guide-info' %}}
+        //            {{% section 'viliora-final-verdict' %}}
+
+        //            <script>
+        //                window.NAYA_PROXY_SLUG = {System.Text.Json.JsonSerializer.Serialize(slug)};
+        //            </script>
+        //            ";
+
+        //    return Content(
+        //        liquid,
+        //        "application/liquid"
+        //    );
+        //}
+
+
+
 
         [HttpGet("popular-guides")]
         public async Task<IActionResult> GetPopularGuides()
@@ -279,10 +390,43 @@ namespace wsaffiliation.Controllers
             }
         }
 
-        private static string NormalizeGuideSlug(string text)
+        //private static string NormalizeGuideSlug(string text)
+        //{
+        //    if (string.IsNullOrWhiteSpace(text))
+        //        return "";
+
+        //    var normalized =
+        //        text.Normalize(
+        //            System.Text.NormalizationForm.FormD
+        //        );
+
+        //    var chars =
+        //        normalized
+        //            .Where(c =>
+        //                System.Globalization.CharUnicodeInfo
+        //                    .GetUnicodeCategory(c)
+        //                != System.Globalization.UnicodeCategory.NonSpacingMark)
+        //            .ToArray();
+
+        //    return new string(chars)
+        //        .ToLowerInvariant()
+        //        .Where(char.IsLetterOrDigit)
+        //        .ToArray()
+        //        .Aggregate(
+        //            new System.Text.StringBuilder(),
+        //            (sb, c) => sb.Append(c)
+        //        )
+        //        .ToString();
+        //}
+
+
+        private static string NormalizeGuideSlug(
+    string text)
         {
             if (string.IsNullOrWhiteSpace(text))
+            {
                 return "";
+            }
 
             var normalized =
                 text.Normalize(
@@ -292,9 +436,8 @@ namespace wsaffiliation.Controllers
             var chars =
                 normalized
                     .Where(c =>
-                        System.Globalization.CharUnicodeInfo
-                            .GetUnicodeCategory(c)
-                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+                        CharUnicodeInfo.GetUnicodeCategory(c)
+                        != UnicodeCategory.NonSpacingMark)
                     .ToArray();
 
             return new string(chars)
@@ -302,9 +445,9 @@ namespace wsaffiliation.Controllers
                 .Where(char.IsLetterOrDigit)
                 .ToArray()
                 .Aggregate(
-                    new System.Text.StringBuilder(),
-                    (sb, c) => sb.Append(c)
-                )
+                    new StringBuilder(),
+                    (builder, c) =>
+                        builder.Append(c))
                 .ToString();
         }
 
@@ -1244,6 +1387,485 @@ namespace wsaffiliation.Controllers
                 return Ok(result);
             }
         }
+
+        private static GuideSeoPayload BuildGuideSeo(
+    string jsonStr,
+    string cleanSlug)
+        {
+            using var document =
+                JsonDocument.Parse(jsonStr);
+
+            var root =
+                document.RootElement;
+
+            var guide =
+                root.GetProperty("guide");
+
+
+            // =========================================================
+            // GUIDE
+            // =========================================================
+
+            var guideTitle =
+                guide.TryGetProperty(
+                    "title",
+                    out var titleElement)
+                    ? titleElement.GetString() ?? ""
+                    : "";
+
+            var guideDescription =
+                guide.TryGetProperty(
+                    "description",
+                    out var descriptionElement)
+                    ? descriptionElement.GetString() ?? ""
+                    : "";
+
+            var heroImage = "";
+
+            if (
+                guide.TryGetProperty(
+                    "hero",
+                    out var heroElement) &&
+                heroElement.TryGetProperty(
+                    "image",
+                    out var imageElement)
+            )
+            {
+                heroImage =
+                    imageElement.GetString() ?? "";
+            }
+
+
+            // =========================================================
+            // TITLE SEO
+            // =========================================================
+
+            var metaTitle =
+                string.IsNullOrWhiteSpace(guideTitle)
+                    ? "Guide beauté | Viliora"
+                    : $"{guideTitle} | Viliora";
+
+
+            // =========================================================
+            // DESCRIPTION SEO
+            // =========================================================
+
+            var metaDescription =
+                string.IsNullOrWhiteSpace(
+                    guideDescription)
+                    ? "Découvrez notre guide Viliora avec sélection, comparaison et conseils."
+                    : guideDescription.Trim();
+
+
+            // =========================================================
+            // PRODUCTS
+            // =========================================================
+
+            var products =
+                new List<GuideSeoProduct>();
+
+            if (
+                guide.TryGetProperty(
+                    "products",
+                    out var productsElement) &&
+                productsElement.ValueKind ==
+                JsonValueKind.Array
+            )
+            {
+                foreach (
+                    var product
+                    in productsElement.EnumerateArray())
+                {
+                    var seoProduct =
+                        new GuideSeoProduct();
+
+                    if (product.TryGetProperty(
+                            "name",
+                            out var productName))
+                    {
+                        seoProduct.Name =
+                            productName.GetString() ?? "";
+                    }
+
+                    if (product.TryGetProperty(
+                            "brand",
+                            out var brand))
+                    {
+                        seoProduct.Brand =
+                            brand.GetString() ?? "";
+                    }
+
+                    if (product.TryGetProperty(
+                            "image",
+                            out var productImage))
+                    {
+                        seoProduct.Image =
+                            productImage.GetString() ?? "";
+                    }
+
+                    if (product.TryGetProperty(
+                            "sephora_url",
+                            out var productUrl))
+                    {
+                        seoProduct.Url =
+                            productUrl.GetString() ?? "";
+                    }
+
+                    if (product.TryGetProperty(
+                            "rating",
+                            out var rating) &&
+                        rating.ValueKind ==
+                        JsonValueKind.Number)
+                    {
+                        seoProduct.Rating =
+                            rating.GetDouble();
+                    }
+
+                    if (product.TryGetProperty(
+                            "reviews",
+                            out var reviews) &&
+                        reviews.ValueKind ==
+                        JsonValueKind.Number)
+                    {
+                        seoProduct.Reviews =
+                            reviews.GetInt32();
+                    }
+
+                    if (product.TryGetProperty(
+                            "price",
+                            out var price) &&
+                        price.ValueKind ==
+                        JsonValueKind.Number)
+                    {
+                        seoProduct.Price =
+                            price.GetDecimal();
+                    }
+
+                    if (product.TryGetProperty(
+                            "currency",
+                            out var currency))
+                    {
+                        seoProduct.Currency =
+                            currency.GetString() ?? "";
+                    }
+
+                    products.Add(seoProduct);
+                }
+            }
+
+
+            // =========================================================
+            // JSON-LD
+            // =========================================================
+
+            var itemList =
+                new List<Dictionary<string, object?>>();
+
+            for (int i = 0; i < products.Count; i++)
+            {
+                var product =
+                    products[i];
+
+                var item =
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] = "ListItem",
+                        ["position"] = i + 1,
+                        ["name"] = product.Name
+                    };
+
+                if (!string.IsNullOrWhiteSpace(product.Url))
+                {
+                    item["url"] =
+                        product.Url;
+                }
+
+                itemList.Add(item);
+            }
+
+
+            var jsonLd =
+                new Dictionary<string, object?>
+                {
+                    ["@context"] =
+                        "https://schema.org",
+
+                    ["@type"] =
+                        "WebPage",
+
+                    ["name"] =
+                        guideTitle,
+
+                    ["description"] =
+                        guideDescription,
+
+                    ["url"] =
+                        "/apps/naya-guide/" + cleanSlug,
+
+                    ["mainEntity"] =
+                        new Dictionary<string, object?>
+                        {
+                            ["@type"] =
+                                "ItemList",
+
+                            ["name"] =
+                                guideTitle,
+
+                            ["numberOfItems"] =
+                                products.Count,
+
+                            ["itemListElement"] =
+                                itemList
+                        }
+                };
+
+
+            var jsonLdString =
+                JsonSerializer.Serialize(
+                    jsonLd,
+                    new JsonSerializerOptions
+                    {
+                        Encoder =
+                            JavaScriptEncoder.Default
+                    }
+                );
+
+
+            return new GuideSeoPayload
+            {
+                Title =
+                    metaTitle,
+
+                Description =
+                    metaDescription,
+
+                Image =
+                    heroImage,
+
+                CanonicalPath =
+                    "/apps/naya-guide/" +
+                    cleanSlug,
+
+                JsonLd =
+                    jsonLdString
+            };
+        }
+
+        private async Task<string?> GetGuideJsonByCleanSlug(
+    string cleanSlug)
+        {
+            var supabaseUrl =
+                Environment.GetEnvironmentVariable(
+                    "SUPABASE_URL");
+
+            var supabaseKey =
+                Environment.GetEnvironmentVariable(
+                    "SUPABASE_KEY");
+
+            if (
+                string.IsNullOrWhiteSpace(
+                    supabaseUrl) ||
+                string.IsNullOrWhiteSpace(
+                    supabaseKey))
+            {
+                throw new Exception(
+                    "Variables SUPABASE_URL / SUPABASE_KEY manquantes.");
+            }
+
+            using var httpClient =
+                new HttpClient();
+
+
+            // =========================================================
+            // Fonction interne : requête Supabase
+            // =========================================================
+
+            async Task<JsonElement> GetSupabase(
+                string url)
+            {
+                using var request =
+                    new HttpRequestMessage(
+                        HttpMethod.Get,
+                        url
+                    );
+
+                request.Headers.Add(
+                    "apikey",
+                    supabaseKey
+                );
+
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue(
+                        "Bearer",
+                        supabaseKey
+                    );
+
+                var response =
+                    await httpClient.SendAsync(
+                        request
+                    );
+
+                var text =
+                    await response.Content
+                        .ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception(
+                        $"Supabase error {(int)response.StatusCode}: {text}");
+                }
+
+                return JsonSerializer.Deserialize<JsonElement>(
+                    text
+                );
+            }
+
+
+            // =========================================================
+            // 1. Recherche exacte
+            // =========================================================
+
+            var exactUrl =
+                $"{supabaseUrl}/rest/v1/GuideViliora" +
+                $"?select=slug" +
+                $"&slug=eq.{Uri.EscapeDataString(cleanSlug)}" +
+                $"&limit=1";
+
+            var exactData =
+                await GetSupabase(exactUrl);
+
+            string? databaseSlug = null;
+
+            if (
+                exactData.ValueKind ==
+                    JsonValueKind.Array &&
+                exactData.GetArrayLength() > 0
+            )
+            {
+                databaseSlug =
+                    exactData[0]
+                        .GetProperty("slug")
+                        .GetString();
+            }
+
+
+            // =========================================================
+            // 2. Si pas trouvé :
+            //    comparaison des slugs sans charger json_str
+            // =========================================================
+
+            if (string.IsNullOrWhiteSpace(databaseSlug))
+            {
+                const int pageSize = 1000;
+
+                int offset = 0;
+
+                while (true)
+                {
+                    var url =
+                        $"{supabaseUrl}/rest/v1/GuideViliora" +
+                        $"?select=slug" +
+                        $"&limit={pageSize}" +
+                        $"&offset={offset}";
+
+                    var data =
+                        await GetSupabase(url);
+
+                    if (
+                        data.ValueKind !=
+                        JsonValueKind.Array)
+                    {
+                        break;
+                    }
+
+                    var count =
+                        data.GetArrayLength();
+
+                    foreach (
+                        var row
+                        in data.EnumerateArray())
+                    {
+                        if (!row.TryGetProperty(
+                                "slug",
+                                out var slugElement))
+                        {
+                            continue;
+                        }
+
+                        var dbSlug =
+                            slugElement.GetString();
+
+                        if (
+                            string.IsNullOrWhiteSpace(
+                                dbSlug))
+                        {
+                            continue;
+                        }
+
+                        var normalizedDbSlug =
+                            NormalizeGuideSlug(dbSlug);
+
+                        if (
+                            normalizedDbSlug ==
+                            cleanSlug)
+                        {
+                            databaseSlug =
+                                dbSlug;
+
+                            break;
+                        }
+                    }
+
+                    if (
+                        !string.IsNullOrWhiteSpace(
+                            databaseSlug))
+                    {
+                        break;
+                    }
+
+                    if (count < pageSize)
+                    {
+                        break;
+                    }
+
+                    offset += pageSize;
+                }
+            }
+
+
+            if (string.IsNullOrWhiteSpace(databaseSlug))
+            {
+                return null;
+            }
+
+
+            // =========================================================
+            // 3. Maintenant seulement :
+            //    récupération du JSON du guide trouvé
+            // =========================================================
+
+            var guideUrl =
+                $"{supabaseUrl}/rest/v1/GuideViliora" +
+                $"?select=json_str" +
+                $"&slug=eq.{Uri.EscapeDataString(databaseSlug)}" +
+                $"&limit=1";
+
+            var guideData =
+                await GetSupabase(guideUrl);
+
+            if (
+                guideData.ValueKind !=
+                    JsonValueKind.Array ||
+                guideData.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            return guideData[0]
+                .GetProperty("json_str")
+                .GetString();
+        }
+
 
 
 

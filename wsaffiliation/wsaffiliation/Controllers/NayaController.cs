@@ -1577,11 +1577,29 @@ namespace wsaffiliation.Controllers
 
                     var productUrl =
                         product.TryGetProperty(
-                            "sephora_url",
-                            out var urlElement
+                            "amazon_url",
+                            out var amazonUrlElement
                         )
-                        ? urlElement.GetString()
-                        : null;
+                        && amazonUrlElement.ValueKind ==
+                            JsonValueKind.String
+                            ? amazonUrlElement.GetString()
+                            : null;
+
+                    if (
+                        string.IsNullOrWhiteSpace(productUrl)
+                        &&
+                        product.TryGetProperty(
+                            "sephora_url",
+                            out var sephoraUrlElement
+                        )
+                        &&
+                        sephoraUrlElement.ValueKind ==
+                            JsonValueKind.String
+                    )
+                    {
+                        productUrl =
+                            sephoraUrlElement.GetString();
+                    }
 
 
                     // =====================================================

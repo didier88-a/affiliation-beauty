@@ -1842,9 +1842,12 @@ namespace wsaffiliation.Controllers
                         var normalizedDbSlug =
                             NormalizeGuideSlug(dbSlug);
 
+                        var normalizedRequestedSlug =
+                            NormalizeGuideSlug(cleanSlug);
+
                         if (
                             normalizedDbSlug ==
-                            cleanSlug)
+                            normalizedRequestedSlug)
                         {
                             databaseSlug =
                                 dbSlug;

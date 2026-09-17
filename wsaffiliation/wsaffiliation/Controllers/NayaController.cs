@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace wsaffiliation.Controllers
 {
@@ -54,7 +55,7 @@ namespace wsaffiliation.Controllers
             }
 
             var cleanSlug =
-                NormalizeGuideSlug(path.Trim('/'));
+                CreateUrlSlug(path.Trim('/'));
 
             if (string.IsNullOrWhiteSpace(cleanSlug))
             {
@@ -164,6 +165,42 @@ namespace wsaffiliation.Controllers
         //}
 
 
+
+        private static string CreateUrlSlug(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return "";
+            }
+
+            var normalized =
+                text.Normalize(
+                    System.Text.NormalizationForm.FormD
+                );
+
+            var chars =
+                normalized
+                    .Where(c =>
+                        CharUnicodeInfo.GetUnicodeCategory(c)
+                        != UnicodeCategory.NonSpacingMark)
+                    .ToArray();
+
+            var result =
+                new string(chars)
+                    .ToLowerInvariant();
+
+            result =
+                Regex.Replace(
+                    result,
+                    @"[^a-z0-9]+",
+                    "-"
+                );
+
+            result =
+                result.Trim('-');
+
+            return result;
+        }
 
 
         [HttpGet("popular-guides")]

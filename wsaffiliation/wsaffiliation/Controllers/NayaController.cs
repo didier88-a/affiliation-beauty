@@ -98,6 +98,9 @@ namespace wsaffiliation.Controllers
                     seo,
                     new JsonSerializerOptions
                     {
+                        PropertyNamingPolicy =
+                            JsonNamingPolicy.CamelCase,
+
                         Encoder =
                             JavaScriptEncoder.Default
                     }

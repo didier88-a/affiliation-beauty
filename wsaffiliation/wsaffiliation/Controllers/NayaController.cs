@@ -173,22 +173,36 @@ namespace wsaffiliation.Controllers
                 using var httpClient = new HttpClient();
 
                 // =========================================================
-                // 1. Recherche exacte
+                // Normalisation du slug reçu
                 // =========================================================
 
-                var exactUrl =
+                var normalizedSlug = NormalizeGuideSlug(slug);
+
+                // =========================================================
+                // IMPORTANT :
+                // On demande à PostgreSQL de normaliser slug directement.
+                // On ne récupère PAS tous les guides.
+                // =========================================================
+
+                var filter =
+                    $"eq.{Uri.EscapeDataString(normalizedSlug)}";
+
+                var url =
                     $"{supabaseUrl}/rest/v1/GuideViliora" +
                     $"?select=json_str,slug" +
-                    $"&slug=eq.{Uri.EscapeDataString(slug)}" +
+                    $"&slug_normalized={filter}" +
                     $"&limit=1";
 
                 using var request =
                     new HttpRequestMessage(
                         HttpMethod.Get,
-                        exactUrl
+                        url
                     );
 
-                request.Headers.Add("apikey", supabaseKey);
+                request.Headers.Add(
+                    "apikey",
+                    supabaseKey
+                );
 
                 request.Headers.Authorization =
                     new AuthenticationHeaderValue(
@@ -211,116 +225,44 @@ namespace wsaffiliation.Controllers
                 }
 
                 var data =
-                    JsonSerializer.Deserialize<JsonElement>(result);
-
-                // =========================================================
-                // 2. Guide trouvé avec slug exact
-                // =========================================================
-
-                if (
-                    data.ValueKind == JsonValueKind.Array &&
-                    data.GetArrayLength() > 0
-                )
-                {
-                    var jsonStr =
-                        data[0]
-                            .GetProperty("json_str")
-                            .GetString();
-
-                    if (!string.IsNullOrWhiteSpace(jsonStr))
-                    {
-                        return Content(
-                            jsonStr,
-                            "application/json"
-                        );
-                    }
-                }
-
-                // =========================================================
-                // 3. Recherche de l'ancien slug
-                //
-                // On transforme :
-                // dior-sauvage-elixir-parfum-pour-homme
-                //
-                // en :
-                // DIOR - Sauvage Elixir - Parfum pour homme
-                //
-                // puis recherche exacte.
-                // =========================================================
-
-                string readableSlug =
-                    SlugToReadableText(slug);
-
-                var fallbackUrl =
-                    $"{supabaseUrl}/rest/v1/GuideViliora" +
-                    $"?select=json_str,slug" +
-                    $"&slug=eq.{Uri.EscapeDataString(readableSlug)}" +
-                    $"&limit=1";
-
-                using var fallbackRequest =
-                    new HttpRequestMessage(
-                        HttpMethod.Get,
-                        fallbackUrl
-                    );
-
-                fallbackRequest.Headers.Add(
-                    "apikey",
-                    supabaseKey
-                );
-
-                fallbackRequest.Headers.Authorization =
-                    new AuthenticationHeaderValue(
-                        "Bearer",
-                        supabaseKey
-                    );
-
-                var fallbackResponse =
-                    await httpClient.SendAsync(
-                        fallbackRequest
-                    );
-
-                var fallbackResult =
-                    await fallbackResponse.Content.ReadAsStringAsync();
-
-                if (!fallbackResponse.IsSuccessStatusCode)
-                {
-                    return StatusCode(
-                        (int)fallbackResponse.StatusCode,
-                        fallbackResult
-                    );
-                }
-
-                var fallbackData =
                     JsonSerializer.Deserialize<JsonElement>(
-                        fallbackResult
+                        result
                     );
 
                 if (
-                    fallbackData.ValueKind == JsonValueKind.Array &&
-                    fallbackData.GetArrayLength() > 0
+                    data.ValueKind != JsonValueKind.Array ||
+                    data.GetArrayLength() == 0
                 )
                 {
-                    var jsonStr =
-                        fallbackData[0]
-                            .GetProperty("json_str")
-                            .GetString();
-
-                    if (!string.IsNullOrWhiteSpace(jsonStr))
-                    {
-                        return Content(
-                            jsonStr,
-                            "application/json"
-                        );
-                    }
+                    return NotFound(
+                        new
+                        {
+                            message = "Guide introuvable",
+                            slug = slug,
+                            normalizedSlug = normalizedSlug
+                        }
+                    );
                 }
 
-                return NotFound(
-                    new
-                    {
-                        message = "Guide introuvable",
-                        slug = slug,
-                        readableSlug = readableSlug
-                    }
+                var jsonStr =
+                    data[0]
+                        .GetProperty("json_str")
+                        .GetString();
+
+                if (string.IsNullOrWhiteSpace(jsonStr))
+                {
+                    return NotFound(
+                        new
+                        {
+                            message = "JSON du guide introuvable",
+                            slug = slug
+                        }
+                    );
+                }
+
+                return Content(
+                    jsonStr,
+                    "application/json"
                 );
             }
             catch (Exception ex)
@@ -337,6 +279,34 @@ namespace wsaffiliation.Controllers
             }
         }
 
+        private static string NormalizeGuideSlug(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return "";
+
+            var normalized =
+                text.Normalize(
+                    System.Text.NormalizationForm.FormD
+                );
+
+            var chars =
+                normalized
+                    .Where(c =>
+                        System.Globalization.CharUnicodeInfo
+                            .GetUnicodeCategory(c)
+                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    .ToArray();
+
+            return new string(chars)
+                .ToLowerInvariant()
+                .Where(char.IsLetterOrDigit)
+                .ToArray()
+                .Aggregate(
+                    new System.Text.StringBuilder(),
+                    (sb, c) => sb.Append(c)
+                )
+                .ToString();
+        }
 
         private static string SlugToReadableText(string slug)
         {

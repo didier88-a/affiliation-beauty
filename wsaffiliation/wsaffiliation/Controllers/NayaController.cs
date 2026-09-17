@@ -1946,6 +1946,168 @@ namespace wsaffiliation.Controllers
                 }
             }
 
+            // =========================================================
+            // FAQ
+            // =========================================================
+
+            var faqEntities =
+                new List<object>();
+
+            if (
+                guide.TryGetProperty(
+                    "faq",
+                    out var faqElement
+                )
+                &&
+                faqElement.ValueKind ==
+                    JsonValueKind.Array
+            )
+            {
+                foreach (
+                    var faq
+                    in faqElement.EnumerateArray()
+                )
+                {
+                    var question =
+                        faq.TryGetProperty(
+                            "question",
+                            out var questionElement
+                        )
+                        ? questionElement.GetString()
+                        : null;
+
+                    var answer =
+                        faq.TryGetProperty(
+                            "answer",
+                            out var answerElement
+                        )
+                        ? answerElement.GetString()
+                        : null;
+
+
+                    // -----------------------------------------------------
+                    // On ignore les FAQ incomplètes
+                    // -----------------------------------------------------
+
+                    if (
+                        string.IsNullOrWhiteSpace(
+                            question
+                        )
+                        ||
+                        string.IsNullOrWhiteSpace(
+                            answer
+                        )
+                    )
+                    {
+                        continue;
+                    }
+
+
+                    faqEntities.Add(
+                        new Dictionary<string, object?>
+                        {
+                            ["@type"] =
+                                "Question",
+
+                            ["name"] =
+                                question,
+
+                            ["acceptedAnswer"] =
+                                new Dictionary<string, object?>
+                                {
+                                    ["@type"] =
+                                        "Answer",
+
+                                    ["text"] =
+                                        answer
+                                }
+                        }
+                    );
+                }
+            }
+
+
+
+            // =========================================================
+            // JSON-LD
+            // =========================================================
+
+            var webPageEntity =
+    new Dictionary<string, object?>
+    {
+        ["@type"] =
+            "WebPage",
+
+        ["@id"] =
+            storefrontOrigin +
+            "/apps/naya-guide/" +
+            cleanSlug +
+            "#webpage",
+
+        ["name"] =
+            guideTitle,
+
+        ["description"] =
+            guideDescription,
+
+        ["url"] =
+            storefrontOrigin +
+            "/apps/naya-guide/" +
+            cleanSlug,
+
+        ["mainEntity"] =
+            new Dictionary<string, object?>
+            {
+                ["@type"] =
+                    "ItemList",
+
+                ["name"] =
+                    guideTitle,
+
+                ["numberOfItems"] =
+                    itemList.Count,
+
+                ["itemListElement"] =
+                    itemList
+            }
+    };
+
+
+            // =========================================================
+            // GRAPH
+            // =========================================================
+
+            var graph =
+                new List<object>
+                {
+        webPageEntity
+                };
+
+
+            // =========================================================
+            // FAQ PAGE
+            // =========================================================
+
+            if (faqEntities.Count > 0)
+            {
+                graph.Add(
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] =
+                            "FAQPage",
+
+                        ["@id"] =
+                            storefrontOrigin +
+                            "/apps/naya-guide/" +
+                            cleanSlug +
+                            "#faq",
+
+                        ["mainEntity"] =
+                            faqEntities
+                    }
+                );
+            }
+
 
             // =========================================================
             // JSON-LD
@@ -1957,35 +2119,8 @@ namespace wsaffiliation.Controllers
                     ["@context"] =
                         "https://schema.org",
 
-                    ["@type"] =
-                        "WebPage",
-
-                    ["name"] =
-                        guideTitle,
-
-                    ["description"] =
-                        guideDescription,
-
-                    ["url"] =
-                        storefrontOrigin +
-                        "/apps/naya-guide/" +
-                        cleanSlug,
-
-                    ["mainEntity"] =
-                        new Dictionary<string, object?>
-                        {
-                            ["@type"] =
-                                "ItemList",
-
-                            ["name"] =
-                                guideTitle,
-
-                            ["numberOfItems"] =
-                                itemList.Count,
-
-                            ["itemListElement"] =
-                                itemList
-                        }
+                    ["@graph"] =
+                        graph
                 };
 
 

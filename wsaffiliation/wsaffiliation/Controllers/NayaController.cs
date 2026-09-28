@@ -2411,7 +2411,16 @@ namespace wsaffiliation.Controllers
                 .GetString();
         }
 
-
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "Naya Guide Proxy OK",
+                date = DateTime.UtcNow
+            });
+        }
 
 
     }

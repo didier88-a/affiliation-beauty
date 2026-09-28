@@ -12,7 +12,7 @@ namespace wsaffiliation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class Naya1Controller : ControllerBase
+    public class NayaController : ControllerBase
     {
         private readonly IConfiguration _configuration;
 
@@ -39,7 +39,7 @@ namespace wsaffiliation.Controllers
 
 
 
-        public Naya1Controller(IConfiguration configuration)
+        public NayaController(IConfiguration configuration)
         {
             _configuration = configuration;
         }

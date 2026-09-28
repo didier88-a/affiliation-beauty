@@ -12,7 +12,7 @@ namespace wsaffiliation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class NayaController : ControllerBase
+    public class Naya1Controller : ControllerBase
     {
         private readonly IConfiguration _configuration;
 
@@ -39,44 +39,44 @@ namespace wsaffiliation.Controllers
 
 
 
-        public NayaController(IConfiguration configuration)
+        public Naya1Controller(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
+        //[HttpGet]
+        //[Route("~/api/shopify/proxy/{*path}")]
+        //public IActionResult ShopifyProxy(string? path)
+        //{
+        //    try
+        //    {
+        //        if (string.IsNullOrWhiteSpace(path))
+        //        {
+        //            return BadRequest("Slug manquant");
+        //        }
 
-        [HttpGet]
-        [Route("~/api/shopify/proxy/{*path}")]
-        public IActionResult ShopifyProxy(string? path)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(path))
-                {
-                    return BadRequest("Slug manquant");
-                }
+        //        var cleanSlug =
+        //            CreateUrlSlug(path.Trim('/'));
 
-                var cleanSlug =
-                    CreateUrlSlug(path.Trim('/'));
+        //        if (string.IsNullOrWhiteSpace(cleanSlug))
+        //        {
+        //            return BadRequest("Slug invalide");
+        //        }
 
-                if (string.IsNullOrWhiteSpace(cleanSlug))
-                {
-                    return BadRequest("Slug invalide");
-                }
+        //        return Content(
+        //            "SHOPIFY PROXY OK - PATH = " + cleanSlug,
+        //            "text/plain"
+        //        );
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(
+        //            500,
+        //            "Shopify Proxy ERROR: " + ex.ToString()
+        //        );
+        //    }
+        //}
 
-                return Content(
-                    "SHOPIFY PROXY OK - PATH = " + cleanSlug,
-                    "text/plain"
-                );
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(
-                    500,
-                    "Shopify Proxy ERROR: " + ex.ToString()
-                );
-            }
-        }
 
         //        [HttpGet]
         //        [Route("~/api/shopify/proxy/{*path}")]
@@ -424,6 +424,140 @@ namespace wsaffiliation.Controllers
         //        }
 
 
+        [HttpGet]
+        [Route("~/api/shopify/proxy/{*path}")]
+        public async Task<IActionResult> ShopifyProxy(
+    string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest("Slug manquant");
+            }
+
+            var cleanSlug =
+                CreateUrlSlug(path.Trim('/'));
+
+            if (string.IsNullOrWhiteSpace(cleanSlug))
+            {
+                return BadRequest("Slug invalide");
+            }
+
+            var forwardedHost =
+                     Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(forwardedHost))
+            {
+                forwardedHost =
+                    Request.Host.Host;
+            }
+
+            var storefrontOrigin =
+                "https://" + forwardedHost;
+
+            // =========================================================
+            // Récupération du JSON du guide
+            // =========================================================
+
+            var jsonStr =
+                await GetGuideJsonByCleanSlug(cleanSlug);
+
+            if (string.IsNullOrWhiteSpace(jsonStr))
+            {
+                return NotFound(
+                    new
+                    {
+                        message = "Guide introuvable",
+                        slug = cleanSlug
+                    }
+                );
+            }
+
+
+            // =========================================================
+            // SEO
+            // =========================================================
+
+            var seo =
+                BuildGuideSeo(
+                    jsonStr,
+                    cleanSlug,
+                    storefrontOrigin
+                );
+
+
+            var seoJson =
+                JsonSerializer.Serialize(
+                    seo,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy =
+                            JsonNamingPolicy.CamelCase,
+
+                        Encoder =
+                            JavaScriptEncoder.Default
+                    }
+                );
+
+
+            // =========================================================
+            // Liquid Shopify
+            // =========================================================
+
+            var liquid = $@"
+                    {{% section 'naya-ai-search' %}}
+                    {{% section 'naya-guides-results' %}}
+                    {{% section 'viliora-guide-hero' %}}
+                    {{% section 'viliora-top-5' %}}
+                    {{% section 'viliora-comparison' %}}
+                    {{% section 'viliora-reviews' %}}
+                    {{% section 'viliora-evaluation' %}}
+                    {{% section 'viliora-guide-info' %}}
+                    {{% section 'viliora-final-verdict' %}}
+
+                    <script>
+                    window.NAYA_PROXY_SLUG = {JsonSerializer.Serialize(cleanSlug)};
+                    window.VILIORA_SEO = {seoJson};
+                    </script>
+                    ";
+
+            return Content(
+                liquid,
+                "application/liquid"
+            );
+        }
+
+        //[HttpGet]
+        //[Route("~/api/shopify/proxy/{*path}")]
+        //public IActionResult ShopifyProxy(string? path)
+        //{
+        //    if (string.IsNullOrWhiteSpace(path))
+        //    {
+        //        return BadRequest("Slug manquant");
+        //    }
+
+        //    var slug = path.Trim('/');
+
+        //    var liquid = $@"
+        //            {{% section 'naya-ai-search' %}}
+        //            {{% section 'naya-guides-results' %}}
+        //            {{% section 'viliora-guide-hero' %}}
+        //            {{% section 'viliora-top-5' %}}
+        //            {{% section 'viliora-comparison' %}}
+        //            {{% section 'viliora-reviews' %}}
+        //            {{% section 'viliora-evaluation' %}}
+        //            {{% section 'viliora-guide-info' %}}
+        //            {{% section 'viliora-final-verdict' %}}
+
+        //            <script>
+        //                window.NAYA_PROXY_SLUG = {System.Text.Json.JsonSerializer.Serialize(slug)};
+        //            </script>
+        //            ";
+
+        //    return Content(
+        //        liquid,
+        //        "application/liquid"
+        //    );
+        //}
 
 
 

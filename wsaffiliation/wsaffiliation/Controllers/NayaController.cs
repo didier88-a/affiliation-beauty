@@ -68,107 +68,241 @@ namespace wsaffiliation.Controllers
                 // JSON TEST
                 // =====================================================
 
-                var jsonStr = @"{
-          ""page"": {
-            ""type"": ""perfume"",
-            ""slug"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
-            ""product_id"": 659,
-            ""language"": ""fr""
-          },
+                // =========================================================
+                // RÉCUPÉRATION DU JSON DU PRODUIT
+                // =========================================================
 
-          ""product"": {
-            ""id"": 659,
-            ""brand"": ""Azzaro"",
-            ""name"": ""Wanted Eau de Toilette Intense"",
-            ""short_name"": ""Wanted"",
-            ""type"": ""Eau de Toilette"",
-            ""image"": """",
-            ""images"": [],
-            ""description"": ""Une fragrance élégante et intense."",
-            ""category"": ""Parfum"",
-            ""sub_category"": ""Parfum homme"",
-            ""rating"": 4.8,
-            ""reviews"": 1200
-          },
-
-          ""details"": {
-            ""gender"": ""Homme"",
-            ""concentration"": ""Eau de Toilette"",
-            ""fragrance_family"": ""Fougère Aromatique"",
-            ""olfactory_family"": ""Fougère Aromatique"",
-            ""year"": 2024,
-            ""perfumer"": """",
-            ""volume"": ""100 ml"",
-            ""style"": [
-              ""Élégant"",
-              ""Moderne""
-            ],
-            ""season"": [
-              ""Automne"",
-              ""Hiver""
-            ],
-            ""occasion"": [
-              ""Soirée"",
-              ""Sortie""
-            ],
-            ""intensity"": ""Forte"",
-            ""longevity"": ""Longue"",
-            ""sillage"": ""Important"",
-            ""best_for"": ""Pour les hommes qui recherchent une fragrance intense et élégante.""
-          },
-
-          ""notes"": {
-            ""top"": [
-              ""Cardamome""
-            ],
-            ""heart"": [
-              ""Lavande""
-            ],
-            ""base"": [
-              ""Bois"",
-              ""Ambre""
-            ]
-          },
-
-          ""performance"": {
-            ""intensity"": 4,
-            ""longevity"": 4,
-            ""sillage"": 4
-          },
-
-          ""offers"": [],
-
-          ""price_comparison"": {
-            ""currency"": ""EUR"",
-            ""lowest_price"": 59.90,
-            ""lowest_price_marketplace"": ""Amazon"",
-            ""saving_vs_reference"": 20,
-            ""offers_count"": 0,
-            ""offers"": []
-          },
-
-          ""alternatives"": {
-            ""title"": ""5 alternatives au même style"",
-            ""description"": ""Découvrez des parfums similaires à un prix plus accessible."",
-            ""products"": []
-          },
-
-          ""guide"": {
-            ""available"": true,
-            ""id"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
-            ""slug"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
-            ""title"": ""Tout savoir sur Wanted Eau de Toilette Intense"",
-            ""subtitle"": ""Son histoire, ses notes et nos conseils pour bien le choisir."",
-            ""description"": ""Découvrez tout ce qu'il faut savoir sur ce parfum."",
-            ""url"": ""/apps/naya-guide/wanted-eau-de-toilette-intense-fougere-aromatique""
-          },
-
-          ""recommendations"": {
-            ""title"": ""Vous pourriez aussi aimer"",
-            ""description"": ""D'autres parfums qui pourraient vous plaire."",
-            ""products"": []
-          }
-        }";
+                var jsonStr = @"
+                {
+                  ""page"": {
+                    ""type"": ""perfume"",
+                    ""slug"": ""baccarat-rouge-540"",
+                    ""product_id"": 659,
+                    ""language"": ""fr""
+                  },
+                  ""product"": {
+                    ""id"": 659,
+                    ""brand"": ""Maison Francis Kurkdjian"",
+                    ""name"": ""Baccarat Rouge 540"",
+                    ""short_name"": ""Baccarat Rouge 540"",
+                    ""type"": ""Eau de Parfum"",
+                    ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
+                    ""images"": [
+                      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg""
+                    ],
+                    ""description"": ""Une fragrance iconique et envoûtante, au sillage unique, mêlant le safran, l'ambre et des notes boisées."",
+                    ""category"": ""Parfum"",
+                    ""sub_category"": ""Parfum femme et homme"",
+                    ""rating"": 4.8,
+                    ""reviews"": 2341,
+                    ""ean"": null,
+                    ""manufacturer_product_id"": null
+                  },
+                  ""details"": {
+                    ""gender"": ""Unisexe"",
+                    ""concentration"": ""Eau de Parfum"",
+                    ""fragrance_family"": ""Ambré Floral"",
+                    ""olfactory_family"": ""Ambré Floral"",
+                    ""year"": 2015,
+                    ""perfumer"": ""Francis Kurkdjian"",
+                    ""volume"": ""70 ml"",
+                    ""style"": [
+                      ""Luxe"",
+                      ""Élégant"",
+                      ""Sophistiqué""
+                    ],
+                    ""season"": [
+                      ""Automne"",
+                      ""Hiver"",
+                      ""Printemps""
+                    ],
+                    ""occasion"": [
+                      ""Soirée"",
+                      ""Sortie"",
+                      ""Occasion spéciale""
+                    ],
+                    ""intensity"": ""Forte"",
+                    ""longevity"": ""Très longue"",
+                    ""sillage"": ""Exceptionnel"",
+                    ""best_for"": ""Pour celles et ceux qui recherchent un parfum élégant, reconnaissable et très persistant.""
+                  },
+                  ""notes"": {
+                    ""top"": [
+                      ""Safran"",
+                      ""Bergamote""
+                    ],
+                    ""heart"": [
+                      ""Jasmin"",
+                      ""Ambre gris""
+                    ],
+                    ""base"": [
+                      ""Bois de cèdre"",
+                      ""Résines""
+                    ]
+                  },
+                  ""performance"": {
+                    ""intensity"": 4,
+                    ""longevity"": 5,
+                    ""sillage"": 5,
+                    ""labels"": {
+                      ""intensity"": ""Intensité"",
+                      ""longevity"": ""Longévité"",
+                      ""sillage"": ""Sillage""
+                    }
+                  },
+                  ""offers"": [
+                    {
+                      ""id"": 368,
+                      ""marketplace"": ""sephora"",
+                      ""marketplace_product_id"": ""123456"",
+                      ""sku"": ""BR540-70"",
+                      ""variant_name"": ""70 ml"",
+                      ""price"": 245.00,
+                      ""currency"": ""EUR"",
+                      ""original_price"": 250.00,
+                      ""is_available"": true,
+                      ""rating"": 4.8,
+                      ""reviews"": 2341,
+                      ""product_url"": ""https://www.sephora.fr/example"",
+                      ""image"": ""https://example.com/sephora-baccarat.jpg""
+                    },
+                    {
+                      ""id"": 349,
+                      ""marketplace"": ""lookfantastic"",
+                      ""marketplace_product_id"": ""LF123456"",
+                      ""sku"": ""BR540-70"",
+                      ""variant_name"": ""70 ml"",
+                      ""price"": 238.00,
+                      ""currency"": ""EUR"",
+                      ""original_price"": 245.00,
+                      ""is_available"": true,
+                      ""rating"": 4.7,
+                      ""reviews"": 1820,
+                      ""product_url"": ""https://www.lookfantastic.fr/example"",
+                      ""image"": ""https://example.com/lookfantastic-baccarat.jpg""
+                    },
+                    {
+                      ""id"": 355,
+                      ""marketplace"": ""amazon"",
+                      ""marketplace_product_id"": ""B08XXXXXXX"",
+                      ""sku"": ""BR540-70"",
+                      ""variant_name"": ""70 ml"",
+                      ""price"": 189.00,
+                      ""currency"": ""EUR"",
+                      ""original_price"": 230.00,
+                      ""is_available"": true,
+                      ""rating"": 4.6,
+                      ""reviews"": 5320,
+                      ""product_url"": ""https://www.amazon.fr/example"",
+                      ""image"": ""https://example.com/amazon-baccarat.jpg""
+                    }
+                  ],
+                  ""price_comparison"": {
+                    ""currency"": ""EUR"",
+                    ""lowest_price"": 189.00,
+                    ""lowest_price_marketplace"": ""amazon"",
+                    ""saving_vs_reference"": 56.00,
+                    ""offers_count"": 3,
+                    ""offers"": [
+                      {
+                        ""marketplace"": ""amazon"",
+                        ""label"": ""Amazon"",
+                        ""price"": 189.00,
+                        ""currency"": ""EUR"",
+                        ""variant"": ""70 ml"",
+                        ""availability"": ""En stock"",
+                        ""url"": ""https://www.amazon.fr/example""
+                      },
+                      {
+                        ""marketplace"": ""lookfantastic"",
+                        ""label"": ""LookFantastic"",
+                        ""price"": 238.00,
+                        ""currency"": ""EUR"",
+                        ""variant"": ""70 ml"",
+                        ""availability"": ""En stock"",
+                        ""url"": ""https://www.lookfantastic.fr/example""
+                      },
+                      {
+                        ""marketplace"": ""sephora"",
+                        ""label"": ""Sephora"",
+                        ""price"": 245.00,
+                        ""currency"": ""EUR"",
+                        ""variant"": ""70 ml"",
+                        ""availability"": ""En stock"",
+                        ""url"": ""https://www.sephora.fr/example""
+                      }
+                    ]
+                  },
+                  ""alternatives"": {
+                    ""title"": ""5 alternatives au même style"",
+                    ""description"": ""Des parfums inspirés de Baccarat Rouge 540, avec des notes similaires et un prix plus accessible."",
+                    ""reference_price"": 245.00,
+                    ""reference_currency"": ""EUR"",
+                    ""products"": [
+                      {
+                        ""product_id"": 721,
+                        ""brand"": ""Lattafa"",
+                        ""name"": ""Ana Abiyedh Rouge"",
+                        ""image"": ""https://m.media-amazon.com/images/I/41YdnQMDfJL._AC_SY300_SX300_QL70_ML2_.jpg"",
+                        ""price"": 29.00,
+                        ""currency"": ""EUR"",
+                        ""original_price"": 65.00,
+                        ""saving_amount"": 36.00,
+                        ""saving_percent"": 55,
+                        ""similarity_score"": 92,
+                        ""fragrance_family"": ""Ambré"",
+                        ""matched_notes"": [
+                          ""Safran"",
+                          ""Ambre"",
+                          ""Jasmin""
+                        ],
+                        ""reason"": ""Une alternative très proche avec une signature ambrée et musquée."",
+                        ""offers"": [
+                          {
+                            ""marketplace"": ""amazon"",
+                            ""price"": 29.00,
+                            ""currency"": ""EUR"",
+                            ""url"": ""https://www.amazon.fr/example""
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  ""guide"": {
+                    ""available"": true,
+                    ""id"": ""baccarat-rouge-540"",
+                    ""slug"": ""baccarat-rouge-540"",
+                    ""title"": ""Tout savoir sur Baccarat Rouge 540"",
+                    ""subtitle"": ""Son histoire, ses notes, ses alternatives et nos conseils pour bien le choisir."",
+                    ""image"": ""https://example.com/guide-baccarat.jpg"",
+                    ""url"": ""/guide/baccarat-rouge-540"",
+                    ""reading_time"": ""6 min"",
+                    ""sections"": [
+                      ""Présentation"",
+                      ""Notes olfactives"",
+                      ""Longévité et sillage"",
+                      ""Alternatives"",
+                      ""Conseils""
+                    ]
+                  },
+                  ""recommendations"": {
+                    ""title"": ""Vous pourriez aussi aimer"",
+                    ""description"": ""D'autres parfums qui pourraient vous plaire."",
+                    ""products"": []
+                  },
+                  ""seo"": {
+                    ""title"": ""Baccarat Rouge 540 : prix, alternatives et avis | Viliora"",
+                    ""description"": ""Découvrez Baccarat Rouge 540, comparez les prix chez les meilleurs revendeurs et trouvez 5 alternatives moins chères."",
+                    ""canonical"": ""/parfum/baccarat-rouge-540"",
+                    ""keywords"": [
+                      ""Baccarat Rouge 540"",
+                      ""Baccarat Rouge 540 prix"",
+                      ""Baccarat Rouge 540 alternative"",
+                      ""Baccarat Rouge 540 dupe"",
+                      ""parfum similaire Baccarat Rouge 540""
+                    ]
+                  }
+                }";
 
 
                 // =====================================================

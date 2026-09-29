@@ -87,12 +87,12 @@ namespace wsaffiliation.Controllers
     ""name"": ""Baccarat Rouge 540"",
     ""short_name"": ""Baccarat Rouge 540"",
     ""type"": ""Eau de Parfum"",
-    ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
+    ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/C/CHANEL/92482/92586-media_swatch-1.jpg?scaleWidth=750&scaleHeight=750&scaleMode=fit"",
     ""images"": [
-      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
-      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
-      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
-      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg""
+      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/C/CHANEL/92482/92586-media_swatch-1.jpg?scaleWidth=750&scaleHeight=750&scaleMode=fit"",
+      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/C/CHANEL/92482/92586-media_swatch-1.jpg?scaleWidth=750&scaleHeight=750&scaleMode=fit"",
+      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/C/CHANEL/92482/92586-media_swatch-1.jpg?scaleWidth=750&scaleHeight=750&scaleMode=fit"",
+      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/C/CHANEL/92482/92586-media_swatch-1.jpg?scaleWidth=750&scaleHeight=750&scaleMode=fit""
     ],
     ""description"": ""Une fragrance iconique et envoûtante, au sillage unique, mêlant le safran, l'ambre et des notes boisées."",
     ""category"": ""Parfum"",

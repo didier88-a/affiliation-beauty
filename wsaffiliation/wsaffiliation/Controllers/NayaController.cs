@@ -63,9 +63,146 @@ namespace wsaffiliation.Controllers
                     return BadRequest("Slug invalide");
                 }
 
+
+                // =====================================================
+                // JSON TEST
+                // =====================================================
+
+                var jsonStr = @"{
+          ""page"": {
+            ""type"": ""perfume"",
+            ""slug"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
+            ""product_id"": 659,
+            ""language"": ""fr""
+          },
+
+          ""product"": {
+            ""id"": 659,
+            ""brand"": ""Azzaro"",
+            ""name"": ""Wanted Eau de Toilette Intense"",
+            ""short_name"": ""Wanted"",
+            ""type"": ""Eau de Toilette"",
+            ""image"": """",
+            ""images"": [],
+            ""description"": ""Une fragrance élégante et intense."",
+            ""category"": ""Parfum"",
+            ""sub_category"": ""Parfum homme"",
+            ""rating"": 4.8,
+            ""reviews"": 1200
+          },
+
+          ""details"": {
+            ""gender"": ""Homme"",
+            ""concentration"": ""Eau de Toilette"",
+            ""fragrance_family"": ""Fougère Aromatique"",
+            ""olfactory_family"": ""Fougère Aromatique"",
+            ""year"": 2024,
+            ""perfumer"": """",
+            ""volume"": ""100 ml"",
+            ""style"": [
+              ""Élégant"",
+              ""Moderne""
+            ],
+            ""season"": [
+              ""Automne"",
+              ""Hiver""
+            ],
+            ""occasion"": [
+              ""Soirée"",
+              ""Sortie""
+            ],
+            ""intensity"": ""Forte"",
+            ""longevity"": ""Longue"",
+            ""sillage"": ""Important"",
+            ""best_for"": ""Pour les hommes qui recherchent une fragrance intense et élégante.""
+          },
+
+          ""notes"": {
+            ""top"": [
+              ""Cardamome""
+            ],
+            ""heart"": [
+              ""Lavande""
+            ],
+            ""base"": [
+              ""Bois"",
+              ""Ambre""
+            ]
+          },
+
+          ""performance"": {
+            ""intensity"": 4,
+            ""longevity"": 4,
+            ""sillage"": 4
+          },
+
+          ""offers"": [],
+
+          ""price_comparison"": {
+            ""currency"": ""EUR"",
+            ""lowest_price"": 59.90,
+            ""lowest_price_marketplace"": ""Amazon"",
+            ""saving_vs_reference"": 20,
+            ""offers_count"": 0,
+            ""offers"": []
+          },
+
+          ""alternatives"": {
+            ""title"": ""5 alternatives au même style"",
+            ""description"": ""Découvrez des parfums similaires à un prix plus accessible."",
+            ""products"": []
+          },
+
+          ""guide"": {
+            ""available"": true,
+            ""id"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
+            ""slug"": ""wanted-eau-de-toilette-intense-fougere-aromatique"",
+            ""title"": ""Tout savoir sur Wanted Eau de Toilette Intense"",
+            ""subtitle"": ""Son histoire, ses notes et nos conseils pour bien le choisir."",
+            ""description"": ""Découvrez tout ce qu'il faut savoir sur ce parfum."",
+            ""url"": ""/apps/naya-guide/wanted-eau-de-toilette-intense-fougere-aromatique""
+          },
+
+          ""recommendations"": {
+            ""title"": ""Vous pourriez aussi aimer"",
+            ""description"": ""D'autres parfums qui pourraient vous plaire."",
+            ""products"": []
+          }
+        }";
+
+
+                // =====================================================
+                // LIQUID
+                // =====================================================
+
+                var liquid = @"
+{% section 'naya-perfume-hero' %}
+{% section 'naya-perfume-details' %}
+{% section 'naya-perfume-alternatives' %}
+{% section 'naya-price-profile' %}
+{% section 'naya-guide-banner' %}
+
+<script>
+window.NAYA_PROXY_SLUG = " +
+                    JsonSerializer.Serialize(cleanSlug) +
+                    @";
+
+window.NAYA_GUIDE = " +
+                    jsonStr +
+                    @";
+
+document.dispatchEvent(
+    new CustomEvent('naya:guide-loaded', {
+        detail: window.NAYA_GUIDE
+    })
+);
+</script>
+";
+
+
                 return Content(
-                    "SHOPIFY PROXY OK - PATH = " + cleanSlug,
-                    "text/plain"
+                    liquid,
+                    "application/liquid"
                 );
             }
             catch (Exception ex)
@@ -424,107 +561,107 @@ namespace wsaffiliation.Controllers
         //        }
 
 
-    //    [HttpGet]
-    //    [Route("~/api/shopify/proxy/{*path}")]
-    //    public async Task<IActionResult> ShopifyProxy(
-    //string? path)
-    //    {
-    //        if (string.IsNullOrWhiteSpace(path))
-    //        {
-    //            return BadRequest("Slug manquant");
-    //        }
+        //    [HttpGet]
+        //    [Route("~/api/shopify/proxy/{*path}")]
+        //    public async Task<IActionResult> ShopifyProxy(
+        //string? path)
+        //    {
+        //        if (string.IsNullOrWhiteSpace(path))
+        //        {
+        //            return BadRequest("Slug manquant");
+        //        }
 
-    //        var cleanSlug =
-    //            CreateUrlSlug(path.Trim('/'));
+        //        var cleanSlug =
+        //            CreateUrlSlug(path.Trim('/'));
 
-    //        if (string.IsNullOrWhiteSpace(cleanSlug))
-    //        {
-    //            return BadRequest("Slug invalide");
-    //        }
+        //        if (string.IsNullOrWhiteSpace(cleanSlug))
+        //        {
+        //            return BadRequest("Slug invalide");
+        //        }
 
-    //        var forwardedHost =
-    //                 Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        //        var forwardedHost =
+        //                 Request.Headers["X-Forwarded-Host"].FirstOrDefault();
 
-    //        if (string.IsNullOrWhiteSpace(forwardedHost))
-    //        {
-    //            forwardedHost =
-    //                Request.Host.Host;
-    //        }
+        //        if (string.IsNullOrWhiteSpace(forwardedHost))
+        //        {
+        //            forwardedHost =
+        //                Request.Host.Host;
+        //        }
 
-    //        var storefrontOrigin =
-    //            "https://" + forwardedHost;
+        //        var storefrontOrigin =
+        //            "https://" + forwardedHost;
 
-    //        // =========================================================
-    //        // Récupération du JSON du guide
-    //        // =========================================================
+        //        // =========================================================
+        //        // Récupération du JSON du guide
+        //        // =========================================================
 
-    //        var jsonStr =
-    //            await GetGuideJsonByCleanSlug(cleanSlug);
+        //        var jsonStr =
+        //            await GetGuideJsonByCleanSlug(cleanSlug);
 
-    //        if (string.IsNullOrWhiteSpace(jsonStr))
-    //        {
-    //            return NotFound(
-    //                new
-    //                {
-    //                    message = "Guide introuvable",
-    //                    slug = cleanSlug
-    //                }
-    //            );
-    //        }
-
-
-    //        // =========================================================
-    //        // SEO
-    //        // =========================================================
-
-    //        var seo =
-    //            BuildGuideSeo(
-    //                jsonStr,
-    //                cleanSlug,
-    //                storefrontOrigin
-    //            );
+        //        if (string.IsNullOrWhiteSpace(jsonStr))
+        //        {
+        //            return NotFound(
+        //                new
+        //                {
+        //                    message = "Guide introuvable",
+        //                    slug = cleanSlug
+        //                }
+        //            );
+        //        }
 
 
-    //        var seoJson =
-    //            JsonSerializer.Serialize(
-    //                seo,
-    //                new JsonSerializerOptions
-    //                {
-    //                    PropertyNamingPolicy =
-    //                        JsonNamingPolicy.CamelCase,
+        //        // =========================================================
+        //        // SEO
+        //        // =========================================================
 
-    //                    Encoder =
-    //                        JavaScriptEncoder.Default
-    //                }
-    //            );
+        //        var seo =
+        //            BuildGuideSeo(
+        //                jsonStr,
+        //                cleanSlug,
+        //                storefrontOrigin
+        //            );
 
 
-    //        // =========================================================
-    //        // Liquid Shopify
-    //        // =========================================================
+        //        var seoJson =
+        //            JsonSerializer.Serialize(
+        //                seo,
+        //                new JsonSerializerOptions
+        //                {
+        //                    PropertyNamingPolicy =
+        //                        JsonNamingPolicy.CamelCase,
 
-    //        var liquid = $@"
-    //                {{% section 'naya-ai-search' %}}
-    //                {{% section 'naya-guides-results' %}}
-    //                {{% section 'viliora-guide-hero' %}}
-    //                {{% section 'viliora-top-5' %}}
-    //                {{% section 'viliora-comparison' %}}
-    //                {{% section 'viliora-reviews' %}}
-    //                {{% section 'viliora-evaluation' %}}
-    //                {{% section 'viliora-guide-info' %}}
-    //                {{% section 'viliora-final-verdict' %}}
+        //                    Encoder =
+        //                        JavaScriptEncoder.Default
+        //                }
+        //            );
 
-    //                <script>
-    //                window.NAYA_PROXY_SLUG = {JsonSerializer.Serialize(cleanSlug)};
-    //                window.VILIORA_SEO = {seoJson};
-    //                </script>
-    //                ";
 
-    //        return Content(
-    //            liquid,
-    //            "application/liquid"
-    //        );
-    //    }
+        //        // =========================================================
+        //        // Liquid Shopify
+        //        // =========================================================
+
+        //        var liquid = $@"
+        //                {{% section 'naya-ai-search' %}}
+        //                {{% section 'naya-guides-results' %}}
+        //                {{% section 'viliora-guide-hero' %}}
+        //                {{% section 'viliora-top-5' %}}
+        //                {{% section 'viliora-comparison' %}}
+        //                {{% section 'viliora-reviews' %}}
+        //                {{% section 'viliora-evaluation' %}}
+        //                {{% section 'viliora-guide-info' %}}
+        //                {{% section 'viliora-final-verdict' %}}
+
+        //                <script>
+        //                window.NAYA_PROXY_SLUG = {JsonSerializer.Serialize(cleanSlug)};
+        //                window.VILIORA_SEO = {seoJson};
+        //                </script>
+        //                ";
+
+        //        return Content(
+        //            liquid,
+        //            "application/liquid"
+        //        );
+        //    }
 
 
 

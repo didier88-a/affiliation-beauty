@@ -481,6 +481,7 @@ window.NAYA_GUIDE = " +
 {% section 'naya-perfume-alternatives' %}
 {% section 'naya-price-profile' %}
 {% section 'naya-guide-banner' %}
+{% section 'naya-recommendations' %}
 
 <script>
 document.dispatchEvent(

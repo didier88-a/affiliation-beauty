@@ -176,12 +176,6 @@ namespace wsaffiliation.Controllers
                 // =====================================================
 
                 var liquid = @"
-{% section 'naya-perfume-hero' %}
-{% section 'naya-perfume-details' %}
-{% section 'naya-perfume-alternatives' %}
-{% section 'naya-price-profile' %}
-{% section 'naya-guide-banner' %}
-
 <script>
 window.NAYA_PROXY_SLUG = " +
                     JsonSerializer.Serialize(cleanSlug) +
@@ -190,7 +184,15 @@ window.NAYA_PROXY_SLUG = " +
 window.NAYA_GUIDE = " +
                     jsonStr +
                     @";
+</script>
 
+{% section 'naya-perfume-hero' %}
+{% section 'naya-perfume-details' %}
+{% section 'naya-perfume-alternatives' %}
+{% section 'naya-price-profile' %}
+{% section 'naya-guide-banner' %}
+
+<script>
 document.dispatchEvent(
     new CustomEvent('naya:guide-loaded', {
         detail: window.NAYA_GUIDE

@@ -142,7 +142,7 @@ namespace wsaffiliation.Controllers
       ""Ambre gris""
     ],
     ""base"": [
-      ""Bois de cèdre"",
+      ""cèdre"",
       ""Résines""
     ]
   },

@@ -134,7 +134,7 @@ namespace wsaffiliation.Controllers
 
   ""notes"": {
     ""top"": [
-      ""Safran"",
+      ""Gingembre"",
       ""Bergamote""
     ],
     ""heart"": [

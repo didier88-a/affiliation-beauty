@@ -76,45 +76,46 @@ namespace wsaffiliation.Controllers
 {
   ""page"": {
     ""type"": ""perfume"",
-    ""slug"": ""versace-blue-jeans"",
-    ""product_id"": 1361,
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml"",
+    ""product_id"": 801,
     ""language"": ""fr""
   },
   ""product"": {
-    ""id"": 1361,
-    ""brand"": null,
-    ""name"": ""Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
-    ""short_name"": ""Versace Blue Jeans"",
-    ""type"": null,
-    ""image"": ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg"",
+    ""id"": 801,
+    ""brand"": ""Marques"",
+    ""name"": ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""type"": ""Parfum"",
+    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover"",
     ""images"": [
-      ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg""
+      ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover""
     ],
-    ""description"": ""Versace Blue Jeans est un parfum masculin qui offre une fragrance fraîche et dynamique, idéale pour un usage quotidien."",
-    ""category"": ""Parfumerie"",
-    ""sub_category"": ""Parfums"",
+    ""description"": ""Rendant hommage à Rome au crépuscule, l’Eau de Parfum Born in Roma Extradose Donna de Valentino célèbre la Ville éternelle et son allure vibrante. Le parfum s’ouvre sur un trio de jasmins lumineux qui scintillent au fil du Tibre, tandis que des nuances chaleureuses de benjoin subliment la douceur ambrée de la senteur. Un courant sous-jacent de vanille onctueuse harmonise le sillage olfactif, tissant des accents de profondeur veloutée dans tout le parfum pour favoriser un sillage longue durée qui émane de la peau."",
+    ""category"": ""Parfums d'été"",
+    ""sub_category"": ""Parfum Femme"",
     ""rating"": null,
     ""reviews"": 0,
     ""ean"": null,
     ""manufacturer_product_id"": null,
-    ""price"": null,
-    ""original_price"": null,
+    ""price"": 184.00,
+    ""original_price"": 184.00,
     ""currency"": ""EUR"",
-    ""slug"": ""versace-blue-jeans""
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml""
   },
   ""details"": {
-    ""gender"": ""Homme"",
-    ""concentration"": ""Eau de Toilette"",
+    ""gender"": ""Femme"",
+    ""concentration"": ""Eau de Parfum"",
     ""fragrance_family"": [
-      ""Frais""
+      ""Floral"",
+      ""Oriental""
     ],
-    ""olfactory_family"": null,
+    ""olfactory_family"": """",
     ""year"": null,
     ""perfumer"": null,
-    ""volume"": null,
+    ""volume"": ""100ml"",
     ""style"": [
-      ""Doux"",
-      ""Décontracté""
+      ""Élégant"",
+      ""Séduisant""
     ],
     ""season"": [
       ""Printemps"",
@@ -122,81 +123,506 @@ namespace wsaffiliation.Controllers
     ],
     ""occasion"": [
       ""Quotidien"",
-      ""Occasion décontractée""
+      ""Soirée"",
+      ""Occasion spéciale""
     ],
     ""intensity"": 3,
     ""longevity"": 4,
-    ""sillage"": 3,
-    ""best_for"": [
-      ""Quotidien"",
-      ""Occasion décontractée""
-    ]
+    ""sillage"": 4,
+    ""best_for"": null
   },
   ""notes"": {
     ""top"": {
       ""title"": ""Notes de tête"",
-      ""items"": []
+      ""items"": [
+        {
+          ""name"": ""Jasmin"",
+          ""image"": null
+        }
+      ]
     },
     ""heart"": {
       ""title"": ""Notes de cœur"",
-      ""items"": []
+      ""items"": [
+        {
+          ""name"": ""Benjoin"",
+          ""image"": null
+        }
+      ]
     },
     ""base"": {
       ""title"": ""Notes de fond"",
-      ""items"": []
+      ""items"": [
+        {
+          ""name"": ""Vanille"",
+          ""image"": ""note-fond-vanille.png""
+        }
+      ]
     }
   },
   ""performance"": {
     ""intensity"": 3,
     ""longevity"": 4,
-    ""sillage"": 3,
+    ""sillage"": 4,
     ""labels"": [
       ""Intensité moyenne"",
       ""Longévité forte"",
-      ""Sillage moyenne""
+      ""Sillage forte""
     ]
   },
-  ""offers"": [],
+  ""offers"": [
+    {
+      ""id"": 1001,
+      ""marketplace"": ""LookFantastic"",
+      ""marketplace_product_id"": ""15789066"",
+      ""sku"": ""15789079"",
+      ""variant_name"": ""100ml"",
+      ""price"": 184.00,
+      ""currency"": ""EUR"",
+      ""original_price"": null,
+      ""is_available"": true,
+      ""rating"": null,
+      ""reviews"": 0,
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-100ml/15789066/"",
+      ""image"": null
+    }
+  ],
   ""price_comparison"": {
     ""currency"": ""EUR"",
-    ""lowest_price"": null,
-    ""lowest_price_marketplace"": null,
-    ""reference_price"": null,
-    ""saving_vs_reference"": null,
-    ""saving_percent"": null,
-    ""offers_count"": 0,
-    ""offers"": []
+    ""lowest_price"": 184.00,
+    ""lowest_price_marketplace"": ""LookFantastic"",
+    ""reference_price"": 184.00,
+    ""saving_vs_reference"": 0.0,
+    ""saving_percent"": 0.0,
+    ""offers_count"": 1,
+    ""offers"": [
+      {
+        ""marketplace"": ""LookFantastic"",
+        ""price"": 184.00,
+        ""currency"": ""EUR"",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-100ml/15789066/"",
+        ""is_available"": true
+      }
+    ]
   },
   ""alternatives"": {
     ""title"": ""Des alternatives similaires"",
     ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
-    ""reference_price"": 0.0,
+    ""reference_price"": 184.00,
     ""reference_currency"": ""EUR"",
-    ""products"": []
+    ""products"": [
+      {
+        ""product_id"": 797,
+        ""brand"": ""Marques"",
+        ""name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789064-8225228672859255.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 97.75,
+        ""currency"": ""EUR"",
+        ""original_price"": 97.75,
+        ""saving_amount"": 86.25,
+        ""saving_percent"": 46.88,
+        ""similarity_score"": 100.0,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""jasmin"",
+          ""benjoin"",
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 997,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""15789064"",
+            ""sku"": ""15789079"",
+            ""variant_name"": ""30ml"",
+            ""price"": 97.75,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": null,
+            ""reviews"": 0,
+            ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+            ""image"": null
+          }
+        ]
+      },
+      {
+        ""product_id"": 805,
+        ""brand"": ""Marques"",
+        ""name"": ""Valentino Born in Roma Extradose Donna Parfum [50 ml]"",
+        ""short_name"": ""Valentino Born in Roma Extradose Donna Parfum [50 ml]"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789079-4115208779091615.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 138.00,
+        ""currency"": ""EUR"",
+        ""original_price"": 138.00,
+        ""saving_amount"": 46.00,
+        ""saving_percent"": 25.00,
+        ""similarity_score"": 98.67,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""jasmin"",
+          ""benjoin"",
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-50ml/15789079/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 1005,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""15789079"",
+            ""sku"": ""15789079"",
+            ""variant_name"": ""50ml"",
+            ""price"": 138.00,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": null,
+            ""reviews"": 0,
+            ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-50ml/15789079/"",
+            ""image"": null
+          }
+        ]
+      },
+      {
+        ""product_id"": 606,
+        ""brand"": ""Marques"",
+        ""name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 50ml"",
+        ""short_name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12018658-1044925970986961.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 128.80,
+        ""currency"": ""EUR"",
+        ""original_price"": 128.80,
+        ""saving_amount"": 55.20,
+        ""saving_percent"": 30.0,
+        ""similarity_score"": 57.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-50ml/12018658/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 802,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""12018658"",
+            ""sku"": ""12018659"",
+            ""variant_name"": ""50ml"",
+            ""price"": 128.80,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": 4.00,
+            ""reviews"": 1,
+            ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-50ml/12018658/"",
+            ""image"": null
+          }
+        ]
+      },
+      {
+        ""product_id"": 546,
+        ""brand"": ""Marques"",
+        ""name"": ""Jean Paul Gaultier Classique Eau de Toilette 50ml"",
+        ""short_name"": ""Jean Paul Gaultier Classique Eau de Toilette 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/10043924-4735048072768298.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 100.05,
+        ""currency"": ""EUR"",
+        ""original_price"": 100.05,
+        ""saving_amount"": 83.95,
+        ""saving_percent"": 45.62,
+        ""similarity_score"": 54.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-classique-eau-de-toilette-50ml/10043924/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 742,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""10043924"",
+            ""sku"": ""10076088"",
+            ""variant_name"": ""50ml"",
+            ""price"": 100.05,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": 5.00,
+            ""reviews"": 1,
+            ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-classique-eau-de-toilette-50ml/10043924/"",
+            ""image"": null
+          }
+        ]
+      },
+      {
+        ""product_id"": 510,
+        ""brand"": ""Marques"",
+        ""name"": ""Jean Paul Gaultier La Favorite Eau de Parfum 50ml"",
+        ""short_name"": ""Jean Paul Gaultier La Favorite Eau de Parfum 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17854045-9355355448310043.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 118.45,
+        ""currency"": ""EUR"",
+        ""original_price"": 118.45,
+        ""saving_amount"": 65.55,
+        ""saving_percent"": 35.62,
+        ""similarity_score"": 52.77,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-la-favorite-eau-de-parfum-50ml/17854045/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 706,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""17854045"",
+            ""sku"": ""17854040"",
+            ""variant_name"": ""50ml"",
+            ""price"": 118.45,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": 3.80,
+            ""reviews"": 5,
+            ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-la-favorite-eau-de-parfum-50ml/17854045/"",
+            ""image"": null
+          }
+        ]
+      },
+      {
+        ""product_id"": 619,
+        ""brand"": ""Marques"",
+        ""name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 100ml"",
+        ""short_name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 100ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12018659-1984925971039932.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 181.70,
+        ""currency"": ""EUR"",
+        ""original_price"": 181.70,
+        ""saving_amount"": 2.30,
+        ""saving_percent"": 1.25,
+        ""similarity_score"": 57.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-100ml/12018659/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 815,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""12018659"",
+            ""sku"": ""12018659"",
+            ""variant_name"": ""100ml"",
+            ""price"": 181.70,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": 5.00,
+            ""reviews"": 1,
+            ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-100ml/12018659/"",
+            ""image"": null
+          }
+        ]
+      }
+    ]
   },
   ""recommendations"": {
     ""title"": ""Vous pourriez aussi aimer"",
     ""description"": ""Des parfums sélectionnés selon le profil olfactif et les caractéristiques de ce parfum."",
-    ""products"": []
+    ""products"": [
+      {
+        ""product_id"": 797,
+        ""brand"": ""Marques"",
+        ""name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789064-8225228672859255.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 97.75,
+        ""currency"": ""EUR"",
+        ""original_price"": 97.75,
+        ""saving_amount"": 86.25,
+        ""saving_percent"": 46.88,
+        ""similarity_score"": 100.0,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""jasmin"",
+          ""benjoin"",
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+        ""marketplace"": ""LookFantastic""
+      },
+      {
+        ""product_id"": 805,
+        ""brand"": ""Marques"",
+        ""name"": ""Valentino Born in Roma Extradose Donna Parfum [50 ml]"",
+        ""short_name"": ""Valentino Born in Roma Extradose Donna Parfum [50 ml]"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789079-4115208779091615.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 138.00,
+        ""currency"": ""EUR"",
+        ""original_price"": 138.00,
+        ""saving_amount"": 46.00,
+        ""saving_percent"": 25.00,
+        ""similarity_score"": 98.67,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""jasmin"",
+          ""benjoin"",
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-50ml/15789079/"",
+        ""marketplace"": ""LookFantastic""
+      },
+      {
+        ""product_id"": 619,
+        ""brand"": ""Marques"",
+        ""name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 100ml"",
+        ""short_name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 100ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12018659-1984925971039932.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 181.70,
+        ""currency"": ""EUR"",
+        ""original_price"": 181.70,
+        ""saving_amount"": 2.30,
+        ""saving_percent"": 1.25,
+        ""similarity_score"": 57.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-100ml/12018659/"",
+        ""marketplace"": ""LookFantastic""
+      },
+      {
+        ""product_id"": 606,
+        ""brand"": ""Marques"",
+        ""name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 50ml"",
+        ""short_name"": ""Tom Ford Velvet Orchid Eau de Parfum Spray 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12018658-1044925970986961.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 128.80,
+        ""currency"": ""EUR"",
+        ""original_price"": 128.80,
+        ""saving_amount"": 55.20,
+        ""saving_percent"": 30.0,
+        ""similarity_score"": 57.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/tom-ford-velvet-orchid-eau-de-parfum-spray-50ml/12018658/"",
+        ""marketplace"": ""LookFantastic""
+      },
+      {
+        ""product_id"": 546,
+        ""brand"": ""Marques"",
+        ""name"": ""Jean Paul Gaultier Classique Eau de Toilette 50ml"",
+        ""short_name"": ""Jean Paul Gaultier Classique Eau de Toilette 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/10043924-4735048072768298.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 100.05,
+        ""currency"": ""EUR"",
+        ""original_price"": 100.05,
+        ""saving_amount"": 83.95,
+        ""saving_percent"": 45.62,
+        ""similarity_score"": 54.33,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-classique-eau-de-toilette-50ml/10043924/"",
+        ""marketplace"": ""LookFantastic""
+      },
+      {
+        ""product_id"": 510,
+        ""brand"": ""Marques"",
+        ""name"": ""Jean Paul Gaultier La Favorite Eau de Parfum 50ml"",
+        ""short_name"": ""Jean Paul Gaultier La Favorite Eau de Parfum 50ml"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17854045-9355355448310043.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 118.45,
+        ""currency"": ""EUR"",
+        ""original_price"": 118.45,
+        ""saving_amount"": 65.55,
+        ""saving_percent"": 35.62,
+        ""similarity_score"": 52.77,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : vanille, même profil de genre."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-la-favorite-eau-de-parfum-50ml/17854045/"",
+        ""marketplace"": ""LookFantastic""
+      }
+    ]
   },
   ""guide"": {
     ""available"": true,
-    ""id"": ""guide-1361"",
-    ""slug"": ""versace-blue-jeans"",
-    ""title"": ""Guide complet Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
-    ""subtitle"": ""Tout savoir sur Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
-    ""image"": ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg"",
-    ""url"": ""/guide/versace-blue-jeans"",
+    ""id"": ""guide-801"",
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml"",
+    ""title"": ""Guide complet Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""subtitle"": ""Tout savoir sur Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover"",
+    ""url"": ""/guide/valentinoborninromaextradosedonnaparfum100ml"",
     ""reading_time"": 5,
     ""sections"": []
   },
   ""seo"": {
-    ""title"": "" Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
-    ""description"": ""Découvrez Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590 de  : notes olfactives, performance, prix et alternatives similaires."",
-    ""canonical"": ""/parfum/versace-blue-jeans"",
+    ""title"": ""Marques Valentino Born In Roma Extradose Donna Parfum [100 ml] Eau de Parfum"",
+    ""description"": ""Découvrez Valentino Born In Roma Extradose Donna Parfum [100 ml] de Marques : notes olfactives, performance, prix et alternatives similaires."",
+    ""canonical"": ""/parfum/valentinoborninromaextradosedonnaparfum100ml"",
     ""keywords"": [
-      ""Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
-      """",
+      ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+      ""Marques"",
       ""parfum"",
       ""fragrance"",
       ""notes olfactives"",

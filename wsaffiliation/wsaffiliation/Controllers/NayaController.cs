@@ -76,564 +76,127 @@ namespace wsaffiliation.Controllers
 {
   ""page"": {
     ""type"": ""perfume"",
-    ""slug"": ""jimmychoomanparfumeaudeparfum50ml"",
-    ""product_id"": 741,
+    ""slug"": ""versace-blue-jeans"",
+    ""product_id"": 1361,
     ""language"": ""fr""
   },
   ""product"": {
-    ""id"": 741,
-    ""brand"": ""Marques"",
-    ""name"": ""Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-    ""short_name"": ""Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-    ""type"": ""Eau de Parfum"",
-    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17622429-5605319670250928.jpg&format=webp&width=1500&height=1500&fit=cover"",
+    ""id"": 1361,
+    ""brand"": null,
+    ""name"": ""Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
+    ""short_name"": ""Versace Blue Jeans"",
+    ""type"": null,
+    ""image"": ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg"",
     ""images"": [
-      ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17622429-5605319670250928.jpg&format=webp&width=1500&height=1500&fit=cover""
+      ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg""
     ],
-    ""description"": ""Unapologetically playful, Jimmy Choo's Man Parfum evokes the spirit of enticing sensuality and a sense of confidence. The fougère amber fragrance for men exudes charisma and intensity, enveloping its wearer in a blend of zesty and invigorating notes. The scent opens with sparkling bergamot and spicy black pepper, before revealing a sensual heart of lavender and orange blossom. At the base, bold woody benzoin and patchouli reinstate the Jimmy Choo perfume with a memorable trail. The perfume's multifaceted personality is embodied by model Marlon Teixeira, evoking charisma and allure. Adorned with gold mirror-effect lacquering and a crocodile-embossed cap, the iconic flask-shaped bottle embodies the elegance of the scent within."",
-    ""category"": ""Parfums d'été"",
-    ""sub_category"": ""Parfum Femme"",
-    ""rating"": 5.00,
-    ""reviews"": 1,
+    ""description"": ""Versace Blue Jeans est un parfum masculin qui offre une fragrance fraîche et dynamique, idéale pour un usage quotidien."",
+    ""category"": ""Parfumerie"",
+    ""sub_category"": ""Parfums"",
+    ""rating"": null,
+    ""reviews"": 0,
     ""ean"": null,
     ""manufacturer_product_id"": null,
-    ""price"": 85.10,
-    ""original_price"": 85.10,
+    ""price"": null,
+    ""original_price"": null,
     ""currency"": ""EUR"",
-    ""slug"": ""jimmychoomanparfumeaudeparfum50ml""
+    ""slug"": ""versace-blue-jeans""
   },
   ""details"": {
     ""gender"": ""Homme"",
-    ""concentration"": ""Eau de Parfum"",
+    ""concentration"": ""Eau de Toilette"",
     ""fragrance_family"": [
-      ""Fougère"",
-      ""Amber""
+      ""Frais""
     ],
-    ""olfactory_family"": """",
+    ""olfactory_family"": null,
     ""year"": null,
     ""perfumer"": null,
-    ""volume"": ""50ml"",
+    ""volume"": null,
     ""style"": [
-      ""Séduisant"",
-      ""Élégant""
+      ""Doux"",
+      ""Décontracté""
     ],
     ""season"": [
+      ""Printemps"",
       ""Été""
     ],
-    ""occasion"": [],
-    ""intensity"": null,
-    ""longevity"": null,
-    ""sillage"": null,
-    ""best_for"": null
+    ""occasion"": [
+      ""Quotidien"",
+      ""Occasion décontractée""
+    ],
+    ""intensity"": 3,
+    ""longevity"": 4,
+    ""sillage"": 3,
+    ""best_for"": [
+      ""Quotidien"",
+      ""Occasion décontractée""
+    ]
   },
   ""notes"": {
     ""top"": {
       ""title"": ""Notes de tête"",
-      ""items"": [
-        {
-          ""name"": ""bergamot"",
-          ""image"": ""note-tete-bergamote.png""
-        },
-        {
-          ""name"": ""black pepper"",
-          ""image"": ""note-tete-poivre-noir.png""
-        }
-      ]
+      ""items"": []
     },
     ""heart"": {
       ""title"": ""Notes de cœur"",
-      ""items"": [
-        {
-          ""name"": ""lavender"",
-          ""image"": null
-        },
-        {
-          ""name"": ""orange blossom"",
-          ""image"": ""note-coeur-fleur-oranger.png""
-        }
-      ]
+      ""items"": []
     },
     ""base"": {
       ""title"": ""Notes de fond"",
-      ""items"": [
-        {
-          ""name"": ""benzoin"",
-          ""image"": null
-        },
-        {
-          ""name"": ""patchouli"",
-          ""image"": ""note-fond-patchouli.png""
-        }
-      ]
+      ""items"": []
     }
   },
   ""performance"": {
-    ""intensity"": null,
-    ""longevity"": null,
-    ""sillage"": null,
-    ""labels"": []
+    ""intensity"": 3,
+    ""longevity"": 4,
+    ""sillage"": 3,
+    ""labels"": [
+      ""Intensité moyenne"",
+      ""Longévité forte"",
+      ""Sillage moyenne""
+    ]
   },
-  ""offers"": [
-    {
-      ""id"": 941,
-      ""marketplace"": ""LookFantastic"",
-      ""marketplace_product_id"": ""17622429"",
-      ""sku"": ""17622429"",
-      ""variant_name"": ""50ml"",
-      ""price"": 85.10,
-      ""currency"": ""EUR"",
-      ""original_price"": null,
-      ""is_available"": true,
-      ""rating"": 5.00,
-      ""reviews"": 1,
-      ""product_url"": ""https://www.lookfantastic.fr/p/jimmy-choo-man-parfum-eau-de-parfum-50ml/17622429/"",
-      ""image"": null
-    }
-  ],
+  ""offers"": [],
   ""price_comparison"": {
     ""currency"": ""EUR"",
-    ""lowest_price"": 85.10,
-    ""lowest_price_marketplace"": ""LookFantastic"",
-    ""reference_price"": 85.10,
-    ""saving_vs_reference"": 0.0,
-    ""saving_percent"": 0.0,
-    ""offers_count"": 1,
-    ""offers"": [
-      {
-        ""marketplace"": ""LookFantastic"",
-        ""price"": 85.10,
-        ""currency"": ""EUR"",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jimmy-choo-man-parfum-eau-de-parfum-50ml/17622429/"",
-        ""is_available"": true
-      }
-    ]
+    ""lowest_price"": null,
+    ""lowest_price_marketplace"": null,
+    ""reference_price"": null,
+    ""saving_vs_reference"": null,
+    ""saving_percent"": null,
+    ""offers_count"": 0,
+    ""offers"": []
   },
   ""alternatives"": {
     ""title"": ""Des alternatives similaires"",
     ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
-    ""reference_price"": 85.10,
+    ""reference_price"": 0.0,
     ""reference_currency"": ""EUR"",
-    ""products"": [
-      {
-        ""product_id"": 740,
-        ""brand"": ""Marques"",
-        ""name"": ""Jimmy Choo Man Parfum Eau de Parfum 100ml"",
-        ""short_name"": ""Jimmy Choo Man Parfum Eau de Parfum 100ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17622425-1175319670124577.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 113.85,
-        ""currency"": ""EUR"",
-        ""original_price"": 113.85,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 87.0,
-        ""fragrance_family"": [
-          ""Fougere"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""black pepper"",
-          ""lavender"",
-          ""orange blossom"",
-          ""benzoin"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, black pepper, lavender, même profil de genre, style similaire."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jimmy-choo-man-parfum-eau-de-parfum-100ml/17622425/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 940,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""17622425"",
-            ""sku"": ""17622429"",
-            ""variant_name"": ""100ml"",
-            ""price"": 113.85,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": 4.71,
-            ""reviews"": 7,
-            ""product_url"": ""https://www.lookfantastic.fr/p/jimmy-choo-man-parfum-eau-de-parfum-100ml/17622425/"",
-            ""image"": null
-          }
-        ]
-      },
-      {
-        ""product_id"": 558,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 150ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 150ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271400-1564969536993885.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 143.75,
-        ""currency"": ""EUR"",
-        ""original_price"": 143.75,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-150ml/12271400/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 754,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""12271400"",
-            ""sku"": ""12271400"",
-            ""variant_name"": ""150ml"",
-            ""price"": 143.75,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": 4.33,
-            ""reviews"": 3,
-            ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-150ml/12271400/"",
-            ""image"": null
-          }
-        ]
-      },
-      {
-        ""product_id"": 559,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 100ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 100ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271399-1984969537440147.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 113.85,
-        ""currency"": ""EUR"",
-        ""original_price"": 113.85,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-100ml/12271399/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 755,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""12271399"",
-            ""sku"": ""12271400"",
-            ""variant_name"": ""100ml"",
-            ""price"": 113.85,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": null,
-            ""reviews"": 0,
-            ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-100ml/12271399/"",
-            ""image"": null
-          }
-        ]
-      },
-      {
-        ""product_id"": 557,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 50ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 50ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271398-1264969536879072.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 88.55,
-        ""currency"": ""EUR"",
-        ""original_price"": 88.55,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-50ml/12271398/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 753,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""12271398"",
-            ""sku"": ""12271400"",
-            ""variant_name"": ""50ml"",
-            ""price"": 88.55,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": null,
-            ""reviews"": 0,
-            ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-50ml/12271398/"",
-            ""image"": null
-          }
-        ]
-      },
-      {
-        ""product_id"": 533,
-        ""brand"": ""Marques"",
-        ""name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 125ml"",
-        ""short_name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 125ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/14561045-5445049374958600.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 138.00,
-        ""currency"": ""EUR"",
-        ""original_price"": 138.00,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 33.33,
-        ""fragrance_family"": [
-          ""Boisé"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""benzoin""
-        ],
-        ""reason"": ""notes communes : benzoin, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-125ml/14561045/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 729,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""14561045"",
-            ""sku"": ""14561045"",
-            ""variant_name"": ""125ml"",
-            ""price"": 138.00,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": 5.00,
-            ""reviews"": 1,
-            ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-125ml/14561045/"",
-            ""image"": null
-          }
-        ]
-      },
-      {
-        ""product_id"": 498,
-        ""brand"": ""Marques"",
-        ""name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 75ml"",
-        ""short_name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 75ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/14561043-1465049374681523.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 102.35,
-        ""currency"": ""EUR"",
-        ""original_price"": 102.35,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 33.33,
-        ""fragrance_family"": [
-          ""Boisé"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""benzoin""
-        ],
-        ""reason"": ""notes communes : benzoin, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-75ml/14561043/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 694,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""14561043"",
-            ""sku"": ""14561045"",
-            ""variant_name"": ""75ml"",
-            ""price"": 102.35,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": null,
-            ""reviews"": 0,
-            ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-75ml/14561043/"",
-            ""image"": null
-          }
-        ]
-      }
-    ]
+    ""products"": []
   },
   ""recommendations"": {
     ""title"": ""Vous pourriez aussi aimer"",
     ""description"": ""Des parfums sélectionnés selon le profil olfactif et les caractéristiques de ce parfum."",
-    ""products"": [
-      {
-        ""product_id"": 740,
-        ""brand"": ""Marques"",
-        ""name"": ""Jimmy Choo Man Parfum Eau de Parfum 100ml"",
-        ""short_name"": ""Jimmy Choo Man Parfum Eau de Parfum 100ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17622425-1175319670124577.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 113.85,
-        ""currency"": ""EUR"",
-        ""original_price"": 113.85,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 87.0,
-        ""fragrance_family"": [
-          ""Fougere"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""black pepper"",
-          ""lavender"",
-          ""orange blossom"",
-          ""benzoin"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, black pepper, lavender, même profil de genre, style similaire."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jimmy-choo-man-parfum-eau-de-parfum-100ml/17622425/"",
-        ""marketplace"": ""LookFantastic""
-      },
-      {
-        ""product_id"": 558,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 150ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 150ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271400-1564969536993885.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 143.75,
-        ""currency"": ""EUR"",
-        ""original_price"": 143.75,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-150ml/12271400/"",
-        ""marketplace"": ""LookFantastic""
-      },
-      {
-        ""product_id"": 559,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 100ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 100ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271399-1984969537440147.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 113.85,
-        ""currency"": ""EUR"",
-        ""original_price"": 113.85,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-100ml/12271399/"",
-        ""marketplace"": ""LookFantastic""
-      },
-      {
-        ""product_id"": 557,
-        ""brand"": ""Marques"",
-        ""name"": ""Prada Luna Rossa Carbon Eau de Toilette - 50ml"",
-        ""short_name"": ""Prada Luna Rossa Carbon Eau de Toilette - 50ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/12271398-1264969536879072.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 88.55,
-        ""currency"": ""EUR"",
-        ""original_price"": 88.55,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 34.67,
-        ""fragrance_family"": [
-          ""Fougère""
-        ],
-        ""matched_notes"": [
-          ""bergamot"",
-          ""lavender"",
-          ""patchouli""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : bergamot, lavender, patchouli, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/prada-luna-rossa-carbon-eau-de-toilette-50ml/12271398/"",
-        ""marketplace"": ""LookFantastic""
-      },
-      {
-        ""product_id"": 533,
-        ""brand"": ""Marques"",
-        ""name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 125ml"",
-        ""short_name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 125ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/14561045-5445049374958600.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 138.00,
-        ""currency"": ""EUR"",
-        ""original_price"": 138.00,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 33.33,
-        ""fragrance_family"": [
-          ""Boisé"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""benzoin""
-        ],
-        ""reason"": ""notes communes : benzoin, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-125ml/14561045/"",
-        ""marketplace"": ""LookFantastic""
-      },
-      {
-        ""product_id"": 498,
-        ""brand"": ""Marques"",
-        ""name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 75ml"",
-        ""short_name"": ""Jean Paul Gaultier Le Male Elixir Eau de Parfum 75ml"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/14561043-1465049374681523.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 102.35,
-        ""currency"": ""EUR"",
-        ""original_price"": 102.35,
-        ""saving_amount"": 0.0,
-        ""saving_percent"": 0.0,
-        ""similarity_score"": 33.33,
-        ""fragrance_family"": [
-          ""Boisé"",
-          ""Amber""
-        ],
-        ""matched_notes"": [
-          ""benzoin""
-        ],
-        ""reason"": ""notes communes : benzoin, même profil de genre."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/jean-paul-gaultier-le-male-elixir-eau-de-parfum-75ml/14561043/"",
-        ""marketplace"": ""LookFantastic""
-      }
-    ]
+    ""products"": []
   },
   ""guide"": {
     ""available"": true,
-    ""id"": ""guide-741"",
-    ""slug"": ""jimmychoomanparfumeaudeparfum50ml"",
-    ""title"": ""Guide complet Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-    ""subtitle"": ""Tout savoir sur Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/17622429-5605319670250928.jpg&format=webp&width=1500&height=1500&fit=cover"",
-    ""url"": ""/guide/jimmychoomanparfumeaudeparfum50ml"",
+    ""id"": ""guide-1361"",
+    ""slug"": ""versace-blue-jeans"",
+    ""title"": ""Guide complet Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
+    ""subtitle"": ""Tout savoir sur Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
+    ""image"": ""https://m.media-amazon.com/images/I/61DpO7UAz3L._AC_UL320_.jpg"",
+    ""url"": ""/guide/versace-blue-jeans"",
     ""reading_time"": 5,
     ""sections"": []
   },
   ""seo"": {
-    ""title"": ""Marques Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-    ""description"": ""Découvrez Jimmy Choo Man Parfum Eau de Parfum 50ml de Marques : notes olfactives, performance, prix et alternatives similaires."",
-    ""canonical"": ""/parfum/jimmychoomanparfumeaudeparfum50ml"",
+    ""title"": "" Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
+    ""description"": ""Découvrez Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590 de  : notes olfactives, performance, prix et alternatives similaires."",
+    ""canonical"": ""/parfum/versace-blue-jeans"",
     ""keywords"": [
-      ""Jimmy Choo Man Parfum Eau de Parfum 50ml"",
-      ""Marques"",
+      ""Versace Blue Jeans - Versace-Parfum Homme - Eau De Toilette 75Ml MREE-590"",
+      """",
       ""parfum"",
       ""fragrance"",
       ""notes olfactives"",
@@ -641,8 +204,7 @@ namespace wsaffiliation.Controllers
       ""comparateur parfum""
     ]
   }
-}
-";
+}";
 
                 //                var jsonStr = @"
                 //{

@@ -80,7 +80,6 @@ namespace wsaffiliation.Controllers
     ""product_id"": 741,
     ""language"": ""fr""
   },
-
   ""product"": {
     ""id"": 741,
     ""brand"": ""Marques"",
@@ -103,7 +102,6 @@ namespace wsaffiliation.Controllers
     ""currency"": ""EUR"",
     ""slug"": ""jimmychoomanparfumeaudeparfum50ml""
   },
-
   ""details"": {
     ""gender"": ""Homme"",
     ""concentration"": ""Eau de Parfum"",
@@ -128,29 +126,53 @@ namespace wsaffiliation.Controllers
     ""sillage"": null,
     ""best_for"": null
   },
-
   ""notes"": {
-    ""top"": [
-      ""bergamot"",
-      ""black pepper""
-    ],
-    ""heart"": [
-      ""lavender"",
-      ""orange blossom""
-    ],
-    ""base"": [
-      ""benzoin"",
-      ""patchouli""
-    ]
+    ""top"": {
+      ""title"": ""Notes de tête"",
+      ""items"": [
+        {
+          ""name"": ""bergamot"",
+          ""image"": ""note-tete-bergamote.png""
+        },
+        {
+          ""name"": ""black pepper"",
+          ""image"": ""note-tete-poivre-noir.png""
+        }
+      ]
+    },
+    ""heart"": {
+      ""title"": ""Notes de cœur"",
+      ""items"": [
+        {
+          ""name"": ""lavender"",
+          ""image"": null
+        },
+        {
+          ""name"": ""orange blossom"",
+          ""image"": ""note-coeur-fleur-oranger.png""
+        }
+      ]
+    },
+    ""base"": {
+      ""title"": ""Notes de fond"",
+      ""items"": [
+        {
+          ""name"": ""benzoin"",
+          ""image"": null
+        },
+        {
+          ""name"": ""patchouli"",
+          ""image"": ""note-fond-patchouli.png""
+        }
+      ]
+    }
   },
-
   ""performance"": {
     ""intensity"": null,
     ""longevity"": null,
     ""sillage"": null,
     ""labels"": []
   },
-
   ""offers"": [
     {
       ""id"": 941,
@@ -168,7 +190,6 @@ namespace wsaffiliation.Controllers
       ""image"": null
     }
   ],
-
   ""price_comparison"": {
     ""currency"": ""EUR"",
     ""lowest_price"": 85.10,
@@ -187,7 +208,6 @@ namespace wsaffiliation.Controllers
       }
     ]
   },
-
   ""alternatives"": {
     ""title"": ""Des alternatives similaires"",
     ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
@@ -239,7 +259,6 @@ namespace wsaffiliation.Controllers
           }
         ]
       },
-
       {
         ""product_id"": 558,
         ""brand"": ""Marques"",
@@ -281,7 +300,6 @@ namespace wsaffiliation.Controllers
           }
         ]
       },
-
       {
         ""product_id"": 559,
         ""brand"": ""Marques"",
@@ -323,7 +341,6 @@ namespace wsaffiliation.Controllers
           }
         ]
       },
-
       {
         ""product_id"": 557,
         ""brand"": ""Marques"",
@@ -365,7 +382,6 @@ namespace wsaffiliation.Controllers
           }
         ]
       },
-
       {
         ""product_id"": 533,
         ""brand"": ""Marques"",
@@ -406,7 +422,6 @@ namespace wsaffiliation.Controllers
           }
         ]
       },
-
       {
         ""product_id"": 498,
         ""brand"": ""Marques"",
@@ -449,7 +464,6 @@ namespace wsaffiliation.Controllers
       }
     ]
   },
-
   ""recommendations"": {
     ""title"": ""Vous pourriez aussi aimer"",
     ""description"": ""Des parfums sélectionnés selon le profil olfactif et les caractéristiques de ce parfum."",
@@ -602,7 +616,6 @@ namespace wsaffiliation.Controllers
       }
     ]
   },
-
   ""guide"": {
     ""available"": true,
     ""id"": ""guide-741"",
@@ -614,7 +627,6 @@ namespace wsaffiliation.Controllers
     ""reading_time"": 5,
     ""sections"": []
   },
-
   ""seo"": {
     ""title"": ""Marques Jimmy Choo Man Parfum Eau de Parfum 50ml"",
     ""description"": ""Découvrez Jimmy Choo Man Parfum Eau de Parfum 50ml de Marques : notes olfactives, performance, prix et alternatives similaires."",
@@ -629,7 +641,8 @@ namespace wsaffiliation.Controllers
       ""comparateur parfum""
     ]
   }
-}";
+}
+";
 
                 //                var jsonStr = @"
                 //{

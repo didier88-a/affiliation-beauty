@@ -46,7 +46,8 @@ namespace wsaffiliation.Controllers
 
         [HttpGet]
         [Route("~/api/shopify/proxy/{*path}")]
-        public IActionResult ShopifyProxy(string? path)
+        //public IActionResult ShopifyProxy(string? path)
+        public async Task<IActionResult> ShopifyProxy(string? path)
         {
             try
             {
@@ -68,6 +69,8 @@ namespace wsaffiliation.Controllers
                 // JSON TEST
                 // =====================================================
 
+                var h = new NayaProductJsonService();
+                var jsonn = await h.GetProductJson(path);
                 // =========================================================
                 // RÉCUPÉRATION DU JSON DU PRODUIT
                 // =========================================================

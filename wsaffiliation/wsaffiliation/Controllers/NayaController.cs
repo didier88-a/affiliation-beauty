@@ -70,12 +70,12 @@ namespace wsaffiliation.Controllers
                 // =====================================================
 
                 var h = new NayaProductJsonService();
-                var jsonn = await h.GetProductJson(path);
+                var jsonStr = await h.GetProductJson(path);
                 // =========================================================
                 // RÉCUPÉRATION DU JSON DU PRODUIT
                 // =========================================================
 
-                var jsonStr = @"
+                var jsonStr1 = @"
 {
   ""page"": {
     ""type"": ""perfume"",

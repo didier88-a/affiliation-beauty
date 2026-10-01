@@ -1170,6 +1170,29 @@ namespace wsaffiliation
             return result;
         }
 
+        private decimal GetProductRating(
+    AllProduct product)
+        {
+            return product.ProductOffers
+                .Where(x =>
+                    x.Rating.HasValue &&
+                    x.Rating.Value > 0)
+                .Select(x => x.Rating!.Value)
+                .OrderByDescending(x => x)
+                .FirstOrDefault();
+        }
+
+
+        private int GetProductReviews(
+            AllProduct product)
+        {
+            return product.ProductOffers
+                .Where(x =>
+                    x.Reviews > 0)
+                .Select(x => x.Reviews)
+                .OrderByDescending(x => x)
+                .FirstOrDefault();
+        }
 
         // ============================================================
         // SIMILAR PRODUCTS
@@ -1779,7 +1802,13 @@ namespace wsaffiliation
                     GetBestMarketplace(offers),
 
                 ["offers"] =
-                    BuildOffersSection(offers)
+                    BuildOffersSection(offers),
+
+                ["rating"] =
+                    GetProductRating(product),
+
+                ["reviews"] =
+                     GetProductReviews(product),
             };
         }
 
@@ -1923,7 +1952,13 @@ namespace wsaffiliation
                             GetBestOfferUrl(offers),
 
                         ["marketplace"] =
-                            GetBestMarketplace(offers)
+                            GetBestMarketplace(offers),
+
+                        ["rating"] =
+                              GetProductRating(product),
+
+                        ["reviews"] =
+                              GetProductReviews(product),
                     });
             }
 

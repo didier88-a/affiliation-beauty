@@ -1021,16 +1021,36 @@ namespace wsaffiliation
         // ============================================================
 
         private JObject BuildPriceComparison(
-            List<AllProductOffer> offers)
+    List<AllProductOffer> offers)
         {
+            // --------------------------------------------------------
+            // OFFRES DU PRODUIT HERO UNIQUEMENT
+            // 1 seule offre par marketplace
+            // On garde le prix le plus bas de chaque marketplace.
+            // --------------------------------------------------------
+
             List<AllProductOffer> validOffers =
                 offers
                     .Where(x =>
                         x.IsAvailable &&
                         x.Price.HasValue &&
-                        x.Price.Value > 0)
-                    .OrderBy(x => x.Price)
+                        x.Price.Value > 0 &&
+                        !string.IsNullOrWhiteSpace(x.Marketplace))
+                    .GroupBy(x =>
+                        x.Marketplace!
+                            .Trim()
+                            .ToLowerInvariant())
+                    .Select(g =>
+                        g.OrderBy(x =>
+                            x.Price!.Value)
+                         .First())
+                    .OrderBy(x =>
+                        x.Price!.Value)
                     .ToList();
+
+            // --------------------------------------------------------
+            // Aucune offre
+            // --------------------------------------------------------
 
             if (!validOffers.Any())
             {
@@ -1047,15 +1067,27 @@ namespace wsaffiliation
                 };
             }
 
+            // --------------------------------------------------------
+            // Prix le moins cher
+            // --------------------------------------------------------
+
             AllProductOffer cheapest =
                 validOffers.First();
 
             decimal lowest =
                 cheapest.Price!.Value;
 
+            // --------------------------------------------------------
+            // Prix de référence
+            // --------------------------------------------------------
+
             decimal reference =
                 GetReferencePrice(validOffers)
                 ?? lowest;
+
+            // --------------------------------------------------------
+            // Économie
+            // --------------------------------------------------------
 
             decimal saving =
                 Math.Max(
@@ -1065,9 +1097,15 @@ namespace wsaffiliation
             decimal savingPercent =
                 reference > 0
                     ? Math.Round(
-                        saving / reference * 100,
+                        saving /
+                        reference *
+                        100,
                         2)
                     : 0;
+
+            // --------------------------------------------------------
+            // JSON
+            // --------------------------------------------------------
 
             return new JObject
             {
@@ -1099,7 +1137,7 @@ namespace wsaffiliation
 
 
         private JArray BuildPriceOfferList(
-            List<AllProductOffer> offers)
+    List<AllProductOffer> offers)
         {
             var result =
                 new JArray();
@@ -1117,6 +1155,9 @@ namespace wsaffiliation
 
                         ["currency"] =
                             offer.Currency,
+
+                        ["variant_name"] =
+                            offer.VariantName,
 
                         ["product_url"] =
                             offer.ProductUrl,

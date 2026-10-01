@@ -456,7 +456,7 @@ namespace wsaffiliation
                 ["id"] = product.Id,
 
                 ["brand"] =
-                    product.Brand,
+                             GetDisplayBrand(product),
 
                 ["name"] =
                     product.Name,
@@ -1690,7 +1690,7 @@ namespace wsaffiliation
                     product.Id,
 
                 ["brand"] =
-                    product.Brand,
+                        GetDisplayBrand(product),
 
                 ["name"] =
                     product.Name,
@@ -1836,7 +1836,7 @@ namespace wsaffiliation
                             product.Id,
 
                         ["brand"] =
-                            product.Brand,
+                           GetDisplayBrand(product),
 
                         ["name"] =
                             product.Name,
@@ -2748,6 +2748,53 @@ namespace wsaffiliation
 
             [JsonProperty("updated_at")]
             public DateTime UpdatedAt { get; set; }
+        }
+
+        private string GetDisplayBrand(AllProduct product)
+        {
+            if (!string.IsNullOrWhiteSpace(product.Brand) &&
+                !product.Brand.Equals(
+                    "Marques",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return product.Brand;
+            }
+
+            string name = product.Name ?? "";
+
+            string[] brands =
+            {
+        "Givenchy",
+        "Valentino",
+        "Chanel",
+        "Dior",
+        "Yves Saint Laurent",
+        "Giorgio Armani",
+        "Jean Paul Gaultier",
+        "Tom Ford",
+        "Narciso Rodriguez",
+        "Azzaro",
+        "Dolce&Gabbana",
+        "Lancôme",
+        "Prada",
+        "Burberry",
+        "Hugo Boss",
+        "Carolina Herrera",
+        "Rabanne",
+        "Paco Rabanne",
+        "Mugler",
+        "Versace",
+        "Gucci",
+        "Hermès",
+        "Issey Miyake",
+        "Maison Francis Kurkdjian"
+    };
+
+            return brands.FirstOrDefault(brand =>
+                name.StartsWith(
+                    brand,
+                    StringComparison.OrdinalIgnoreCase))
+                ?? "";
         }
 
         private string GetSillageLabel(int value)

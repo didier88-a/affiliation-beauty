@@ -1075,8 +1075,9 @@ namespace wsaffiliation.Controllers
                                         jsonStr +
                                         @";
 
-                     window.NAYA_SEO =
-                                            {seoJson};
+                     window.NAYA_SEO =  " +
+                                        seoJson +
+                                        @";
                     </script>
 
                     {% section 'naya-perfume-hero' %}

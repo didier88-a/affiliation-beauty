@@ -2884,9 +2884,9 @@ namespace wsaffiliation.Controllers
 
 
         private static GuideSeoPayload BuildGuideSeo(
-    string jsonStr,
-    string cleanSlug,
-    string storefrontOrigin)
+     string jsonStr,
+     string cleanSlug,
+     string storefrontOrigin)
         {
             using var doc =
                 JsonDocument.Parse(jsonStr);
@@ -3020,8 +3020,8 @@ namespace wsaffiliation.Controllers
             // =========================================================
 
             var canonicalPath =
-                     "/apps/naya-guide/" +
-                     cleanSlug;
+                "/apps/naya-guide/" +
+                cleanSlug;
 
 
             // =========================================================
@@ -3192,6 +3192,15 @@ namespace wsaffiliation.Controllers
 
 
             // =========================================================
+            // PAGE URL
+            // =========================================================
+
+            var pageUrl =
+                storefrontOrigin.TrimEnd('/') +
+                canonicalPath;
+
+
+            // =========================================================
             // PRODUCT URL
             // =========================================================
 
@@ -3314,6 +3323,10 @@ namespace wsaffiliation.Controllers
                 {
                     ["@type"] =
                         "Product",
+
+                    ["@id"] =
+                        pageUrl +
+                        "#product",
 
                     ["name"] =
                         productName
@@ -3479,7 +3492,6 @@ namespace wsaffiliation.Controllers
                 )
                 {
                     alternativePosition++;
-
 
                     var name = "";
 
@@ -3671,13 +3683,72 @@ namespace wsaffiliation.Controllers
 
 
             // =========================================================
-            // WEB PAGE
+            // BREADCRUMB
             // =========================================================
 
-            var pageUrl =
-                storefrontOrigin +
-                canonicalPath;
+            var breadcrumbEntity =
+                new Dictionary<string, object?>
+                {
+                    ["@type"] =
+                        "BreadcrumbList",
 
+                    ["@id"] =
+                        pageUrl +
+                        "#breadcrumb",
+
+                    ["itemListElement"] =
+                        new List<object>
+                        {
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] =
+                            "ListItem",
+
+                        ["position"] =
+                            1,
+
+                        ["name"] =
+                            "Accueil",
+
+                        ["item"] =
+                            storefrontOrigin.TrimEnd('/') +
+                            "/"
+                    },
+
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] =
+                            "ListItem",
+
+                        ["position"] =
+                            2,
+
+                        ["name"] =
+                            "Parfums",
+
+                        ["item"] =
+                            storefrontOrigin.TrimEnd('/') +
+                            "/parfums"
+                    },
+
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] =
+                            "ListItem",
+
+                        ["position"] =
+                            3,
+
+                        ["name"] =
+                            productName
+                    }
+                        }
+                };
+
+
+            // =========================================================
+            // WEB PAGE
+            // =========================================================
 
             var webPageEntity =
                 new Dictionary<string, object?>
@@ -3704,17 +3775,16 @@ namespace wsaffiliation.Controllers
                             ["@id"] =
                                 pageUrl +
                                 "#product"
+                        },
+
+                    ["breadcrumb"] =
+                        new Dictionary<string, object?>
+                        {
+                            ["@id"] =
+                                pageUrl +
+                                "#breadcrumb"
                         }
                 };
-
-
-            // =========================================================
-            // PRODUCT ID
-            // =========================================================
-
-            productEntity["@id"] =
-                pageUrl +
-                "#product";
 
 
             // =========================================================
@@ -3726,7 +3796,9 @@ namespace wsaffiliation.Controllers
                 {
             webPageEntity,
 
-            productEntity
+            productEntity,
+
+            breadcrumbEntity
                 };
 
 
@@ -3797,23 +3869,35 @@ namespace wsaffiliation.Controllers
 
             var metaTitle = "";
 
-            if (!string.IsNullOrWhiteSpace(productName))
+            if (
+                !string.IsNullOrWhiteSpace(
+                    productName
+                )
+            )
             {
                 var brandPart =
-                    string.IsNullOrWhiteSpace(productBrand)
-                        ? ""
-                        : productBrand + " ";
+                    string.IsNullOrWhiteSpace(
+                        productBrand
+                    )
+                    ? ""
+                    : productBrand + " ";
 
                 metaTitle =
                     $"{brandPart}{productName} | Notes & Prix | Naya";
             }
-            else if (!string.IsNullOrWhiteSpace(seoTitle))
+            else if (
+                !string.IsNullOrWhiteSpace(
+                    seoTitle
+                )
+            )
             {
-                metaTitle = seoTitle;
+                metaTitle =
+                    seoTitle;
             }
             else
             {
-                metaTitle = "Guide parfum | Naya";
+                metaTitle =
+                    "Guide parfum | Naya";
             }
 
 
@@ -3823,19 +3907,30 @@ namespace wsaffiliation.Controllers
 
             var metaDescription = "";
 
-            if (!string.IsNullOrWhiteSpace(productName))
+            if (
+                !string.IsNullOrWhiteSpace(
+                    productName
+                )
+            )
             {
                 var brandPart =
-                    string.IsNullOrWhiteSpace(productBrand)
-                        ? ""
-                        : $" de {productBrand}";
+                    string.IsNullOrWhiteSpace(
+                        productBrand
+                    )
+                    ? ""
+                    : $" de {productBrand}";
 
                 metaDescription =
                     $"Découvrez {productName}{brandPart} : notes olfactives, tenue, prix et alternatives similaires.";
             }
-            else if (!string.IsNullOrWhiteSpace(seoDescription))
+            else if (
+                !string.IsNullOrWhiteSpace(
+                    seoDescription
+                )
+            )
             {
-                metaDescription = seoDescription;
+                metaDescription =
+                    seoDescription;
             }
             else
             {

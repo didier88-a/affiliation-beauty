@@ -3020,32 +3020,8 @@ namespace wsaffiliation.Controllers
             // =========================================================
 
             var canonicalPath =
-                "/parfum/" +
-                cleanSlug;
-
-            if (
-                seo.ValueKind ==
-                    JsonValueKind.Object
-                &&
-                seo.TryGetProperty(
-                    "canonical",
-                    out var canonicalElement
-                )
-            )
-            {
-                var canonical =
-                    canonicalElement.GetString();
-
-                if (
-                    !string.IsNullOrWhiteSpace(
-                        canonical
-                    )
-                )
-                {
-                    canonicalPath =
-                        canonical;
-                }
-            }
+                     "/apps/naya-guide/" +
+                     cleanSlug;
 
 
             // =========================================================

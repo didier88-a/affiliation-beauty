@@ -1036,6 +1036,23 @@ namespace wsaffiliation.Controllers
 
 
                 // =========================================================
+                //            // SHOPIFY STORE
+                //            // =========================================================
+
+                var forwardedHost =
+                    Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+
+                if (string.IsNullOrWhiteSpace(forwardedHost))
+                {
+                    forwardedHost =
+                        Request.Host.Host;
+                }
+
+                var storefrontOrigin =
+                    "https://" + forwardedHost;
+
+
+                // =========================================================
                 // SEO
                 // =========================================================
 

@@ -3795,30 +3795,53 @@ namespace wsaffiliation.Controllers
             // META TITLE
             // =========================================================
 
-            var metaTitle =
-                string.IsNullOrWhiteSpace(
-                    seoTitle
-                )
-                ? (
-                    string.IsNullOrWhiteSpace(
-                        productName
-                    )
-                    ? "Guide parfum | Naya"
-                    : $"{productName} | Naya"
-                )
-                : seoTitle;
+            var metaTitle = "";
+
+            if (!string.IsNullOrWhiteSpace(productName))
+            {
+                var brandPart =
+                    string.IsNullOrWhiteSpace(productBrand)
+                        ? ""
+                        : productBrand + " ";
+
+                metaTitle =
+                    $"{brandPart}{productName} | Notes & Prix | Naya";
+            }
+            else if (!string.IsNullOrWhiteSpace(seoTitle))
+            {
+                metaTitle = seoTitle;
+            }
+            else
+            {
+                metaTitle = "Guide parfum | Naya";
+            }
 
 
             // =========================================================
             // META DESCRIPTION
             // =========================================================
 
-            var metaDescription =
-                string.IsNullOrWhiteSpace(
-                    seoDescription
-                )
-                ? productDescription
-                : seoDescription;
+            var metaDescription = "";
+
+            if (!string.IsNullOrWhiteSpace(productName))
+            {
+                var brandPart =
+                    string.IsNullOrWhiteSpace(productBrand)
+                        ? ""
+                        : $" de {productBrand}";
+
+                metaDescription =
+                    $"Découvrez {productName}{brandPart} : notes olfactives, tenue, prix et alternatives similaires.";
+            }
+            else if (!string.IsNullOrWhiteSpace(seoDescription))
+            {
+                metaDescription = seoDescription;
+            }
+            else
+            {
+                metaDescription =
+                    "Découvrez ce parfum : notes olfactives, performance, prix et alternatives similaires.";
+            }
 
 
             // =========================================================

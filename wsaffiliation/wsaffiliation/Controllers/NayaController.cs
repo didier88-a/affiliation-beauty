@@ -16,6 +16,8 @@ namespace wsaffiliation.Controllers
     {
         private readonly IConfiguration _configuration;
 
+        private readonly NayaSearchService _searchService;
+
         private class GuideSeoPayload
         {
             public string Title { get; set; } = "";
@@ -37,11 +39,26 @@ namespace wsaffiliation.Controllers
             public string Currency { get; set; } = "";
         }
 
-
-
-        public NayaController(IConfiguration configuration)
+        public NayaController(
+            IConfiguration configuration,
+            NayaSearchService searchService)
         {
             _configuration = configuration;
+            _searchService = searchService;
+        }
+
+        [HttpGet]
+        [Route("api/search/suggestions")]
+        public IActionResult SearchSuggestions(
+                [FromQuery] string? q)
+        {
+            var products =
+                _searchService.Search(q, 8);
+
+            return Ok(new
+            {
+                products
+            });
         }
 
         [HttpGet]

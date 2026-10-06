@@ -81,6 +81,36 @@ namespace wsaffiliation.Controllers
                 }
 
 
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return BadRequest("Slug manquant");
+                }
+
+
+                // =====================================================
+                // SIMILAR
+                // /apps/naya-guide/similar/{slug}
+                // =====================================================
+
+                var proxyPath = path.Trim('/');
+
+                if (proxyPath.StartsWith(
+                        "similar/",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    var similarSlug =
+                        proxyPath.Substring("similar/".Length);
+
+                    if (string.IsNullOrWhiteSpace(similarSlug))
+                    {
+                        return BadRequest("Slug similar manquant");
+                    }
+
+                    return SimilarProduct(similarSlug);
+                }
+
+
+
                 // =====================================================
                 // JSON TEST
                 // =====================================================

@@ -1531,6 +1531,8 @@ namespace wsaffiliation.Controllers
 
                     {% section 'page-similar-5-parfum' %}
 
+                    {% section 'page-similar-resume' %}
+
                     <script>
                     document.dispatchEvent(
                         new CustomEvent('naya:similar-loaded', {

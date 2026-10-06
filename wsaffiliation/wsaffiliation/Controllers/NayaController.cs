@@ -48,12 +48,11 @@ namespace wsaffiliation.Controllers
         }
 
         [HttpGet]
-        [Route("api/search/suggestions")]
+        [Route("~/api/search/suggestions")]
         public IActionResult SearchSuggestions(
-                [FromQuery] string? q)
+                 [FromQuery] string? q)
         {
-            var products =
-                _searchService.Search(q, 8);
+            var products = _searchService.Search(q, 8);
 
             return Ok(new
             {

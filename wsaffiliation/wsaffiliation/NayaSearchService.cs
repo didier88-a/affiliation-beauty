@@ -363,12 +363,9 @@ namespace wsaffiliation
             LoadFromSupabaseAsync(
                 CancellationToken cancellationToken)
         {
-            var supabaseUrl =
-                _configuration["SUPABASE_URL"];
-
-            var supabaseKey =
-                _configuration["SUPABASE_SERVICE_KEY"];
-
+            
+            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
 
             if (string.IsNullOrWhiteSpace(
                     supabaseUrl))

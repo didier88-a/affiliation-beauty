@@ -1339,55 +1339,146 @@ namespace wsaffiliation.Controllers
   },
 
   ""alternatives"": {
-    ""title"": ""Des alternatives similaires"",
-    ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
-    ""reference_price"": 184.0,
-    ""reference_currency"": ""EUR"",
-    ""products"": [
-      {
-        ""product_id"": 797,
-        ""brand"": ""Marques"",
-        ""name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
-        ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
-        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789064-8225228672859255.jpg&format=webp&width=1500&height=1500&fit=cover"",
-        ""price"": 97.75,
-        ""currency"": ""EUR"",
-        ""original_price"": 97.75,
-        ""saving_amount"": 86.25,
-        ""saving_percent"": 46.88,
-        ""similarity_score"": 100.0,
-        ""fragrance_family"": [
-          ""Floral"",
-          ""Oriental""
-        ],
-        ""matched_notes"": [
-          ""jasmin"",
-          ""benjoin"",
-          ""vanille""
-        ],
-        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
-        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
-        ""marketplace"": ""LookFantastic"",
-        ""offers"": [
-          {
-            ""id"": 997,
-            ""marketplace"": ""LookFantastic"",
-            ""marketplace_product_id"": ""15789064"",
-            ""sku"": ""15789079"",
-            ""variant_name"": ""30ml"",
-            ""price"": 97.75,
-            ""currency"": ""EUR"",
-            ""original_price"": null,
-            ""is_available"": true,
-            ""rating"": null,
-            ""reviews"": 0,
-            ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
-            ""image"": null
-          }
-        ]
-      }
-    ]
-  },
+  ""title"": ""Des alternatives similaires"",
+  ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
+  ""reference_price"": 184.0,
+  ""reference_currency"": ""EUR"",
+  ""products"": [
+    {
+      ""product_id"": 797,
+      ""brand"": ""Valentino"",
+      ""name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+      ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+      ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789064-8225228672859255.jpg&format=webp&width=1500&height=1500&fit=cover"",
+      ""price"": 97.75,
+      ""currency"": ""EUR"",
+      ""original_price"": 97.75,
+      ""saving_amount"": 86.25,
+      ""saving_percent"": 46.88,
+      ""similarity_score"": 100.0,
+      ""fragrance_family"": [
+        ""Floral"",
+        ""Oriental""
+      ],
+      ""matched_notes"": [
+        ""jasmin"",
+        ""benjoin"",
+        ""vanille""
+      ],
+      ""reason"": ""Même famille olfactive, notes communes : jasmin, benjoin, vanille."",
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+      ""marketplace"": ""LookFantastic"",
+      ""offers"": []
+    },
+
+    {
+      ""product_id"": 798,
+      ""brand"": ""Valentino"",
+      ""name"": ""Sì Nude Bloom - Eau de parfum chyprée florale fruitée"",
+      ""short_name"": ""Sì Nude Bloom - Eau de parfum chyprée florale fruitée"",
+      ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/A/ARMANI/803705/401712-media_swatch-0.jpg"",
+      ""price"": 117.30,
+      ""currency"": ""EUR"",
+      ""original_price"": 138.00,
+      ""saving_amount"": 20.70,
+      ""saving_percent"": 15.0,
+      ""similarity_score"": 96.0,
+      ""fragrance_family"": [
+        ""Floral"",
+        ""Oriental""
+      ],
+      ""matched_notes"": [
+        ""jasmin"",
+        ""benjoin"",
+        ""vanille""
+      ],
+      ""reason"": ""Même parfum dans un autre format, avec le même profil olfactif."",
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-50ml/15789079/"",
+      ""marketplace"": ""LookFantastic"",
+      ""offers"": []
+    },
+
+    {
+      ""product_id"": 799,
+      ""brand"": ""BURBERRY"",
+      ""name"": ""London pour Femme - Eau de Parfum"",
+      ""short_name"": ""London pour Femme - Eau de Parfum"",
+      ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/B/BURBERRY/139360/65978-media_swatch.jpeg"",
+      ""price"": 178.25,
+      ""currency"": ""EUR"",
+      ""original_price"": 178.25,
+      ""saving_amount"": 5.75,
+      ""saving_percent"": 3.23,
+      ""similarity_score"": 91.0,
+      ""fragrance_family"": [
+        ""Floral"",
+        ""Oriental""
+      ],
+      ""matched_notes"": [
+        ""vanille"",
+        ""jasmin"",
+        ""benjoin""
+      ],
+      ""reason"": ""Profil floral oriental très proche avec des notes de vanille, jasmin et benjoin."",
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-intense-eau-de-parfum-100ml/14234058/"",
+      ""marketplace"": ""LookFantastic"",
+      ""offers"": []
+    },
+
+    {
+      ""product_id"": 800,
+      ""brand"": ""GIVENCHY"",
+      ""name"": ""Gentleman - Eau de Parfum Boisée pour Homme"",
+      ""short_name"": ""Gentleman - Eau de Parfum Boisée pour Homme"",
+      ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/G/GIVENCHY/805382/404561-media_swatch-0.jpg"",
+      ""price"": 117.30,
+      ""currency"": ""EUR"",
+      ""original_price"": 117.30,
+      ""saving_amount"": 66.70,
+      ""saving_percent"": 36.08,
+      ""similarity_score"": 86.0,
+      ""fragrance_family"": [
+        ""Floral"",
+        ""Oriental""
+      ],
+      ""matched_notes"": [
+        ""floral"",
+        ""vanille""
+      ],
+      ""reason"": ""Même univers Born In Roma avec un profil féminin floral et chaleureux."",
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-the-gold-donna-eau-de-parfum-50ml/15372511/"",
+      ""marketplace"": ""LookFantastic"",
+      ""offers"": []
+    },
+
+    {
+      ""product_id"": 8011,
+      ""brand"": ""RABANNE FRAGRANCES"",
+      ""name"": ""Million Red For Her  - Parfum"",
+      ""short_name"": ""Million Red For Her  - Parfum"",
+      ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/R/RABANNE_FRAGRANCES/824561/408156-media_swatch-0.jpeg"",
+      ""price"": 96.60,
+      ""currency"": ""EUR"",
+      ""original_price"": 120.75,
+      ""saving_amount"": 24.15,
+      ""saving_percent"": 20.0,
+      ""similarity_score"": 83.0,
+      ""fragrance_family"": [
+        ""Floral"",
+        ""Oriental""
+      ],
+      ""matched_notes"": [
+        ""vanille"",
+        ""osmanthus"",
+        ""prune""
+      ],
+      ""reason"": ""Profil féminin floral et chaleureux appartenant à la collection Born In Roma."",
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-purple-eau-de-parfum-50ml/17585924/"",
+      ""marketplace"": ""LookFantastic"",
+      ""offers"": []
+    }
+  ]
+},
 
   ""recommendations"": {
     ""title"": ""Vous pourriez aussi aimer"",

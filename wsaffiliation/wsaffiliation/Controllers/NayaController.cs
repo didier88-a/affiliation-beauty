@@ -1148,6 +1148,288 @@ namespace wsaffiliation.Controllers
         }
 
 
+
+        [HttpGet]
+        [Route("~/api/shopify/similar-product/{slug}")]
+        public IActionResult SimilarProduct(string slug)
+        {
+            var jsonStr1 = @"
+{
+  ""page"": {
+    ""type"": ""perfume"",
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml"",
+    ""product_id"": 801,
+    ""language"": ""fr""
+  },
+
+  ""product"": {
+    ""id"": 801,
+    ""brand"": ""Marques"",
+    ""name"": ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""type"": ""Parfum"",
+    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover"",
+    ""images"": [
+      ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover""
+    ],
+    ""description"": ""Rendant hommage à Rome au crépuscule, l’Eau de Parfum Born in Roma Extradose Donna de Valentino célèbre la Ville éternelle et son allure vibrante."",
+    ""category"": ""Parfums d'été"",
+    ""sub_category"": ""Parfum Femme"",
+    ""rating"": null,
+    ""reviews"": 0,
+    ""ean"": null,
+    ""manufacturer_product_id"": null,
+    ""price"": 184.0,
+    ""original_price"": 184.0,
+    ""currency"": ""EUR"",
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml""
+  },
+
+  ""details"": {
+    ""gender"": ""Femme"",
+    ""concentration"": ""Eau de Parfum"",
+    ""fragrance_family"": [
+      ""Floral"",
+      ""Oriental""
+    ],
+    ""olfactory_family"": """",
+    ""year"": null,
+    ""perfumer"": null,
+    ""volume"": ""100ml"",
+    ""style"": [
+      ""Élégant"",
+      ""Séduisant""
+    ],
+    ""season"": [
+      ""Printemps"",
+      ""Été""
+    ],
+    ""occasion"": [
+      ""Quotidien"",
+      ""Soirée"",
+      ""Occasion spéciale""
+    ],
+    ""intensity"": 3,
+    ""longevity"": 4,
+    ""sillage"": 4,
+    ""best_for"": null
+  },
+
+  ""notes"": {
+    ""top"": {
+      ""title"": ""Notes de tête"",
+      ""items"": [
+        {
+          ""name"": ""Jasmin"",
+          ""image"": null
+        }
+      ]
+    },
+
+    ""heart"": {
+      ""title"": ""Notes de cœur"",
+      ""items"": [
+        {
+          ""name"": ""Benjoin"",
+          ""image"": null
+        }
+      ]
+    },
+
+    ""base"": {
+      ""title"": ""Notes de fond"",
+      ""items"": [
+        {
+          ""name"": ""Vanille"",
+          ""image"": ""note-fond-vanille.png""
+        }
+      ]
+    }
+  },
+
+  ""performance"": {
+    ""intensity"": 3,
+    ""longevity"": 4,
+    ""sillage"": 4,
+    ""iconic"": false,
+    ""gender"": ""Femme"",
+    ""features"": [
+      {
+        ""type"": ""sillage"",
+        ""value"": 4,
+        ""label"": ""Sillage exceptionnel""
+      },
+      {
+        ""type"": ""longevity"",
+        ""value"": 4,
+        ""label"": ""Très longue tenue""
+      },
+      {
+        ""type"": ""gender"",
+        ""label"": ""Femme""
+      }
+    ]
+  },
+
+  ""offers"": [
+    {
+      ""id"": 1001,
+      ""marketplace"": ""LookFantastic"",
+      ""marketplace_product_id"": ""15789066"",
+      ""sku"": ""15789079"",
+      ""variant_name"": ""100ml"",
+      ""price"": 184.0,
+      ""currency"": ""EUR"",
+      ""original_price"": null,
+      ""is_available"": true,
+      ""rating"": null,
+      ""reviews"": 0,
+      ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-100ml/15789066/"",
+      ""image"": null
+    }
+  ],
+
+  ""price_comparison"": {
+    ""currency"": ""EUR"",
+    ""lowest_price"": 184.0,
+    ""lowest_price_marketplace"": ""LookFantastic"",
+    ""reference_price"": 184.0,
+    ""saving_vs_reference"": 0.0,
+    ""saving_percent"": 0.0,
+    ""offers_count"": 1,
+    ""offers"": [
+      {
+        ""marketplace"": ""LookFantastic"",
+        ""price"": 184.0,
+        ""currency"": ""EUR"",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-100ml/15789066/"",
+        ""is_available"": true
+      }
+    ]
+  },
+
+  ""alternatives"": {
+    ""title"": ""Des alternatives similaires"",
+    ""description"": ""Découvrez des parfums au profil olfactif proche, avec des caractéristiques et des prix différents."",
+    ""reference_price"": 184.0,
+    ""reference_currency"": ""EUR"",
+    ""products"": [
+      {
+        ""product_id"": 797,
+        ""brand"": ""Marques"",
+        ""name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""short_name"": ""Valentino Born In Roma Extradose Donna Parfum [30 ml]"",
+        ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789064-8225228672859255.jpg&format=webp&width=1500&height=1500&fit=cover"",
+        ""price"": 97.75,
+        ""currency"": ""EUR"",
+        ""original_price"": 97.75,
+        ""saving_amount"": 86.25,
+        ""saving_percent"": 46.88,
+        ""similarity_score"": 100.0,
+        ""fragrance_family"": [
+          ""Floral"",
+          ""Oriental""
+        ],
+        ""matched_notes"": [
+          ""jasmin"",
+          ""benjoin"",
+          ""vanille""
+        ],
+        ""reason"": ""même famille olfactive, notes communes : jasmin, benjoin, vanille, même profil de genre, style similaire."",
+        ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+        ""marketplace"": ""LookFantastic"",
+        ""offers"": [
+          {
+            ""id"": 997,
+            ""marketplace"": ""LookFantastic"",
+            ""marketplace_product_id"": ""15789064"",
+            ""sku"": ""15789079"",
+            ""variant_name"": ""30ml"",
+            ""price"": 97.75,
+            ""currency"": ""EUR"",
+            ""original_price"": null,
+            ""is_available"": true,
+            ""rating"": null,
+            ""reviews"": 0,
+            ""product_url"": ""https://www.lookfantastic.fr/p/valentino-born-in-roma-donna-extradose-parfum-30ml/15789064/"",
+            ""image"": null
+          }
+        ]
+      }
+    ]
+  },
+
+  ""recommendations"": {
+    ""title"": ""Vous pourriez aussi aimer"",
+    ""description"": ""Des parfums sélectionnés selon le profil olfactif, le style et les caractéristiques de ce parfum."",
+    ""products"": []
+  },
+
+  ""guide"": {
+    ""available"": true,
+    ""id"": ""guide-801"",
+    ""slug"": ""valentinoborninromaextradosedonnaparfum100ml"",
+    ""title"": ""Guide complet Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""subtitle"": ""Tout savoir sur Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+    ""image"": ""https://main.thgimages.com/?url=https://static.thcdn.com/productimg/original/15789066-1875208777029991.jpg&format=webp&width=1500&height=1500&fit=cover"",
+    ""url"": ""/guide/valentinoborninromaextradosedonnaparfum100ml"",
+    ""reading_time"": 5,
+    ""sections"": []
+  },
+
+  ""seo"": {
+    ""title"": ""Marques Valentino Born In Roma Extradose Donna Parfum [100 ml] Eau de Parfum"",
+    ""description"": ""Découvrez Valentino Born In Roma Extradose Donna Parfum [100 ml] de Marques : notes olfactives, performance, prix et alternatives similaires."",
+    ""canonical"": ""/parfum/valentinoborninromaextradosedonnaparfum100ml"",
+    ""keywords"": [
+      ""Valentino Born In Roma Extradose Donna Parfum [100 ml]"",
+      ""Marques"",
+      ""parfum"",
+      ""fragrance"",
+      ""notes olfactives"",
+      ""alternative parfum"",
+      ""comparateur parfum""
+    ]
+  }
+}
+";
+
+            var liquid = @"
+                    <script>
+                    window.NAYA_SIMILAR = " + jsonStr1 + @";
+
+                    console.log(
+                        'NAYA_SIMILAR =',
+                        window.NAYA_SIMILAR
+                    );
+                    </script>
+
+                    {% section 'page-similar-hero' %}
+
+                    {% section 'page-similar-result' %}
+
+                    {% section 'page-similar-5-parfum' %}
+
+                    <script>
+                    document.dispatchEvent(
+                        new CustomEvent('naya:similar-loaded', {
+                            detail: window.NAYA_SIMILAR
+                        })
+                    );
+                    </script>
+                    ";
+
+            return Content(liquid, "application/liquid");
+        }
+
+
+
+
+
+
+
+
+
         //        [HttpGet]
         //        [Route("~/api/shopify/proxy/{*path}")]
         //        public async Task<IActionResult> ShopifyProxy(string? path)

@@ -1251,7 +1251,7 @@ namespace wsaffiliation.Controllers
       ""items"": [
         {
           ""name"": ""Jasmin"",
-          ""image"": null
+          ""image"": ""note-tete-jasmin.png""
         }
       ]
     },
@@ -1261,7 +1261,7 @@ namespace wsaffiliation.Controllers
       ""items"": [
         {
           ""name"": ""Benjoin"",
-          ""image"": null
+          ""image"": ""note-coeur-patchouli.png""
         }
       ]
     },

@@ -49,7 +49,7 @@ namespace wsaffiliation.Controllers
 
 
         [HttpGet]
-        [Route("api/perfume-notes")]
+        [Route("~/api/perfume-notes")]
         public async Task<IActionResult> GetNotes()
         {
             var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");

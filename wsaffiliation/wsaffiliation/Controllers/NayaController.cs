@@ -1145,8 +1145,9 @@ namespace wsaffiliation.Controllers
 
                     {% section 'naya-perfume-hero' %}
                     {% section 'naya-perfume-details' %}
-                    {% section 'naya-perfume-alternatives' %}
                     {% section 'naya-price-profile' %}
+                    {% section 'naya-perfume-alternatives' %}
+                    
                     {% section 'naya-guide-banner' %}
                     {% section 'naya-recommendations' %}
 

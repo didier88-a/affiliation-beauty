@@ -47,6 +47,44 @@ namespace wsaffiliation.Controllers
             _searchService = searchService;
         }
 
+
+        [HttpGet]
+        [Route("api/perfume-notes")]
+        public async Task<IActionResult> GetNotes()
+        {
+            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+            using var client = new HttpClient();
+
+            client.DefaultRequestHeaders.Add(
+                "apikey",
+                supabaseKey
+            );
+
+            client.DefaultRequestHeaders.Add(
+                "Authorization",
+                "Bearer " + supabaseKey
+            );
+
+            var url =
+                $"{supabaseUrl}/rest/v1/perfume_notes" +
+                "?select=*" +
+                "&is_active=eq.true" +
+                "&order=type,sort_order";
+
+            var response =
+                await client.GetAsync(url);
+
+            var json =
+                await response.Content.ReadAsStringAsync();
+
+            return Content(
+                json,
+                "application/json"
+            );
+        }
+
         [HttpGet]
         [Route("~/api/search/suggestions")]
         public IActionResult SearchSuggestions(

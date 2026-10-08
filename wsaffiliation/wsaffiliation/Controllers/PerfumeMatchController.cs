@@ -516,6 +516,7 @@ namespace wsaffiliation.Controllers
 
         public string? Name { get; set; }
 
+        [JsonPropertyName("short_name")]
         public string? ShortName { get; set; }
 
         public string? Image { get; set; }

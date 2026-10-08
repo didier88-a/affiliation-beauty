@@ -87,11 +87,8 @@ namespace wsaffiliation.Controllers
 
         private async Task<List<Product>> GetProductsAsync()
         {
-            var supabaseUrl =
-                _configuration["Supabase:Url"];
-
-            var supabaseKey =
-                _configuration["Supabase:Key"];
+            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
 
             if (string.IsNullOrWhiteSpace(supabaseUrl))
                 throw new Exception("Supabase:Url is missing.");

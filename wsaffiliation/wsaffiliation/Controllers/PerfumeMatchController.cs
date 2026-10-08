@@ -37,11 +37,13 @@ public class PerfumeMatchController : ControllerBase
             if (string.IsNullOrWhiteSpace(supabaseUrl) ||
                 string.IsNullOrWhiteSpace(supabaseKey))
             {
-                return StatusCode(500, new
-                {
-                    error =
-                        "SUPABASE_URL or SUPABASE_KEY is missing."
-                });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        error =
+                            "SUPABASE_URL or SUPABASE_KEY is missing."
+                    });
             }
 
             // --------------------------------------------------------
@@ -140,8 +142,11 @@ public class PerfumeMatchController : ControllerBase
                     request.Occasion);
             }
 
-            occasions.AddRange(
-                request.Occasions ?? []);
+            if (request.Occasions != null)
+            {
+                occasions.AddRange(
+                    request.Occasions);
+            }
 
             occasions =
                 CleanList(occasions);
@@ -220,16 +225,14 @@ public class PerfumeMatchController : ControllerBase
             // RESPONSE
             // ========================================================
 
-            return Ok(new
-            {
-                count = results.Count,
-
-                totalProducts,
-
-                maximumScore,
-
-                results
-            });
+            return Ok(
+                new
+                {
+                    count = results.Count,
+                    totalProducts,
+                    maximumScore,
+                    results
+                });
         }
         catch (Exception ex)
         {
@@ -258,15 +261,10 @@ public class PerfumeMatchController : ControllerBase
             new PerfumeMatchResult
             {
                 Id = product.Id,
-
                 Brand = product.Brand,
-
                 Name = product.Name,
-
                 ShortName = product.ShortName,
-
                 Image = product.Image,
-
                 Slug = product.Slug
             };
 
@@ -492,10 +490,8 @@ public class PerfumeMatchController : ControllerBase
 
 
         // NOTES
-        //
         // Une note peut être top / coeur / fond.
         // On utilise le poids maximum = 10.
-        //
 
         score +=
             request.Notes.Count * 10;
@@ -565,23 +561,16 @@ public class PerfumeMatchController : ControllerBase
         // ------------------------------------------------------------
 
         string[] perfumeKeywords =
-        [
-            "eau-de-parfum",
-
-            "eau-de-toilette",
-
-            "eau-de-cologne",
-
-            "parfum",
-
-            "extrait-de-parfum",
-
-            "extrait",
-
-            "perfume",
-
-            "fragrance"
-        ];
+            new string[]
+            {
+                "eau-de-parfum",
+                "eau-de-toilette",
+                "eau-de-cologne",
+                "parfum",
+                "extrait-de-parfum",
+                "extrait",
+                "perfume"
+            };
 
 
         var hasPerfumeKeyword =
@@ -625,74 +614,135 @@ public class PerfumeMatchController : ControllerBase
     private static bool IsClearlyNonPerfume(
         Product product)
     {
+        var raw =
+            $"{product.Category} " +
+            $"{product.SubCategory} " +
+            $"{product.Type} " +
+            $"{product.Name} " +
+            $"{product.ShortName}";
+
         var all =
-            Normalize(
-                $"{product.Category} " +
-                $"{product.SubCategory} " +
-                $"{product.Type} " +
-                $"{product.Name} " +
-                $"{product.ShortName}");
+            Normalize(raw);
 
 
         string[] excluded =
-        [
-            // BODY
-            "vaporisateur-pour-le-corps",
-            "vaporisateur-corps",
-            "spray-corps",
-            "body-spray",
-            "body-mist",
-            "brume-corps",
-            "brume-pour-le-corps",
+            new string[]
+            {
+                // Body spray / body mist
+                "vaporisateur-pour-le-corps",
+                "vaporisateur-corps",
+                "spray-corps",
+                "spray-pour-le-corps",
+                "body-spray",
+                "body-mist",
+                "body-splash",
+                "brume-corps",
+                "brume-pour-le-corps",
 
-            // DEODORANT
-            "deodorant",
-            "deodorant-spray",
-            "deodorant-stick",
-            "deo",
+                // Deodorants
+                "deodorant",
+                "deodorant-spray",
+                "deodorant-stick",
+                "deo",
 
-            // CHEVEUX
-            "shampoo",
-            "shampoing",
-            "conditioner",
-            "apres-shampooing",
-            "masque-capillaire",
-            "huile-capillaire",
+                // Hair
+                "shampoo",
+                "shampoing",
+                "conditioner",
+                "apres-shampooing",
+                "masque-capillaire",
+                "huile-capillaire",
 
-            // CORPS
-            "gel-douche",
-            "savon",
-            "lotion-corps",
-            "lait-corps",
-            "creme-corps",
-            "huile-corps",
+                // Body care
+                "gel-douche",
+                "savon",
+                "lotion-corps",
+                "lait-corps",
+                "creme-corps",
+                "huile-corps",
 
-            // MAISON
-            "bougie",
-            "candle",
-            "diffuseur",
-            "diffuser",
-            "home-fragrance",
-            "parfum-interieur",
-            "parfum-d-interieur",
-            "spray-interieur",
+                // Home
+                "bougie",
+                "candle",
+                "diffuseur",
+                "diffuser",
+                "home-fragrance",
+                "parfum-interieur",
+                "parfum-d-interieur",
+                "spray-interieur",
 
-            // COFFRETS
-            "coffret",
-            "gift-set",
-            "giftset",
-            "set-cadeau",
-            "routine",
+                // Gift sets
+                "coffret",
+                "gift-set",
+                "giftset",
+                "set-cadeau",
+                "cadeau-set",
 
-            // MINIATURES / ECHANTILLONS
-            "miniature",
-            "echantillon",
-            "sample"
-        ];
+                // Mini / samples
+                "miniature",
+                "mini-splash",
+                "mini-spray",
+                "mini-parfum",
+                "echantillon",
+                "sample",
+
+                // Travel
+                "travel-size",
+                "travel-spray",
+                "travel-parfum"
+            };
 
 
-        return excluded.Any(
-            x => all.Contains(x));
+        foreach (var keyword in excluded)
+        {
+            if (all.Contains(
+                Normalize(keyword)))
+            {
+                return true;
+            }
+        }
+
+
+        // Gift Set
+        if (all.Contains("gift") &&
+            all.Contains("set"))
+        {
+            return true;
+        }
+
+
+        // Coffret
+        if (all.Contains("coffret"))
+        {
+            return true;
+        }
+
+
+        // Mini
+        if (all.Contains("mini") &&
+            (
+                all.Contains("splash") ||
+                all.Contains("spray") ||
+                all.Contains("parfum")
+            ))
+        {
+            return true;
+        }
+
+
+        // Body spray / mist / splash
+        if (all.Contains("body") &&
+            (
+                all.Contains("spray") ||
+                all.Contains("mist") ||
+                all.Contains("splash")
+            ))
+        {
+            return true;
+        }
+
+
+        return false;
     }
 
 
@@ -719,6 +769,7 @@ public class PerfumeMatchController : ControllerBase
 
 
         // UNISEXE
+
         if (productValue.Contains(
             "unisexe"))
         {
@@ -727,6 +778,7 @@ public class PerfumeMatchController : ControllerBase
 
 
         // FEMME
+
         if (selectedValue == "her" ||
             selectedValue == "femme" ||
             selectedValue == "woman")
@@ -738,6 +790,7 @@ public class PerfumeMatchController : ControllerBase
 
 
         // HOMME
+
         if (selectedValue == "him" ||
             selectedValue == "homme" ||
             selectedValue == "man")
@@ -785,157 +838,177 @@ public class PerfumeMatchController : ControllerBase
     private static List<string> GetStyleMapping(
         string style)
     {
-        return Normalize(style) switch
+        switch (Normalize(style))
         {
-            "aquatic" =>
-            [
-                "aquatique",
-                "aquatic"
-            ],
+            case "aquatic":
+                return new List<string>
+                {
+                    "aquatique",
+                    "aquatic"
+                };
 
-            "aromatic" =>
-            [
-                "aromatique",
-                "aromatic"
-            ],
+            case "aromatic":
+                return new List<string>
+                {
+                    "aromatique",
+                    "aromatic"
+                };
 
-            "chypre" =>
-            [
-                "chypre",
-                "chypree"
-            ],
+            case "chypre":
+                return new List<string>
+                {
+                    "chypre",
+                    "chypree"
+                };
 
-            "citrus" =>
-            [
-                "agrume",
-                "agrumes",
-                "citrus"
-            ],
+            case "citrus":
+                return new List<string>
+                {
+                    "agrume",
+                    "agrumes",
+                    "citrus"
+                };
 
-            "creamy" =>
-            [
-                "cremeux",
-                "cremeuse",
-                "creme",
-                "creamy"
-            ],
+            case "creamy":
+                return new List<string>
+                {
+                    "cremeux",
+                    "cremeuse",
+                    "creme",
+                    "creamy"
+                };
 
-            "earthy" =>
-            [
-                "terreux",
-                "terreuse",
-                "earthy"
-            ],
+            case "earthy":
+                return new List<string>
+                {
+                    "terreux",
+                    "terreuse",
+                    "earthy"
+                };
 
-            "floral" =>
-            [
-                "floral",
-                "florale"
-            ],
+            case "floral":
+                return new List<string>
+                {
+                    "floral",
+                    "florale"
+                };
 
-            "fresh" =>
-            [
-                "frais",
-                "fraiche",
-                "fresh"
-            ],
+            case "fresh":
+                return new List<string>
+                {
+                    "frais",
+                    "fraiche",
+                    "fresh"
+                };
 
-            "fruity" =>
-            [
-                "fruite",
-                "fruitee",
-                "fruity"
-            ],
+            case "fruity":
+                return new List<string>
+                {
+                    "fruite",
+                    "fruitee",
+                    "fruity"
+                };
 
-            "gourmand" =>
-            [
-                "gourmand",
-                "gourmande"
-            ],
+            case "gourmand":
+                return new List<string>
+                {
+                    "gourmand",
+                    "gourmande"
+                };
 
-            "green" =>
-            [
-                "vert",
-                "verte",
-                "green"
-            ],
+            case "green":
+                return new List<string>
+                {
+                    "vert",
+                    "verte",
+                    "green"
+                };
 
-            "iris-makeup" =>
-            [
-                "iris",
-                "maquillage"
-            ],
+            case "iris-makeup":
+                return new List<string>
+                {
+                    "iris",
+                    "maquillage"
+                };
 
-            "leather" =>
-            [
-                "cuir",
-                "cuire",
-                "cuiree",
-                "cuire",
-                "leather"
-            ],
+            case "leather":
+                return new List<string>
+                {
+                    "cuir",
+                    "cuire",
+                    "cuiree",
+                    "leather"
+                };
 
-            "musky" =>
-            [
-                "musc",
-                "musque",
-                "musquee",
-                "musky"
-            ],
+            case "musky":
+                return new List<string>
+                {
+                    "musc",
+                    "musque",
+                    "musquee",
+                    "musky"
+                };
 
-            "oriental-amber" =>
-            [
-                "oriental",
-                "orientale",
-                "ambre",
-                "ambree"
-            ],
+            case "oriental-amber":
+                return new List<string>
+                {
+                    "oriental",
+                    "orientale",
+                    "ambre",
+                    "ambree"
+                };
 
-            "oud" =>
-            [
-                "oud"
-            ],
+            case "oud":
+                return new List<string>
+                {
+                    "oud"
+                };
 
-            "powdery" =>
-            [
-                "poudre",
-                "poudre",
-                "poudree"
-            ],
+            case "powdery":
+                return new List<string>
+                {
+                    "poudre",
+                    "poudree"
+                };
 
-            "smoky" =>
-            [
-                "fume",
-                "fumee",
-                "smoky"
-            ],
+            case "smoky":
+                return new List<string>
+                {
+                    "fume",
+                    "fumee",
+                    "smoky"
+                };
 
-            "spicy" =>
-            [
-                "epice",
-                "epicee",
-                "epices",
-                "spicy"
-            ],
+            case "spicy":
+                return new List<string>
+                {
+                    "epice",
+                    "epicee",
+                    "epices",
+                    "spicy"
+                };
 
-            "aldehydic" =>
-            [
-                "aldehydique",
-                "aldehyde"
-            ],
+            case "aldehydic":
+                return new List<string>
+                {
+                    "aldehydique",
+                    "aldehyde"
+                };
 
-            "woody" =>
-            [
-                "boise",
-                "boisee",
-                "woody"
-            ],
+            case "woody":
+                return new List<string>
+                {
+                    "boise",
+                    "boisee",
+                    "woody"
+                };
 
-            _ =>
-            [
-                style
-            ]
-        };
+            default:
+                return new List<string>
+                {
+                    style
+                };
+        }
     }
 
 
@@ -972,236 +1045,263 @@ public class PerfumeMatchController : ControllerBase
     private static List<string> GetMoodMapping(
         string mood)
     {
-        return Normalize(mood) switch
+        switch (Normalize(mood))
         {
-            "bold" =>
-            [
-                "intense",
-                "puissant",
-                "puissante"
-            ],
+            case "bold":
+                return new List<string>
+                {
+                    "intense",
+                    "puissant",
+                    "puissante"
+                };
 
-            "calm" =>
-            [
-                "doux",
-                "douce",
-                "frais",
-                "fraiche"
-            ],
+            case "calm":
+                return new List<string>
+                {
+                    "doux",
+                    "douce",
+                    "frais",
+                    "fraiche"
+                };
 
-            "chic" =>
-            [
-                "elegant",
-                "elegante",
-                "sophistique",
-                "sophistiquee"
-            ],
+            case "chic":
+                return new List<string>
+                {
+                    "elegant",
+                    "elegante",
+                    "sophistique",
+                    "sophistiquee"
+                };
 
-            "clean" =>
-            [
-                "frais",
-                "fraiche",
-                "aromatique"
-            ],
+            case "clean":
+                return new List<string>
+                {
+                    "frais",
+                    "fraiche",
+                    "aromatique"
+                };
 
-            "comforting" =>
-            [
-                "doux",
-                "douce",
-                "ambre",
-                "ambree"
-            ],
+            case "comforting":
+                return new List<string>
+                {
+                    "doux",
+                    "douce",
+                    "ambre",
+                    "ambree"
+                };
 
-            "confident" =>
-            [
-                "elegant",
-                "intense",
-                "puissant",
-                "puissante",
-                "luxueux",
-                "luxueuse"
-            ],
+            case "confident":
+                return new List<string>
+                {
+                    "elegant",
+                    "intense",
+                    "puissant",
+                    "puissante",
+                    "luxueux",
+                    "luxueuse"
+                };
 
-            "cozy" =>
-            [
-                "doux",
-                "douce",
-                "ambre",
-                "ambree",
-                "oriental",
-                "orientale"
-            ],
+            case "cozy":
+                return new List<string>
+                {
+                    "doux",
+                    "douce",
+                    "ambre",
+                    "ambree",
+                    "oriental",
+                    "orientale"
+                };
 
-            "dramatic" =>
-            [
-                "intense",
-                "oriental",
-                "orientale",
-                "boise",
-                "boisee",
-                "oud"
-            ],
+            case "dramatic":
+                return new List<string>
+                {
+                    "intense",
+                    "oriental",
+                    "orientale",
+                    "boise",
+                    "boisee",
+                    "oud"
+                };
 
-            "elegant" =>
-            [
-                "elegant",
-                "elegante",
-                "sophistique",
-                "sophistiquee"
-            ],
+            case "elegant":
+                return new List<string>
+                {
+                    "elegant",
+                    "elegante",
+                    "sophistique",
+                    "sophistiquee"
+                };
 
-            "energizing" =>
-            [
-                "frais",
-                "fraiche",
-                "agrumes",
-                "aromatique"
-            ],
+            case "energizing":
+                return new List<string>
+                {
+                    "frais",
+                    "fraiche",
+                    "agrumes",
+                    "aromatique"
+                };
 
-            "fresh-invigorating" =>
-            [
-                "frais",
-                "fraiche",
-                "agrumes",
-                "aromatique"
-            ],
+            case "fresh-invigorating":
+                return new List<string>
+                {
+                    "frais",
+                    "fraiche",
+                    "agrumes",
+                    "aromatique"
+                };
 
-            "luxury" =>
-            [
-                "luxueux",
-                "luxueuse",
-                "elegant",
-                "elegante",
-                "sophistique",
-                "sophistiquee"
-            ],
+            case "luxury":
+                return new List<string>
+                {
+                    "luxueux",
+                    "luxueuse",
+                    "elegant",
+                    "elegante",
+                    "sophistique",
+                    "sophistiquee"
+                };
 
-            "modern" =>
-            [
-                "moderne",
-                "sophistique",
-                "sophistiquee"
-            ],
+            case "modern":
+                return new List<string>
+                {
+                    "moderne",
+                    "sophistique",
+                    "sophistiquee"
+                };
 
-            "addictive" =>
-            [
-                "seduisant",
-                "seduisante",
-                "sensuel",
-                "sensuelle",
-                "gourmand",
-                "gourmande"
-            ],
+            case "addictive":
+                return new List<string>
+                {
+                    "seduisant",
+                    "seduisante",
+                    "sensuel",
+                    "sensuelle",
+                    "gourmand",
+                    "gourmande"
+                };
 
-            "mysterious" =>
-            [
-                "oriental",
-                "orientale",
-                "ambre",
-                "ambree",
-                "boise",
-                "boisee",
-                "oud"
-            ],
+            case "mysterious":
+                return new List<string>
+                {
+                    "oriental",
+                    "orientale",
+                    "ambre",
+                    "ambree",
+                    "boise",
+                    "boisee",
+                    "oud"
+                };
 
-            "playful" =>
-            [
-                "fruite",
-                "fruitee",
-                "gourmand",
-                "gourmande"
-            ],
+            case "playful":
+                return new List<string>
+                {
+                    "fruite",
+                    "fruitee",
+                    "gourmand",
+                    "gourmande"
+                };
 
-            "powerful" =>
-            [
-                "intense",
-                "puissant",
-                "puissante"
-            ],
+            case "powerful":
+                return new List<string>
+                {
+                    "intense",
+                    "puissant",
+                    "puissante"
+                };
 
-            "relaxing" =>
-            [
-                "doux",
-                "douce",
-                "frais",
-                "fraiche"
-            ],
+            case "relaxing":
+                return new List<string>
+                {
+                    "doux",
+                    "douce",
+                    "frais",
+                    "fraiche"
+                };
 
-            "romantic" =>
-            [
-                "floral",
-                "florale",
-                "sensuel",
-                "sensuelle",
-                "seduisant",
-                "seduisante"
-            ],
+            case "romantic":
+                return new List<string>
+                {
+                    "floral",
+                    "florale",
+                    "sensuel",
+                    "sensuelle",
+                    "seduisant",
+                    "seduisante"
+                };
 
-            "seductive" =>
-            [
-                "seduisant",
-                "seduisante",
-                "sensuel",
-                "sensuelle"
-            ],
+            case "seductive":
+                return new List<string>
+                {
+                    "seduisant",
+                    "seduisante",
+                    "sensuel",
+                    "sensuelle"
+                };
 
-            "sensual" =>
-            [
-                "sensuel",
-                "sensuelle",
-                "seduisant",
-                "seduisante"
-            ],
+            case "sensual":
+                return new List<string>
+                {
+                    "sensuel",
+                    "sensuelle",
+                    "seduisant",
+                    "seduisante"
+                };
 
-            "sexy" =>
-            [
-                "sensuel",
-                "sensuelle",
-                "seduisant",
-                "seduisante"
-            ],
+            case "sexy":
+                return new List<string>
+                {
+                    "sensuel",
+                    "sensuelle",
+                    "seduisant",
+                    "seduisante"
+                };
 
-            "sophisticated" =>
-            [
-                "sophistique",
-                "sophistiquee",
-                "elegant",
-                "elegante"
-            ],
+            case "sophisticated":
+                return new List<string>
+                {
+                    "sophistique",
+                    "sophistiquee",
+                    "elegant",
+                    "elegante"
+                };
 
-            "timeless" =>
-            [
-                "elegant",
-                "elegante",
-                "sophistique",
-                "sophistiquee"
-            ],
+            case "timeless":
+                return new List<string>
+                {
+                    "elegant",
+                    "elegante",
+                    "sophistique",
+                    "sophistiquee"
+                };
 
-            "warm" =>
-            [
-                "ambre",
-                "ambree",
-                "oriental",
-                "orientale",
-                "chaud",
-                "chaude",
-                "epice",
-                "epicee"
-            ],
+            case "warm":
+                return new List<string>
+                {
+                    "ambre",
+                    "ambree",
+                    "oriental",
+                    "orientale",
+                    "chaud",
+                    "chaude",
+                    "epice",
+                    "epicee"
+                };
 
-            "youthful" =>
-            [
-                "fruite",
-                "fruitee",
-                "frais",
-                "fraiche"
-            ],
+            case "youthful":
+                return new List<string>
+                {
+                    "fruite",
+                    "fruitee",
+                    "frais",
+                    "fraiche"
+                };
 
-            _ =>
-            [
-                mood
-            ]
-        };
+            default:
+                return new List<string>
+                {
+                    mood
+                };
+        }
     }
 
 
@@ -1216,7 +1316,7 @@ public class PerfumeMatchController : ControllerBase
         if (json.ValueKind !=
             JsonValueKind.Object)
         {
-            return [];
+            return new List<string>();
         }
 
 
@@ -1224,14 +1324,14 @@ public class PerfumeMatchController : ControllerBase
             property,
             out var value))
         {
-            return [];
+            return new List<string>();
         }
 
 
         if (value.ValueKind !=
             JsonValueKind.Array)
         {
-            return [];
+            return new List<string>();
         }
 
 
@@ -1247,7 +1347,6 @@ public class PerfumeMatchController : ControllerBase
             {
                 var text =
                     item.GetString();
-
 
                 if (!string.IsNullOrWhiteSpace(
                     text))
@@ -1347,7 +1446,9 @@ public class PerfumeMatchController : ControllerBase
         IEnumerable<string>? values)
     {
         if (values == null)
-            return [];
+        {
+            return new List<string>();
+        }
 
 
         return values
@@ -1426,15 +1527,20 @@ public class PerfumeMatchRequest
 
     public string? Occasion { get; set; }
 
-    public List<string> Occasions { get; set; } = [];
+    public List<string> Occasions { get; set; } =
+        new List<string>();
 
-    public List<string> Moods { get; set; } = [];
+    public List<string> Moods { get; set; } =
+        new List<string>();
 
-    public List<string> Styles { get; set; } = [];
+    public List<string> Styles { get; set; } =
+        new List<string>();
 
-    public List<string> Notes { get; set; } = [];
+    public List<string> Notes { get; set; } =
+        new List<string>();
 
-    public List<string> Families { get; set; } = [];
+    public List<string> Families { get; set; } =
+        new List<string>();
 }
 
 
@@ -1493,17 +1599,24 @@ public class PerfumeMatchResult
 
     public bool MatchedGender { get; set; }
 
-    public List<string> MatchedTopNotes { get; set; } = [];
+    public List<string> MatchedTopNotes { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedHeartNotes { get; set; } = [];
+    public List<string> MatchedHeartNotes { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedBaseNotes { get; set; } = [];
+    public List<string> MatchedBaseNotes { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedStyles { get; set; } = [];
+    public List<string> MatchedStyles { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedMoods { get; set; } = [];
+    public List<string> MatchedMoods { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedOccasions { get; set; } = [];
+    public List<string> MatchedOccasions { get; set; } =
+        new List<string>();
 
-    public List<string> MatchedFamilies { get; set; } = [];
+    public List<string> MatchedFamilies { get; set; } =
+        new List<string>();
 }

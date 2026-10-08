@@ -251,12 +251,25 @@ public class PerfumeMatchController : ControllerBase
     // SCORE
     // ================================================================
 
-    private static int CalculateScore(
+    private static PerfumeMatchResult CalculateScore(
      Product product,
      PerfumeMatchRequest request,
-     PerfumeMatchResult result)
+     List<string> occasions,
+     int maximumScore)
     {
+        var result = new PerfumeMatchResult
+        {
+            Id = product.Id,
+            Brand = product.Brand,
+            Name = product.Name,
+            ShortName = product.ShortName,
+            Image = product.Image,
+            Slug = product.Slug
+        };
+
         int score = 0;
+
+        var attr = product.NayaAttributes;
 
         // =========================================================
         // GENRE
@@ -269,18 +282,26 @@ public class PerfumeMatchController : ControllerBase
         }
         else
         {
-            // Genre inconnu ou non correspondant :
-            // aucun point, mais le produit reste éligible.
             result.MatchedGender = false;
         }
 
         // =========================================================
-        // NOTES DE TÊTE
+        // NOTES
         // =========================================================
+
+        var topNotes =
+            GetStringList(attr, "top_notes");
+
+        var heartNotes =
+            GetStringList(attr, "heart_notes");
+
+        var baseNotes =
+            GetStringList(attr, "base_notes");
 
         foreach (var requestedNote in request.Notes)
         {
-            if (ContainsAny(product.NayaAttributes.TopNotes, requestedNote))
+            // NOTE DE TÊTE
+            if (ContainsAny(topNotes, requestedNote))
             {
                 if (!result.MatchedTopNotes.Contains(requestedNote))
                 {
@@ -289,15 +310,9 @@ public class PerfumeMatchController : ControllerBase
 
                 score += 10;
             }
-        }
 
-        // =========================================================
-        // NOTES DE CŒUR
-        // =========================================================
-
-        foreach (var requestedNote in request.Notes)
-        {
-            if (ContainsAny(product.NayaAttributes.HeartNotes, requestedNote))
+            // NOTE DE CŒUR
+            if (ContainsAny(heartNotes, requestedNote))
             {
                 if (!result.MatchedHeartNotes.Contains(requestedNote))
                 {
@@ -306,15 +321,9 @@ public class PerfumeMatchController : ControllerBase
 
                 score += 12;
             }
-        }
 
-        // =========================================================
-        // NOTES DE FOND
-        // =========================================================
-
-        foreach (var requestedNote in request.Notes)
-        {
-            if (ContainsAny(product.NayaAttributes.BaseNotes, requestedNote))
+            // NOTE DE FOND
+            if (ContainsAny(baseNotes, requestedNote))
             {
                 if (!result.MatchedBaseNotes.Contains(requestedNote))
                 {
@@ -329,9 +338,12 @@ public class PerfumeMatchController : ControllerBase
         // STYLE
         // =========================================================
 
+        var productStyles =
+            GetStringList(attr, "style");
+
         foreach (var requestedStyle in request.Styles)
         {
-            if (ContainsAny(product.NayaAttributes.Style, requestedStyle))
+            if (ContainsAny(productStyles, requestedStyle))
             {
                 if (!result.MatchedStyles.Contains(requestedStyle))
                 {
@@ -346,9 +358,14 @@ public class PerfumeMatchController : ControllerBase
         // FAMILLE OLFACTIVE
         // =========================================================
 
+        var productFamilies =
+            GetStringList(attr, "fragrance_family");
+
         foreach (var requestedStyle in request.Styles)
         {
-            if (ContainsAny(product.NayaAttributes.FragranceFamily, requestedStyle))
+            // Si le style sélectionné correspond à une famille
+            // olfactive, on donne 4 points.
+            if (ContainsAny(productFamilies, requestedStyle))
             {
                 if (!result.MatchedFamilies.Contains(requestedStyle))
                 {
@@ -365,7 +382,10 @@ public class PerfumeMatchController : ControllerBase
 
         foreach (var mood in request.Moods)
         {
-            if (MoodMatchesProduct(product, mood))
+            if (MoodMatches(
+    mood,
+    productStyles,
+    productFamilies))
             {
                 if (!result.MatchedMoods.Contains(mood))
                 {
@@ -380,9 +400,12 @@ public class PerfumeMatchController : ControllerBase
         // OCCASION
         // =========================================================
 
-        foreach (var occasion in request.Occasions)
+        var productOccasions =
+            GetStringList(attr, "occasion");
+
+        foreach (var occasion in occasions)
         {
-            if (ContainsAny(product.NayaAttributes.Occasion, occasion))
+            if (ContainsAny(productOccasions, occasion))
             {
                 if (!result.MatchedOccasions.Contains(occasion))
                 {
@@ -393,7 +416,21 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        return score;
+        // =========================================================
+        // SCORE FINAL
+        // =========================================================
+
+        result.Score = score;
+
+        result.MatchPercent =
+            maximumScore > 0
+                ? Math.Min(
+                    100,
+                    (int)Math.Round(
+                        score * 100.0 / maximumScore))
+                : 0;
+
+        return result;
     }
 
 
@@ -483,51 +520,31 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
 
     private static int CalculateMaximumScore(
-        PerfumeMatchRequest request,
-        List<string> occasions)
+     PerfumeMatchRequest request,
+     List<string> occasions)
     {
-        var score = 0;
+        int score = 0;
 
-
-        // GENDER
-        if (!string.IsNullOrWhiteSpace(
-            request.Whom))
+        // Genre
+        if (!string.IsNullOrWhiteSpace(request.Whom))
         {
             score += 10;
         }
 
+        // Notes
+        score += request.Notes.Count * 12;
 
-        // NOTES
-        // Une note peut être top / coeur / fond.
-        // On utilise le poids maximum = 10.
+        // Styles
+        score += request.Styles.Count * 8;
 
-        score +=
-            request.Notes.Count * 10;
+        // Moods
+        score += request.Moods.Count * 4;
 
+        // Occasions
+        score += occasions.Count * 3;
 
-        // STYLES
-
-        score +=
-            request.Styles.Count * 6;
-
-
-        // MOODS
-
-        score +=
-            request.Moods.Count * 6;
-
-
-        // OCCASIONS
-
-        score +=
-            occasions.Count * 4;
-
-
-        // FAMILIES
-
-        score +=
-            request.Families.Count * 4;
-
+        // Familles
+        score += request.Families.Count * 4;
 
         return score;
     }

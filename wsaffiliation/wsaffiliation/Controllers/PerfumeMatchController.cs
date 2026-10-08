@@ -143,6 +143,12 @@ namespace wsaffiliation.Controllers
 
             var attributes = product.NayaAttributes;
 
+            Console.WriteLine(
+                $"PRODUCT: {product.Id} - {product.Name}");
+
+            Console.WriteLine(
+                $"ATTRIBUTES: {attributes}");
+
             if (attributes.ValueKind != JsonValueKind.Object)
                 return score;
 
@@ -266,6 +272,9 @@ namespace wsaffiliation.Controllers
                             score.TotalScore * 100.0 / maxScore));
             }
 
+            Console.WriteLine(
+                $"SCORE: {score.TotalScore}");
+
             return score;
         }
 
@@ -274,38 +283,53 @@ namespace wsaffiliation.Controllers
         // ============================================================
 
         private bool GenderMatches(
-            string selectedGender,
-            string productGender)
+     string selectedGender,
+     string productGender)
         {
-            selectedGender =
-                Normalize(selectedGender);
+            var selected = Normalize(selectedGender);
+            var product = Normalize(productGender);
 
-            productGender =
-                Normalize(productGender);
-
-            if (string.IsNullOrWhiteSpace(productGender))
+            if (string.IsNullOrWhiteSpace(selected))
                 return false;
 
-            if (productGender == "unisexe")
+            // Produit sans genre = on le garde
+            // pour les parfums unisexes / universels
+            if (string.IsNullOrWhiteSpace(product))
                 return true;
 
-            if (selectedGender == "her")
-                return productGender == "femme";
-
-            if (selectedGender == "him")
-                return productGender == "homme";
-
-            if (selectedGender == "unisex")
+            // Produit unisexe
+            if (product.Contains("unisexe") ||
+                product.Contains("unisex"))
                 return true;
 
-            // Permet aussi de recevoir directement
-            // "Femme", "Homme", "Unisexe"
+            // Sélection femme
+            if (selected == "her" ||
+                selected == "femme" ||
+                selected == "female" ||
+                selected == "woman")
+            {
+                return product == "femme" ||
+                       product == "female" ||
+                       product == "woman";
+            }
 
-            if (selectedGender == "femme")
-                return productGender == "femme";
+            // Sélection homme
+            if (selected == "him" ||
+                selected == "homme" ||
+                selected == "male" ||
+                selected == "man")
+            {
+                return product == "homme" ||
+                       product == "male" ||
+                       product == "man";
+            }
 
-            if (selectedGender == "homme")
-                return productGender == "homme";
+            // Sélection unisexe
+            if (selected == "unisex" ||
+                selected == "unisexe")
+            {
+                return true;
+            }
 
             return false;
         }

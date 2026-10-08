@@ -612,7 +612,7 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
 
     private static bool IsClearlyNonPerfume(
-        Product product)
+     Product product)
     {
         var raw =
             $"{product.Category} " +
@@ -621,89 +621,151 @@ public class PerfumeMatchController : ControllerBase
             $"{product.Name} " +
             $"{product.ShortName}";
 
-        var all =
-            Normalize(raw);
+        var all = Normalize(raw);
 
+
+        // ============================================================
+        // PRODUITS QUI NE SONT PAS DES PARFUMS
+        // ============================================================
 
         string[] excluded =
             new string[]
             {
-                // Body spray / body mist
-                "vaporisateur-pour-le-corps",
-                "vaporisateur-corps",
-                "spray-corps",
-                "spray-pour-le-corps",
-                "body-spray",
-                "body-mist",
-                "body-splash",
-                "brume-corps",
-                "brume-pour-le-corps",
+            // ----------------------------------------------------
+            // BODY SPRAY / BODY MIST / BODY SPLASH
+            // ----------------------------------------------------
 
-                // Deodorants
-                "deodorant",
-                "deodorant-spray",
-                "deodorant-stick",
-                "deo",
+            "body-spray",
+            "body-mist",
+            "body-splash",
+            "body-fragrance",
+            "spray-corps",
+            "spray-pour-le-corps",
+            "vaporisateur-corps",
+            "vaporisateur-pour-le-corps",
+            "brume-corps",
+            "brume-pour-le-corps",
+            "brume-parfumee",
+            "brume-parfumee-pour-le-corps",
 
-                // Hair
-                "shampoo",
-                "shampoing",
-                "conditioner",
-                "apres-shampooing",
-                "masque-capillaire",
-                "huile-capillaire",
 
-                // Body care
-                "gel-douche",
-                "savon",
-                "lotion-corps",
-                "lait-corps",
-                "creme-corps",
-                "huile-corps",
+            // ----------------------------------------------------
+            // PRODUITS CORPS
+            // ----------------------------------------------------
 
-                // Home
-                "bougie",
-                "candle",
-                "diffuseur",
-                "diffuser",
-                "home-fragrance",
-                "parfum-interieur",
-                "parfum-d-interieur",
-                "spray-interieur",
+            "lait-corps",
+            "lait-pour-le-corps",
+            "lait-parfumant",
+            "lait-parfumant-pour-le-corps",
+            "lotion-corps",
+            "lotion-pour-le-corps",
+            "lotion-parfumee",
+            "lotion-parfumee-pour-le-corps",
+            "creme-corps",
+            "creme-pour-le-corps",
+            "creme-parfumee",
+            "creme-parfumee-pour-le-corps",
+            "huile-corps",
+            "huile-pour-le-corps",
+            "huile-parfumee",
+            "huile-parfumee-pour-le-corps",
+            "gel-douche",
+            "savon",
 
-                // Gift sets
-                "coffret",
-                "gift-set",
-                "giftset",
-                "set-cadeau",
-                "cadeau-set",
 
-                // Mini / samples
-                "miniature",
-                "mini-splash",
-                "mini-spray",
-                "mini-parfum",
-                "echantillon",
-                "sample",
+            // ----------------------------------------------------
+            // DEODORANTS
+            // ----------------------------------------------------
 
-                // Travel
-                "travel-size",
-                "travel-spray",
-                "travel-parfum"
+            "deodorant",
+            "deodorant-spray",
+            "deodorant-stick",
+            "deodorant-roll-on",
+            "deo",
+
+
+            // ----------------------------------------------------
+            // CHEVEUX
+            // ----------------------------------------------------
+
+            "shampoo",
+            "shampoing",
+            "conditioner",
+            "apres-shampooing",
+            "masque-capillaire",
+            "masque-cheveux",
+            "huile-capillaire",
+            "spray-capillaire",
+            "serum-capillaire",
+
+
+            // ----------------------------------------------------
+            // MAISON
+            // ----------------------------------------------------
+
+            "bougie",
+            "candle",
+            "diffuseur",
+            "diffuser",
+            "home-fragrance",
+            "fragrance-d-interieur",
+            "parfum-interieur",
+            "parfum-d-interieur",
+            "spray-interieur",
+            "desodorisant",
+
+
+            // ----------------------------------------------------
+            // COFFRETS / GIFT SET
+            // ----------------------------------------------------
+
+            "coffret",
+            "coffret-parfum",
+            "gift-set",
+            "giftset",
+            "set-cadeau",
+            "cadeau-set",
+
+
+            // ----------------------------------------------------
+            // MINI / SAMPLE
+            // ----------------------------------------------------
+
+            "miniature",
+            "mini-splash",
+            "mini-spray",
+            "mini-parfum",
+            "mini-eau-de-parfum",
+            "mini-eau-de-toilette",
+            "echantillon",
+            "sample",
+            "sample-size",
+            "travel-size",
+            "travel-spray",
+            "travel-parfum"
             };
 
 
+        // ============================================================
+        // TEST DES EXCLUSIONS
+        // ============================================================
+
         foreach (var keyword in excluded)
         {
-            if (all.Contains(
-                Normalize(keyword)))
+            var normalizedKeyword =
+                Normalize(keyword);
+
+            if (all.Contains(normalizedKeyword))
             {
                 return true;
             }
         }
 
 
-        // Gift Set
+        // ============================================================
+        // GIFT SET
+        // ============================================================
+
         if (all.Contains("gift") &&
             all.Contains("set"))
         {
@@ -711,14 +773,20 @@ public class PerfumeMatchController : ControllerBase
         }
 
 
-        // Coffret
+        // ============================================================
+        // COFFRET
+        // ============================================================
+
         if (all.Contains("coffret"))
         {
             return true;
         }
 
 
-        // Mini
+        // ============================================================
+        // MINI
+        // ============================================================
+
         if (all.Contains("mini") &&
             (
                 all.Contains("splash") ||
@@ -730,13 +798,44 @@ public class PerfumeMatchController : ControllerBase
         }
 
 
-        // Body spray / mist / splash
+        // ============================================================
+        // BODY + SPRAY / MIST / SPLASH
+        // ============================================================
+
         if (all.Contains("body") &&
             (
                 all.Contains("spray") ||
                 all.Contains("mist") ||
                 all.Contains("splash")
             ))
+        {
+            return true;
+        }
+
+
+        // ============================================================
+        // CORPS + PRODUIT
+        // ============================================================
+
+        if (all.Contains("corps") &&
+            (
+                all.Contains("lait") ||
+                all.Contains("lotion") ||
+                all.Contains("creme") ||
+                all.Contains("huile") ||
+                all.Contains("spray") ||
+                all.Contains("brume")
+            ))
+        {
+            return true;
+        }
+
+
+        // ============================================================
+        // POUR LE CORPS
+        // ============================================================
+
+        if (all.Contains("pour-le-corps"))
         {
             return true;
         }

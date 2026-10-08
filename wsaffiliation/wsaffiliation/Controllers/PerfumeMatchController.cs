@@ -277,7 +277,12 @@ namespace wsaffiliation.Controllers
             // --------------------------------------------------------
 
             var productStyles =
-                GetStringArray(attributes, "style");
+                    GetStringArray(attributes, "style")
+                        .Concat(
+                            GetStringArray(attributes, "fragrance_family")
+                        )
+                        .Distinct()
+                        .ToList();
 
             foreach (var selectedStyle in request.Styles)
             {

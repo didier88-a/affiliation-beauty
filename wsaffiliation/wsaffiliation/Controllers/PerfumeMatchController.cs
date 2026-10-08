@@ -32,6 +32,12 @@ namespace wsaffiliation.Controllers
 
                 var products = await GetProductsAsync();
 
+                products = products
+                    .Where(IsPerfume)
+                    .ToList();
+
+                products = RemoveDuplicates(products);
+
                 var results = new List<PerfumeMatchResult>();
 
                 foreach (var product in products)
@@ -86,6 +92,66 @@ namespace wsaffiliation.Controllers
         // GET PRODUCTS FROM SUPABASE
         // ============================================================
 
+        private List<Product> RemoveDuplicates(
+    List<Product> products)
+        {
+            var result = new List<Product>();
+
+            var seen = new HashSet<string>();
+
+            foreach (var product in products)
+            {
+                string key;
+
+                if (!string.IsNullOrWhiteSpace(product.Slug))
+                {
+                    key = Normalize(product.Slug);
+                }
+                else
+                {
+                    key =
+                        Normalize(product.Brand) +
+                        "|" +
+                        Normalize(product.Name);
+                }
+
+                if (string.IsNullOrWhiteSpace(key))
+                    continue;
+
+                if (seen.Add(key))
+                {
+                    result.Add(product);
+                }
+            }
+
+            return result;
+        }
+
+        private bool IsPerfume(Product product)
+        {
+            var category = Normalize(product.Category);
+            var subCategory = Normalize(product.SubCategory);
+            var type = Normalize(product.Type);
+
+            // Les catégories clairement liées aux parfums
+            if (category == "parfum" ||
+                category == "parfums" ||
+                category == "parfumerie")
+            {
+                // Exclusions évidentes
+                if (subCategory.Contains("coffret") ||
+                    subCategory.Contains("desodorisant") ||
+                    subCategory.Contains("huile essentielle"))
+                {
+                    return false;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
         private async Task<List<Product>> GetProductsAsync()
         {
             var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
@@ -99,7 +165,7 @@ namespace wsaffiliation.Controllers
 
             var url =
                 $"{supabaseUrl.TrimEnd('/')}/rest/v1/products" +
-                "?select=id,brand,name,short_name,image,slug,naya_attributes";
+                "?select=id,brand,name,short_name,image,slug,category,sub_category,type,naya_attributes";
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
@@ -522,6 +588,13 @@ namespace wsaffiliation.Controllers
         public string? Image { get; set; }
 
         public string? Slug { get; set; }
+
+        public string? Category { get; set; }
+
+        [JsonPropertyName("sub_category")]
+        public string? SubCategory { get; set; }
+
+        public string? Type { get; set; }
 
         [JsonPropertyName("naya_attributes")]
         public JsonElement NayaAttributes { get; set; }

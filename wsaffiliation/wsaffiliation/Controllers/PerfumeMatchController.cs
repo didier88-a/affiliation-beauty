@@ -171,6 +171,13 @@ public class PerfumeMatchController : ControllerBase
 
             foreach (var product in products)
             {
+                if (!IsCompatibleGender(
+                        product,
+                        request.Whom))
+                {
+                    continue;
+                }
+
                 var result =
                     CalculateScore(
                         product,
@@ -178,12 +185,7 @@ public class PerfumeMatchController : ControllerBase
                         occasions,
                         maximumScore);
 
-                // Aucun intérêt à afficher un produit
-                // qui n'a aucun match.
-                if (result.Score > 0)
-                {
-                    results.Add(result);
-                }
+                results.Add(result);
             }
 
 
@@ -678,6 +680,79 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
     // FILTRE PARFUM
     // ================================================================
+
+
+    private static bool IsCompatibleGender(
+    Product product,
+    string? requestedGender)
+    {
+        if (string.IsNullOrWhiteSpace(requestedGender))
+        {
+            return true;
+        }
+
+        var productGender =
+            GetString(
+                product.NayaAttributes,
+                "gender");
+
+        if (string.IsNullOrWhiteSpace(productGender))
+        {
+            return false;
+        }
+
+        var requested =
+            Normalize(requestedGender);
+
+        var gender =
+            Normalize(productGender);
+
+        // Unisexe accepté pour tout le monde
+        if (
+            gender == "unisexe" ||
+            gender == "unisex"
+        )
+        {
+            return true;
+        }
+
+        // Pour Elle
+        if (
+            requested == "femme" ||
+            requested == "for-her" ||
+            requested == "her" ||
+            requested == "woman" ||
+            requested == "women"
+        )
+        {
+            return
+                gender == "femme" ||
+                gender == "feminin" ||
+                gender == "female" ||
+                gender == "woman" ||
+                gender == "women";
+        }
+
+        // Pour Lui
+        if (
+            requested == "homme" ||
+            requested == "for-him" ||
+            requested == "him" ||
+            requested == "man" ||
+            requested == "men"
+        )
+        {
+            return
+                gender == "homme" ||
+                gender == "masculin" ||
+                gender == "male" ||
+                gender == "man" ||
+                gender == "men";
+        }
+
+        return true;
+    }
+
 
     // ================================================================
     // FILTRE DES VRAIS PARFUMS

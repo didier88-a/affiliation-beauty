@@ -251,224 +251,232 @@ public class PerfumeMatchController : ControllerBase
     // SCORE
     // ================================================================
 
-    private static PerfumeMatchResult CalculateScore(
-        Product product,
-        PerfumeMatchRequest request,
-        List<string> occasions,
-        int maximumScore)
+    private static int CalculateScore(
+     Product product,
+     PerfumeMatchRequest request,
+     PerfumeMatchResult result)
     {
-        var result =
-            new PerfumeMatchResult
-            {
-                Id = product.Id,
-                Brand = product.Brand,
-                Name = product.Name,
-                ShortName = product.ShortName,
-                Image = product.Image,
-                Slug = product.Slug
-            };
+        int score = 0;
 
-        var score = 0;
+        // =========================================================
+        // GENRE
+        // =========================================================
 
-        var attr =
-            product.NayaAttributes;
-
-
-        // ============================================================
-        // GENDER
-        // ============================================================
-
-        if (!string.IsNullOrWhiteSpace(
-            request.Whom))
+        if (HasExplicitGenderMatch(product, request.Whom))
         {
-            var gender =
-                GetString(
-                    attr,
-                    "gender");
+            score += 10;
+            result.MatchedGender = true;
+        }
+        else
+        {
+            // Genre inconnu ou non correspondant :
+            // aucun point, mais le produit reste éligible.
+            result.MatchedGender = false;
+        }
 
-            if (GenderMatches(
-                request.Whom,
-                gender))
+        // =========================================================
+        // NOTES DE TÊTE
+        // =========================================================
+
+        foreach (var requestedNote in request.Notes)
+        {
+            if (ContainsAny(product.NayaAttributes.TopNotes, requestedNote))
             {
+                if (!result.MatchedTopNotes.Contains(requestedNote))
+                {
+                    result.MatchedTopNotes.Add(requestedNote);
+                }
+
                 score += 10;
-
-                result.MatchedGender = true;
             }
         }
 
+        // =========================================================
+        // NOTES DE CŒUR
+        // =========================================================
 
-        // ============================================================
-        // NOTES
-        // ============================================================
-
-        var topNotes =
-            GetStringList(
-                attr,
-                "top_notes");
-
-        var heartNotes =
-            GetStringList(
-                attr,
-                "heart_notes");
-
-        var baseNotes =
-            GetStringList(
-                attr,
-                "base_notes");
-
-
-        foreach (var selectedNote
-                 in request.Notes)
+        foreach (var requestedNote in request.Notes)
         {
-            // TOP
-            if (ContainsAny(
-                topNotes,
-                selectedNote))
+            if (ContainsAny(product.NayaAttributes.HeartNotes, requestedNote))
             {
-                score += 8;
+                if (!result.MatchedHeartNotes.Contains(requestedNote))
+                {
+                    result.MatchedHeartNotes.Add(requestedNote);
+                }
 
-                result.MatchedTopNotes.Add(
-                    selectedNote);
+                score += 12;
             }
+        }
 
-            // COEUR
-            if (ContainsAny(
-                heartNotes,
-                selectedNote))
+        // =========================================================
+        // NOTES DE FOND
+        // =========================================================
+
+        foreach (var requestedNote in request.Notes)
+        {
+            if (ContainsAny(product.NayaAttributes.BaseNotes, requestedNote))
             {
+                if (!result.MatchedBaseNotes.Contains(requestedNote))
+                {
+                    result.MatchedBaseNotes.Add(requestedNote);
+                }
+
                 score += 10;
-
-                result.MatchedHeartNotes.Add(
-                    selectedNote);
-            }
-
-            // FOND
-            if (ContainsAny(
-                baseNotes,
-                selectedNote))
-            {
-                score += 8;
-
-                result.MatchedBaseNotes.Add(
-                    selectedNote);
             }
         }
 
+        // =========================================================
+        // STYLE
+        // =========================================================
 
-        // ============================================================
-        // STYLES
-        // ============================================================
-
-        var productStyles =
-            GetStringList(
-                attr,
-                "style");
-
-        var productFamilies =
-            GetStringList(
-                attr,
-                "fragrance_family");
-
-
-        foreach (var selectedStyle
-                 in request.Styles)
+        foreach (var requestedStyle in request.Styles)
         {
-            if (StyleMatches(
-                selectedStyle,
-                productStyles,
-                productFamilies))
+            if (ContainsAny(product.NayaAttributes.Style, requestedStyle))
             {
-                score += 6;
+                if (!result.MatchedStyles.Contains(requestedStyle))
+                {
+                    result.MatchedStyles.Add(requestedStyle);
+                }
 
-                result.MatchedStyles.Add(
-                    selectedStyle);
+                score += 8;
             }
         }
 
+        // =========================================================
+        // FAMILLE OLFACTIVE
+        // =========================================================
 
-        // ============================================================
+        foreach (var requestedStyle in request.Styles)
+        {
+            if (ContainsAny(product.NayaAttributes.FragranceFamily, requestedStyle))
+            {
+                if (!result.MatchedFamilies.Contains(requestedStyle))
+                {
+                    result.MatchedFamilies.Add(requestedStyle);
+                }
+
+                score += 4;
+            }
+        }
+
+        // =========================================================
         // MOODS
-        // ============================================================
+        // =========================================================
 
-        foreach (var selectedMood
-                 in request.Moods)
+        foreach (var mood in request.Moods)
         {
-            if (MoodMatches(
-                selectedMood,
-                productStyles,
-                productFamilies))
+            if (MoodMatchesProduct(product, mood))
             {
-                score += 6;
+                if (!result.MatchedMoods.Contains(mood))
+                {
+                    result.MatchedMoods.Add(mood);
+                }
 
-                result.MatchedMoods.Add(
-                    selectedMood);
+                score += 4;
             }
         }
 
-
-        // ============================================================
+        // =========================================================
         // OCCASION
-        // ============================================================
+        // =========================================================
 
-        var productOccasions =
-            GetStringList(
-                attr,
-                "occasion");
-
-
-        foreach (var selectedOccasion
-                 in occasions)
+        foreach (var occasion in request.Occasions)
         {
-            if (ContainsAny(
-                productOccasions,
-                selectedOccasion))
+            if (ContainsAny(product.NayaAttributes.Occasion, occasion))
             {
-                score += 4;
+                if (!result.MatchedOccasions.Contains(occasion))
+                {
+                    result.MatchedOccasions.Add(occasion);
+                }
 
-                result.MatchedOccasions.Add(
-                    selectedOccasion);
+                score += 3;
             }
         }
 
-
-        // ============================================================
-        // FAMILY
-        // ============================================================
-
-        foreach (var selectedFamily
-                 in request.Families)
-        {
-            if (ContainsAny(
-                productFamilies,
-                selectedFamily))
-            {
-                score += 4;
-
-                result.MatchedFamilies.Add(
-                    selectedFamily);
-            }
-        }
-
-
-        // ============================================================
-        // RESULT SCORE
-        // ============================================================
-
-        result.Score =
-            score;
-
-        result.MatchPercent =
-            maximumScore > 0
-                ? Math.Min(
-                    100,
-                    (int)Math.Round(
-                        score * 100.0 /
-                        maximumScore))
-                : 0;
-
-        return result;
+        return score;
     }
 
+
+    private static bool HasExplicitGenderMatch(
+     Product product,
+     string? requestedGender)
+    {
+        if (string.IsNullOrWhiteSpace(requestedGender))
+        {
+            return false;
+        }
+
+        // Le gender se trouve dans naya_attributes
+        var productGender =
+            GetString(
+                product.NayaAttributes,
+                "gender");
+
+        var requested =
+            Normalize(requestedGender);
+
+        // Gender absent :
+        // aucun bonus, mais le produit reste dans les résultats.
+        if (string.IsNullOrWhiteSpace(productGender))
+        {
+            return false;
+        }
+
+        productGender =
+            Normalize(productGender);
+
+
+        // =========================================================
+        // UNISEXE
+        // =========================================================
+
+        if (productGender == "unisexe" ||
+            productGender == "unisex")
+        {
+            return true;
+        }
+
+
+        // =========================================================
+        // FEMME
+        // =========================================================
+
+        if (requested == "femme" ||
+            requested == "for-her" ||
+            requested == "her" ||
+            requested == "woman" ||
+            requested == "women")
+        {
+            return
+                productGender == "femme" ||
+                productGender == "feminin" ||
+                productGender == "female" ||
+                productGender == "woman" ||
+                productGender == "women";
+        }
+
+
+        // =========================================================
+        // HOMME
+        // =========================================================
+
+        if (requested == "homme" ||
+            requested == "for-him" ||
+            requested == "him" ||
+            requested == "man" ||
+            requested == "men")
+        {
+            return
+                productGender == "homme" ||
+                productGender == "masculin" ||
+                productGender == "male" ||
+                productGender == "man" ||
+                productGender == "men";
+        }
+
+
+        return false;
+    }
 
     // ================================================================
     // MAXIMUM SCORE
@@ -918,15 +926,16 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
 
     private static bool GenderMatches(
-        string selected,
-        string? productGender)
+     string selected,
+     string? productGender)
     {
+        // Gender absent = pas de correspondance
+        // mais le produit n'est PAS éliminé.
         if (string.IsNullOrWhiteSpace(
             productGender))
         {
-            return true;
+            return false;
         }
-
 
         var selectedValue =
             Normalize(selected);
@@ -935,40 +944,50 @@ public class PerfumeMatchController : ControllerBase
             Normalize(productGender);
 
 
+        // =========================================================
         // UNISEXE
+        // =========================================================
 
-        if (productValue.Contains(
-            "unisexe"))
+        if (productValue == "unisexe" ||
+            productValue == "unisex")
         {
             return true;
         }
 
 
+        // =========================================================
         // FEMME
+        // =========================================================
 
         if (selectedValue == "her" ||
             selectedValue == "femme" ||
-            selectedValue == "woman")
+            selectedValue == "woman" ||
+            selectedValue == "women")
         {
             return
                 productValue.Contains("femme") ||
-                productValue.Contains("female");
+                productValue.Contains("female") ||
+                productValue.Contains("woman");
         }
 
 
+        // =========================================================
         // HOMME
+        // =========================================================
 
         if (selectedValue == "him" ||
             selectedValue == "homme" ||
-            selectedValue == "man")
+            selectedValue == "man" ||
+            selectedValue == "men")
         {
             return
                 productValue.Contains("homme") ||
-                productValue.Contains("male");
+                productValue.Contains("male") ||
+                productValue.Contains("man");
         }
 
 
-        return true;
+        return false;
     }
 
 
@@ -1559,47 +1578,42 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
 
     private static bool ContainsAny(
-        IEnumerable<string> values,
-        string search)
+    List<string>? values,
+    string search)
     {
-        if (string.IsNullOrWhiteSpace(
-            search))
+        if (values == null ||
+            values.Count == 0 ||
+            string.IsNullOrWhiteSpace(search))
         {
             return false;
         }
 
+        var normalizedSearch = Normalize(search);
 
-        var normalizedSearch =
-            Normalize(search);
-
-
-        foreach (var value
-                 in values)
+        foreach (var value in values)
         {
-            var normalizedValue =
-                Normalize(value);
-
-
-            if (string.IsNullOrWhiteSpace(
-                normalizedValue))
+            if (string.IsNullOrWhiteSpace(value))
             {
                 continue;
             }
 
+            var normalizedValue = Normalize(value);
 
-            if (normalizedValue ==
-                    normalizedSearch
-                ||
-                normalizedValue.Contains(
-                    normalizedSearch)
-                ||
-                normalizedSearch.Contains(
-                    normalizedValue))
+            if (normalizedValue == normalizedSearch)
+            {
+                return true;
+            }
+
+            // Correspondance seulement si l'une des valeurs
+            // est réellement une expression contenant l'autre.
+            if (normalizedValue.Contains("-" + normalizedSearch) ||
+                normalizedValue.Contains(normalizedSearch + "-") ||
+                normalizedSearch.Contains("-" + normalizedValue) ||
+                normalizedSearch.Contains(normalizedValue + "-"))
             {
                 return true;
             }
         }
-
 
         return false;
     }

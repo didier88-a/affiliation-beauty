@@ -211,14 +211,12 @@ public class PerfumeMatchController : ControllerBase
             // 7. TRI
             // ========================================================
 
-            results =
-                results
-                    .OrderByDescending(
-                        x => x.Score)
-                    .ThenByDescending(
-                        x => x.MatchPercent)
-                    .Take(24)
-                    .ToList();
+            results = results
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.TieBreakScore)
+                .ThenByDescending(x => x.MatchPercent)
+                .Take(24)
+                .ToList();
 
 
             // ========================================================
@@ -498,6 +496,47 @@ public class PerfumeMatchController : ControllerBase
         // =========================================================
         // FINAL SCORE
         // =========================================================
+
+        int tieBreakScore = 0;
+
+        // Plus le parfum correspond à plusieurs critères différents,
+        // plus il est prioritaire en cas d'égalité.
+
+        // Plusieurs notes différentes réellement trouvées
+        tieBreakScore +=
+            result.MatchedTopNotes.Count * 3;
+
+        tieBreakScore +=
+            result.MatchedHeartNotes.Count * 4;
+
+        tieBreakScore +=
+            result.MatchedBaseNotes.Count * 3;
+
+        // Style exact
+        tieBreakScore +=
+            result.MatchedStyles.Count * 2;
+
+        // Famille
+        tieBreakScore +=
+            result.MatchedFamilies.Count;
+
+        // Mood
+        tieBreakScore +=
+            result.MatchedMoods.Count;
+
+        // Occasion
+        tieBreakScore +=
+            result.MatchedOccasions.Count;
+
+        // Genre explicite
+        if (result.MatchedGender)
+        {
+            tieBreakScore += 1;
+        }
+
+        result.TieBreakScore = tieBreakScore;
+
+       
 
         result.Score = score;
 
@@ -1903,4 +1942,6 @@ public class PerfumeMatchResult
 
     public List<string> MatchedFamilies { get; set; } =
         new List<string>();
+
+    public int TieBreakScore { get; set; }
 }

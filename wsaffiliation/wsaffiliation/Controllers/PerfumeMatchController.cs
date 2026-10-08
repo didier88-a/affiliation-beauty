@@ -21,6 +21,10 @@ public class PerfumeMatchController : ControllerBase
         _configuration = configuration;
     }
 
+    // ================================================================
+    // POST /api/perfume-match
+    // ================================================================
+
     [HttpPost]
     public async Task<IActionResult> Match(
         [FromBody] PerfumeMatchRequest request)
@@ -35,26 +39,40 @@ public class PerfumeMatchController : ControllerBase
             {
                 return StatusCode(500, new
                 {
-                    error = "SUPABASE_URL or SUPABASE_KEY is missing."
+                    error =
+                        "SUPABASE_URL or SUPABASE_KEY is missing."
                 });
             }
 
+            // --------------------------------------------------------
+            // SUPABASE
+            // --------------------------------------------------------
+
             var url =
                 $"{supabaseUrl.TrimEnd('/')}/rest/v1/products" +
-                "?select=id,brand,name,short_name,image,slug,category,sub_category,type,naya_attributes";
+                "?select=id,brand,name,short_name,image,slug," +
+                "category,sub_category,type,naya_attributes";
 
-            using var httpRequest = new HttpRequestMessage(
-                HttpMethod.Get,
-                url);
+            using var httpRequest =
+                new HttpRequestMessage(
+                    HttpMethod.Get,
+                    url);
 
-            httpRequest.Headers.Add("apikey", supabaseKey);
-            httpRequest.Headers.Add("Authorization", $"Bearer {supabaseKey}");
+            httpRequest.Headers.Add(
+                "apikey",
+                supabaseKey);
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            httpRequest.Headers.Add(
+                "Authorization",
+                $"Bearer {supabaseKey}");
+
+            var response =
+                await _httpClient.SendAsync(httpRequest);
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync();
+                var error =
+                    await response.Content.ReadAsStringAsync();
 
                 return StatusCode(
                     (int)response.StatusCode,
@@ -65,7 +83,8 @@ public class PerfumeMatchController : ControllerBase
                     });
             }
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json =
+                await response.Content.ReadAsStringAsync();
 
             var products =
                 JsonSerializer.Deserialize<List<Product>>(
@@ -76,93 +95,139 @@ public class PerfumeMatchController : ControllerBase
                     })
                 ?? new List<Product>();
 
-            // ---------------------------------------------------------
-            // 1. GARDER UNIQUEMENT LES PARFUMS
-            // ---------------------------------------------------------
+
+            // ========================================================
+            // 1. FILTRAGE DES VRAIS PARFUMS
+            // ========================================================
 
             products = products
                 .Where(IsPerfume)
+                .Where(p => !IsClearlyNonPerfume(p))
                 .ToList();
 
-            var totalProducts = products.Count;
+            var totalProducts =
+                products.Count;
 
-            // ---------------------------------------------------------
-            // 2. NORMALISER LA REQUÊTE
-            // ---------------------------------------------------------
 
-            request.Moods = CleanList(request.Moods);
-            request.Styles = CleanList(request.Styles);
-            request.Notes = CleanList(request.Notes);
-            request.Families = CleanList(request.Families);
+            // ========================================================
+            // 2. NETTOYAGE REQUEST
+            // ========================================================
 
-            var occasions = new List<string>();
+            request.Moods =
+                CleanList(request.Moods);
 
-            if (!string.IsNullOrWhiteSpace(request.Occasion))
-                occasions.Add(request.Occasion);
+            request.Styles =
+                CleanList(request.Styles);
 
-            occasions.AddRange(request.Occasions ?? []);
+            request.Notes =
+                CleanList(request.Notes);
 
-            occasions = CleanList(occasions);
+            request.Families =
+                CleanList(request.Families);
 
-            // ---------------------------------------------------------
-            // 3. CALCUL DU SCORE MAXIMUM
-            // ---------------------------------------------------------
+
+            // ========================================================
+            // 3. OCCASIONS
+            // ========================================================
+
+            var occasions =
+                new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(
+                request.Occasion))
+            {
+                occasions.Add(
+                    request.Occasion);
+            }
+
+            occasions.AddRange(
+                request.Occasions ?? []);
+
+            occasions =
+                CleanList(occasions);
+
+
+            // ========================================================
+            // 4. SCORE MAXIMUM
+            // ========================================================
 
             var maximumScore =
-                CalculateMaximumScore(request, occasions);
+                CalculateMaximumScore(
+                    request,
+                    occasions);
 
-            // ---------------------------------------------------------
-            // 4. MATCHING
-            // ---------------------------------------------------------
 
-            var results = new List<PerfumeMatchResult>();
+            // ========================================================
+            // 5. MATCHING
+            // ========================================================
+
+            var results =
+                new List<PerfumeMatchResult>();
 
             foreach (var product in products)
             {
-                var result = CalculateScore(
-                    product,
-                    request,
-                    occasions,
-                    maximumScore);
+                var result =
+                    CalculateScore(
+                        product,
+                        request,
+                        occasions,
+                        maximumScore);
 
-                // On élimine uniquement les parfums qui
-                // n'ont absolument aucun match.
+                // Aucun intérêt à afficher un produit
+                // qui n'a aucun match.
                 if (result.Score > 0)
                 {
                     results.Add(result);
                 }
             }
 
-            // ---------------------------------------------------------
-            // 5. DÉDUPLICATION
-            // ---------------------------------------------------------
 
-            results = results
-                .GroupBy(x =>
-                    Normalize(
-                        !string.IsNullOrWhiteSpace(x.ShortName)
-                            ? x.ShortName!
-                            : x.Name ?? ""))
-                .Select(g =>
-                    g.OrderByDescending(x => x.Score)
-                     .First())
-                .ToList();
+            // ========================================================
+            // 6. DEDUPLICATION
+            // ========================================================
 
-            // ---------------------------------------------------------
-            // 6. TRI
-            // ---------------------------------------------------------
+            results =
+                results
+                    .GroupBy(x =>
+                        $"{Normalize(x.Brand)}|" +
+                        $"{Normalize(
+                            x.ShortName ?? x.Name)}")
+                    .Select(g =>
+                        g
+                            .OrderByDescending(
+                                x => x.Score)
+                            .ThenByDescending(
+                                x => x.MatchPercent)
+                            .First())
+                    .ToList();
 
-            results = results
-                .OrderByDescending(x => x.Score)
-                .ThenByDescending(x => x.MatchPercent)
-                .Take(24)
-                .ToList();
+
+            // ========================================================
+            // 7. TRI
+            // ========================================================
+
+            results =
+                results
+                    .OrderByDescending(
+                        x => x.Score)
+                    .ThenByDescending(
+                        x => x.MatchPercent)
+                    .Take(24)
+                    .ToList();
+
+
+            // ========================================================
+            // RESPONSE
+            // ========================================================
 
             return Ok(new
             {
                 count = results.Count,
+
                 totalProducts,
+
                 maximumScore,
+
                 results
             });
         }
@@ -178,6 +243,7 @@ public class PerfumeMatchController : ControllerBase
         }
     }
 
+
     // ================================================================
     // SCORE
     // ================================================================
@@ -188,51 +254,78 @@ public class PerfumeMatchController : ControllerBase
         List<string> occasions,
         int maximumScore)
     {
-        var result = new PerfumeMatchResult
-        {
-            Id = product.Id,
-            Brand = product.Brand,
-            Name = product.Name,
-            ShortName = product.ShortName,
-            Image = product.Image,
-            Slug = product.Slug
-        };
+        var result =
+            new PerfumeMatchResult
+            {
+                Id = product.Id,
+
+                Brand = product.Brand,
+
+                Name = product.Name,
+
+                ShortName = product.ShortName,
+
+                Image = product.Image,
+
+                Slug = product.Slug
+            };
 
         var score = 0;
 
-        var attr = product.NayaAttributes;
+        var attr =
+            product.NayaAttributes;
 
-        // ------------------------------------------------------------
+
+        // ============================================================
         // GENDER
-        // ------------------------------------------------------------
+        // ============================================================
 
-        if (!string.IsNullOrWhiteSpace(request.Whom))
+        if (!string.IsNullOrWhiteSpace(
+            request.Whom))
         {
-            var gender = GetString(attr, "gender");
+            var gender =
+                GetString(
+                    attr,
+                    "gender");
 
-            if (GenderMatches(request.Whom, gender))
+            if (GenderMatches(
+                request.Whom,
+                gender))
             {
                 score += 10;
+
                 result.MatchedGender = true;
             }
         }
 
-        // ------------------------------------------------------------
+
+        // ============================================================
         // NOTES
-        // ------------------------------------------------------------
+        // ============================================================
 
         var topNotes =
-            GetStringList(attr, "top_notes");
+            GetStringList(
+                attr,
+                "top_notes");
 
         var heartNotes =
-            GetStringList(attr, "heart_notes");
+            GetStringList(
+                attr,
+                "heart_notes");
 
         var baseNotes =
-            GetStringList(attr, "base_notes");
+            GetStringList(
+                attr,
+                "base_notes");
 
-        foreach (var selectedNote in request.Notes)
+
+        foreach (var selectedNote
+                 in request.Notes)
         {
-            if (ContainsAny(topNotes, selectedNote))
+            // TOP
+            if (ContainsAny(
+                topNotes,
+                selectedNote))
             {
                 score += 8;
 
@@ -240,7 +333,10 @@ public class PerfumeMatchController : ControllerBase
                     selectedNote);
             }
 
-            if (ContainsAny(heartNotes, selectedNote))
+            // COEUR
+            if (ContainsAny(
+                heartNotes,
+                selectedNote))
             {
                 score += 10;
 
@@ -248,7 +344,10 @@ public class PerfumeMatchController : ControllerBase
                     selectedNote);
             }
 
-            if (ContainsAny(baseNotes, selectedNote))
+            // FOND
+            if (ContainsAny(
+                baseNotes,
+                selectedNote))
             {
                 score += 8;
 
@@ -257,17 +356,24 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        // ------------------------------------------------------------
+
+        // ============================================================
         // STYLES
-        // ------------------------------------------------------------
+        // ============================================================
 
         var productStyles =
-            GetStringList(attr, "style");
+            GetStringList(
+                attr,
+                "style");
 
         var productFamilies =
-            GetStringList(attr, "fragrance_family");
+            GetStringList(
+                attr,
+                "fragrance_family");
 
-        foreach (var selectedStyle in request.Styles)
+
+        foreach (var selectedStyle
+                 in request.Styles)
         {
             if (StyleMatches(
                 selectedStyle,
@@ -281,11 +387,13 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        // ------------------------------------------------------------
-        // MOODS
-        // ------------------------------------------------------------
 
-        foreach (var selectedMood in request.Moods)
+        // ============================================================
+        // MOODS
+        // ============================================================
+
+        foreach (var selectedMood
+                 in request.Moods)
         {
             if (MoodMatches(
                 selectedMood,
@@ -299,14 +407,19 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        // ------------------------------------------------------------
+
+        // ============================================================
         // OCCASION
-        // ------------------------------------------------------------
+        // ============================================================
 
         var productOccasions =
-            GetStringList(attr, "occasion");
+            GetStringList(
+                attr,
+                "occasion");
 
-        foreach (var selectedOccasion in occasions)
+
+        foreach (var selectedOccasion
+                 in occasions)
         {
             if (ContainsAny(
                 productOccasions,
@@ -319,11 +432,13 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        // ------------------------------------------------------------
-        // FAMILIES
-        // ------------------------------------------------------------
 
-        foreach (var selectedFamily in request.Families)
+        // ============================================================
+        // FAMILY
+        // ============================================================
+
+        foreach (var selectedFamily
+                 in request.Families)
         {
             if (ContainsAny(
                 productFamilies,
@@ -336,18 +451,26 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
-        result.Score = score;
+
+        // ============================================================
+        // RESULT SCORE
+        // ============================================================
+
+        result.Score =
+            score;
 
         result.MatchPercent =
             maximumScore > 0
                 ? Math.Min(
                     100,
                     (int)Math.Round(
-                        score * 100.0 / maximumScore))
+                        score * 100.0 /
+                        maximumScore))
                 : 0;
 
         return result;
     }
+
 
     // ================================================================
     // MAXIMUM SCORE
@@ -359,53 +482,219 @@ public class PerfumeMatchController : ControllerBase
     {
         var score = 0;
 
-        // Gender
-        if (!string.IsNullOrWhiteSpace(request.Whom))
-            score += 10;
 
-        // Notes
-        foreach (var note in request.Notes)
+        // GENDER
+        if (!string.IsNullOrWhiteSpace(
+            request.Whom))
         {
-            // Une note sélectionnée peut être top, cœur ou fond.
-            // Pour le maximum on prend le poids maximum possible.
             score += 10;
         }
 
-        // Styles
-        score += request.Styles.Count * 6;
 
-        // Moods
-        score += request.Moods.Count * 6;
+        // NOTES
+        //
+        // Une note peut être top / coeur / fond.
+        // On utilise le poids maximum = 10.
+        //
 
-        // Occasions
-        score += occasions.Count * 4;
+        score +=
+            request.Notes.Count * 10;
 
-        // Families
-        score += request.Families.Count * 4;
+
+        // STYLES
+
+        score +=
+            request.Styles.Count * 6;
+
+
+        // MOODS
+
+        score +=
+            request.Moods.Count * 6;
+
+
+        // OCCASIONS
+
+        score +=
+            occasions.Count * 4;
+
+
+        // FAMILIES
+
+        score +=
+            request.Families.Count * 4;
+
 
         return score;
     }
 
+
     // ================================================================
-    // PERFUME FILTER
+    // FILTRE PARFUM
     // ================================================================
 
-    private static bool IsPerfume(Product product)
+    private static bool IsPerfume(
+        Product product)
     {
-        var values = new[]
-        {
-            product.Category,
-            product.SubCategory,
-            product.Type
-        };
+        var category =
+            Normalize(product.Category);
 
-        return values.Any(x =>
-            !string.IsNullOrWhiteSpace(x) &&
-            (
-                Normalize(x).Contains("parfum") ||
-                Normalize(x).Contains("parfumerie")
-            ));
+        var subCategory =
+            Normalize(product.SubCategory);
+
+        var type =
+            Normalize(product.Type);
+
+        var name =
+            Normalize(product.Name);
+
+        var shortName =
+            Normalize(product.ShortName);
+
+
+        var all =
+            $"{category} " +
+            $"{subCategory} " +
+            $"{type} " +
+            $"{name} " +
+            $"{shortName}";
+
+
+        // ------------------------------------------------------------
+        // MOTS QUI IDENTIFIENT UN VRAI PARFUM
+        // ------------------------------------------------------------
+
+        string[] perfumeKeywords =
+        [
+            "eau-de-parfum",
+
+            "eau-de-toilette",
+
+            "eau-de-cologne",
+
+            "parfum",
+
+            "extrait-de-parfum",
+
+            "extrait",
+
+            "perfume",
+
+            "fragrance"
+        ];
+
+
+        var hasPerfumeKeyword =
+            perfumeKeywords.Any(
+                x => all.Contains(x));
+
+
+        // ------------------------------------------------------------
+        // CATEGORIE PARFUMERIE
+        // ------------------------------------------------------------
+
+        var perfumeCategory =
+            category.Contains("parfum") ||
+            category.Contains("parfumerie") ||
+            subCategory.Contains("parfum") ||
+            subCategory.Contains("parfumerie");
+
+
+        // ------------------------------------------------------------
+        // TYPE PARFUM
+        // ------------------------------------------------------------
+
+        var perfumeType =
+            type.Contains("parfum") ||
+            type.Contains("eau-de-parfum") ||
+            type.Contains("eau-de-toilette") ||
+            type.Contains("extrait");
+
+
+        return
+            hasPerfumeKeyword ||
+            perfumeCategory ||
+            perfumeType;
     }
+
+
+    // ================================================================
+    // EXCLUSIONS
+    // ================================================================
+
+    private static bool IsClearlyNonPerfume(
+        Product product)
+    {
+        var all =
+            Normalize(
+                $"{product.Category} " +
+                $"{product.SubCategory} " +
+                $"{product.Type} " +
+                $"{product.Name} " +
+                $"{product.ShortName}");
+
+
+        string[] excluded =
+        [
+            // BODY
+            "vaporisateur-pour-le-corps",
+            "vaporisateur-corps",
+            "spray-corps",
+            "body-spray",
+            "body-mist",
+            "brume-corps",
+            "brume-pour-le-corps",
+
+            // DEODORANT
+            "deodorant",
+            "deodorant-spray",
+            "deodorant-stick",
+            "deo",
+
+            // CHEVEUX
+            "shampoo",
+            "shampoing",
+            "conditioner",
+            "apres-shampooing",
+            "masque-capillaire",
+            "huile-capillaire",
+
+            // CORPS
+            "gel-douche",
+            "savon",
+            "lotion-corps",
+            "lait-corps",
+            "creme-corps",
+            "huile-corps",
+
+            // MAISON
+            "bougie",
+            "candle",
+            "diffuseur",
+            "diffuser",
+            "home-fragrance",
+            "parfum-interieur",
+            "parfum-d-interieur",
+            "spray-interieur",
+
+            // COFFRETS
+            "coffret",
+            "gift-set",
+            "giftset",
+            "set-cadeau",
+            "routine",
+
+            // MINIATURES / ECHANTILLONS
+            "miniature",
+            "echantillon",
+            "sample"
+        ];
+
+
+        return excluded.Any(
+            x => all.Contains(x));
+    }
+
 
     // ================================================================
     // GENDER
@@ -415,8 +704,12 @@ public class PerfumeMatchController : ControllerBase
         string selected,
         string? productGender)
     {
-        if (string.IsNullOrWhiteSpace(productGender))
+        if (string.IsNullOrWhiteSpace(
+            productGender))
+        {
             return true;
+        }
+
 
         var selectedValue =
             Normalize(selected);
@@ -424,30 +717,43 @@ public class PerfumeMatchController : ControllerBase
         var productValue =
             Normalize(productGender);
 
-        if (productValue.Contains("unisexe"))
-            return true;
 
+        // UNISEXE
+        if (productValue.Contains(
+            "unisexe"))
+        {
+            return true;
+        }
+
+
+        // FEMME
         if (selectedValue == "her" ||
             selectedValue == "femme" ||
             selectedValue == "woman")
         {
-            return productValue.Contains("femme") ||
-                   productValue.Contains("female");
+            return
+                productValue.Contains("femme") ||
+                productValue.Contains("female");
         }
 
+
+        // HOMME
         if (selectedValue == "him" ||
             selectedValue == "homme" ||
             selectedValue == "man")
         {
-            return productValue.Contains("homme") ||
-                   productValue.Contains("male");
+            return
+                productValue.Contains("homme") ||
+                productValue.Contains("male");
         }
+
 
         return true;
     }
 
+
     // ================================================================
-    // STYLE MAPPING
+    // STYLE MATCHING
     // ================================================================
 
     private static bool StyleMatches(
@@ -456,12 +762,25 @@ public class PerfumeMatchController : ControllerBase
         List<string> families)
     {
         var possibleValues =
-            GetStyleMapping(selectedStyle);
+            GetStyleMapping(
+                selectedStyle);
 
-        return possibleValues.Any(value =>
-            ContainsAny(styles, value) ||
-            ContainsAny(families, value));
+
+        return possibleValues.Any(
+            value =>
+                ContainsAny(
+                    styles,
+                    value)
+                ||
+                ContainsAny(
+                    families,
+                    value));
     }
+
+
+    // ================================================================
+    // STYLE MAPPING
+    // ================================================================
 
     private static List<string> GetStyleMapping(
         string style)
@@ -469,94 +788,159 @@ public class PerfumeMatchController : ControllerBase
         return Normalize(style) switch
         {
             "aquatic" =>
-                ["aquatique", "aquatic"],
+            [
+                "aquatique",
+                "aquatic"
+            ],
 
             "aromatic" =>
-                ["aromatique", "aromatic"],
+            [
+                "aromatique",
+                "aromatic"
+            ],
 
             "chypre" =>
-                ["chypre", "chypree"],
+            [
+                "chypre",
+                "chypree"
+            ],
 
             "citrus" =>
-                ["agrume", "agrumes", "citrus"],
+            [
+                "agrume",
+                "agrumes",
+                "citrus"
+            ],
 
             "creamy" =>
-                ["cremeux", "cremeuse", "creamy"],
+            [
+                "cremeux",
+                "cremeuse",
+                "creme",
+                "creamy"
+            ],
 
             "earthy" =>
-                ["terreux", "terreuse", "earthy"],
+            [
+                "terreux",
+                "terreuse",
+                "earthy"
+            ],
 
             "floral" =>
-                ["floral", "florale"],
+            [
+                "floral",
+                "florale"
+            ],
 
             "fresh" =>
-                ["frais", "fraiche", "fresh"],
+            [
+                "frais",
+                "fraiche",
+                "fresh"
+            ],
 
             "fruity" =>
-                ["fruite", "fruitee", "fruity"],
+            [
+                "fruite",
+                "fruitee",
+                "fruity"
+            ],
 
             "gourmand" =>
-                ["gourmand", "gourmande"],
+            [
+                "gourmand",
+                "gourmande"
+            ],
 
             "green" =>
-                ["vert", "verte", "green"],
+            [
+                "vert",
+                "verte",
+                "green"
+            ],
 
             "iris-makeup" =>
-                ["iris", "maquillage"],
+            [
+                "iris",
+                "maquillage"
+            ],
 
             "leather" =>
-                ["cuir", "cuire", "cuiree", "leather"],
+            [
+                "cuir",
+                "cuire",
+                "cuiree",
+                "cuire",
+                "leather"
+            ],
 
             "musky" =>
-                ["musc", "musque", "musquee", "musky"],
+            [
+                "musc",
+                "musque",
+                "musquee",
+                "musky"
+            ],
 
             "oriental-amber" =>
-                [
-                    "oriental",
-                    "orientale",
-                    "ambre",
-                    "ambree",
-                    "ambré"
-                ],
+            [
+                "oriental",
+                "orientale",
+                "ambre",
+                "ambree"
+            ],
 
             "oud" =>
-                ["oud"],
+            [
+                "oud"
+            ],
 
             "powdery" =>
-                ["poudre", "poudre", "poudree"],
+            [
+                "poudre",
+                "poudre",
+                "poudree"
+            ],
 
             "smoky" =>
-                ["fume", "fumee", "smoky"],
+            [
+                "fume",
+                "fumee",
+                "smoky"
+            ],
 
             "spicy" =>
-                [
-                    "epice",
-                    "epicee",
-                    "epices",
-                    "spicy"
-                ],
+            [
+                "epice",
+                "epicee",
+                "epices",
+                "spicy"
+            ],
 
             "aldehydic" =>
-                [
-                    "aldehydique",
-                    "aldehydé",
-                    "aldehyde"
-                ],
+            [
+                "aldehydique",
+                "aldehyde"
+            ],
 
             "woody" =>
-                [
-                    "boise",
-                    "boisee",
-                    "woody"
-                ],
+            [
+                "boise",
+                "boisee",
+                "woody"
+            ],
 
             _ =>
-                [style]
+            [
+                style
+            ]
         };
     }
 
+
     // ================================================================
-    // MOOD MAPPING
+    // MOOD MATCHING
     // ================================================================
 
     private static bool MoodMatches(
@@ -565,12 +949,25 @@ public class PerfumeMatchController : ControllerBase
         List<string> families)
     {
         var values =
-            GetMoodMapping(mood);
+            GetMoodMapping(
+                mood);
 
-        return values.Any(value =>
-            ContainsAny(styles, value) ||
-            ContainsAny(families, value));
+
+        return values.Any(
+            value =>
+                ContainsAny(
+                    styles,
+                    value)
+                ||
+                ContainsAny(
+                    families,
+                    value));
     }
+
+
+    // ================================================================
+    // MOOD MAPPING
+    // ================================================================
 
     private static List<string> GetMoodMapping(
         string mood)
@@ -578,241 +975,250 @@ public class PerfumeMatchController : ControllerBase
         return Normalize(mood) switch
         {
             "bold" =>
-                [
-                    "intense",
-                    "puissant",
-                    "puissante"
-                ],
+            [
+                "intense",
+                "puissant",
+                "puissante"
+            ],
 
             "calm" =>
-                [
-                    "doux",
-                    "douce",
-                    "frais",
-                    "fraiche"
-                ],
+            [
+                "doux",
+                "douce",
+                "frais",
+                "fraiche"
+            ],
 
             "chic" =>
-                [
-                    "elegant",
-                    "elegante",
-                    "sophistique",
-                    "sophistiquee"
-                ],
+            [
+                "elegant",
+                "elegante",
+                "sophistique",
+                "sophistiquee"
+            ],
 
             "clean" =>
-                [
-                    "frais",
-                    "fraiche",
-                    "aromatique"
-                ],
+            [
+                "frais",
+                "fraiche",
+                "aromatique"
+            ],
 
             "comforting" =>
-                [
-                    "doux",
-                    "douce",
-                    "ambre",
-                    "ambree"
-                ],
+            [
+                "doux",
+                "douce",
+                "ambre",
+                "ambree"
+            ],
 
             "confident" =>
-                [
-                    "elegant",
-                    "intense",
-                    "puissant",
-                    "luxueux"
-                ],
+            [
+                "elegant",
+                "intense",
+                "puissant",
+                "puissante",
+                "luxueux",
+                "luxueuse"
+            ],
 
             "cozy" =>
-                [
-                    "doux",
-                    "douce",
-                    "ambre",
-                    "ambree",
-                    "oriental",
-                    "orientale"
-                ],
+            [
+                "doux",
+                "douce",
+                "ambre",
+                "ambree",
+                "oriental",
+                "orientale"
+            ],
 
             "dramatic" =>
-                [
-                    "intense",
-                    "oriental",
-                    "orientale",
-                    "boise",
-                    "boisee",
-                    "oud"
-                ],
+            [
+                "intense",
+                "oriental",
+                "orientale",
+                "boise",
+                "boisee",
+                "oud"
+            ],
 
             "elegant" =>
-                [
-                    "elegant",
-                    "elegante",
-                    "sophistique",
-                    "sophistiquee"
-                ],
+            [
+                "elegant",
+                "elegante",
+                "sophistique",
+                "sophistiquee"
+            ],
 
             "energizing" =>
-                [
-                    "frais",
-                    "fraiche",
-                    "agrumes",
-                    "aromatique"
-                ],
+            [
+                "frais",
+                "fraiche",
+                "agrumes",
+                "aromatique"
+            ],
 
             "fresh-invigorating" =>
-                [
-                    "frais",
-                    "fraiche",
-                    "agrumes",
-                    "aromatique"
-                ],
+            [
+                "frais",
+                "fraiche",
+                "agrumes",
+                "aromatique"
+            ],
 
             "luxury" =>
-                [
-                    "luxueux",
-                    "luxueuse",
-                    "elegant",
-                    "elegante",
-                    "sophistique",
-                    "sophistiquee"
-                ],
+            [
+                "luxueux",
+                "luxueuse",
+                "elegant",
+                "elegante",
+                "sophistique",
+                "sophistiquee"
+            ],
 
             "modern" =>
-                [
-                    "moderne",
-                    "sophistique",
-                    "sophistiquee"
-                ],
+            [
+                "moderne",
+                "sophistique",
+                "sophistiquee"
+            ],
 
             "addictive" =>
-                [
-                    "seduisant",
-                    "seduisante",
-                    "sensuel",
-                    "sensuelle",
-                    "gourmand",
-                    "gourmande"
-                ],
+            [
+                "seduisant",
+                "seduisante",
+                "sensuel",
+                "sensuelle",
+                "gourmand",
+                "gourmande"
+            ],
 
             "mysterious" =>
-                [
-                    "oriental",
-                    "orientale",
-                    "ambre",
-                    "ambree",
-                    "boise",
-                    "boisee",
-                    "oud"
-                ],
+            [
+                "oriental",
+                "orientale",
+                "ambre",
+                "ambree",
+                "boise",
+                "boisee",
+                "oud"
+            ],
 
             "playful" =>
-                [
-                    "fruite",
-                    "fruitee",
-                    "gourmand",
-                    "gourmande"
-                ],
+            [
+                "fruite",
+                "fruitee",
+                "gourmand",
+                "gourmande"
+            ],
 
             "powerful" =>
-                [
-                    "intense",
-                    "puissant",
-                    "puissante"
-                ],
+            [
+                "intense",
+                "puissant",
+                "puissante"
+            ],
 
             "relaxing" =>
-                [
-                    "doux",
-                    "douce",
-                    "frais",
-                    "fraiche"
-                ],
+            [
+                "doux",
+                "douce",
+                "frais",
+                "fraiche"
+            ],
 
             "romantic" =>
-                [
-                    "floral",
-                    "florale",
-                    "sensuel",
-                    "sensuelle",
-                    "seduisant",
-                    "seduisante"
-                ],
+            [
+                "floral",
+                "florale",
+                "sensuel",
+                "sensuelle",
+                "seduisant",
+                "seduisante"
+            ],
 
             "seductive" =>
-                [
-                    "seduisant",
-                    "seduisante",
-                    "sensuel",
-                    "sensuelle"
-                ],
+            [
+                "seduisant",
+                "seduisante",
+                "sensuel",
+                "sensuelle"
+            ],
 
             "sensual" =>
-                [
-                    "sensuel",
-                    "sensuelle",
-                    "seduisant",
-                    "seduisante"
-                ],
+            [
+                "sensuel",
+                "sensuelle",
+                "seduisant",
+                "seduisante"
+            ],
 
             "sexy" =>
-                [
-                    "sensuel",
-                    "sensuelle",
-                    "seduisant",
-                    "seduisante"
-                ],
+            [
+                "sensuel",
+                "sensuelle",
+                "seduisant",
+                "seduisante"
+            ],
 
             "sophisticated" =>
-                [
-                    "sophistique",
-                    "sophistiquee",
-                    "elegant",
-                    "elegante"
-                ],
+            [
+                "sophistique",
+                "sophistiquee",
+                "elegant",
+                "elegante"
+            ],
 
             "timeless" =>
-                [
-                    "elegant",
-                    "elegante",
-                    "sophistique",
-                    "sophistiquee"
-                ],
+            [
+                "elegant",
+                "elegante",
+                "sophistique",
+                "sophistiquee"
+            ],
 
             "warm" =>
-                [
-                    "ambre",
-                    "ambree",
-                    "oriental",
-                    "orientale",
-                    "chaud",
-                    "chaude",
-                    "epice",
-                    "epicee"
-                ],
+            [
+                "ambre",
+                "ambree",
+                "oriental",
+                "orientale",
+                "chaud",
+                "chaude",
+                "epice",
+                "epicee"
+            ],
 
             "youthful" =>
-                [
-                    "fruite",
-                    "fruitee",
-                    "frais",
-                    "fraiche"
-                ],
+            [
+                "fruite",
+                "fruitee",
+                "frais",
+                "fraiche"
+            ],
 
             _ =>
-                [mood]
+            [
+                mood
+            ]
         };
     }
 
+
     // ================================================================
-    // HELPERS
+    // JSON HELPERS
     // ================================================================
 
     private static List<string> GetStringList(
         JsonElement json,
         string property)
     {
-        if (json.ValueKind != JsonValueKind.Object)
+        if (json.ValueKind !=
+            JsonValueKind.Object)
+        {
             return [];
+        }
+
 
         if (!json.TryGetProperty(
             property,
@@ -821,31 +1227,51 @@ public class PerfumeMatchController : ControllerBase
             return [];
         }
 
-        if (value.ValueKind != JsonValueKind.Array)
-            return [];
 
-        var result = new List<string>();
-
-        foreach (var item in value.EnumerateArray())
+        if (value.ValueKind !=
+            JsonValueKind.Array)
         {
-            if (item.ValueKind == JsonValueKind.String)
-            {
-                var text = item.GetString();
+            return [];
+        }
 
-                if (!string.IsNullOrWhiteSpace(text))
+
+        var result =
+            new List<string>();
+
+
+        foreach (var item
+                 in value.EnumerateArray())
+        {
+            if (item.ValueKind ==
+                JsonValueKind.String)
+            {
+                var text =
+                    item.GetString();
+
+
+                if (!string.IsNullOrWhiteSpace(
+                    text))
+                {
                     result.Add(text);
+                }
             }
         }
 
+
         return result;
     }
+
 
     private static string? GetString(
         JsonElement json,
         string property)
     {
-        if (json.ValueKind != JsonValueKind.Object)
+        if (json.ValueKind !=
+            JsonValueKind.Object)
+        {
             return null;
+        }
+
 
         if (!json.TryGetProperty(
             property,
@@ -854,39 +1280,68 @@ public class PerfumeMatchController : ControllerBase
             return null;
         }
 
-        return value.ValueKind == JsonValueKind.String
+
+        return value.ValueKind ==
+               JsonValueKind.String
             ? value.GetString()
             : null;
     }
+
+
+    // ================================================================
+    // STRING MATCH
+    // ================================================================
 
     private static bool ContainsAny(
         IEnumerable<string> values,
         string search)
     {
-        if (string.IsNullOrWhiteSpace(search))
+        if (string.IsNullOrWhiteSpace(
+            search))
+        {
             return false;
+        }
+
 
         var normalizedSearch =
             Normalize(search);
 
-        foreach (var value in values)
+
+        foreach (var value
+                 in values)
         {
             var normalizedValue =
                 Normalize(value);
 
-            if (string.IsNullOrWhiteSpace(normalizedValue))
-                continue;
 
-            if (normalizedValue == normalizedSearch ||
-                normalizedValue.Contains(normalizedSearch) ||
-                normalizedSearch.Contains(normalizedValue))
+            if (string.IsNullOrWhiteSpace(
+                normalizedValue))
+            {
+                continue;
+            }
+
+
+            if (normalizedValue ==
+                    normalizedSearch
+                ||
+                normalizedValue.Contains(
+                    normalizedSearch)
+                ||
+                normalizedSearch.Contains(
+                    normalizedValue))
             {
                 return true;
             }
         }
 
+
         return false;
     }
+
+
+    // ================================================================
+    // CLEAN LIST
+    // ================================================================
 
     private static List<string> CleanList(
         IEnumerable<string>? values)
@@ -894,29 +1349,51 @@ public class PerfumeMatchController : ControllerBase
         if (values == null)
             return [];
 
+
         return values
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(
+                x =>
+                    !string.IsNullOrWhiteSpace(
+                        x))
+            .Select(
+                x =>
+                    x.Trim())
+            .Distinct(
+                StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+
+    // ================================================================
+    // NORMALIZE
+    // ================================================================
 
     private static string Normalize(
         string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(
+            value))
+        {
             return "";
+        }
+
 
         var normalized =
             value.Normalize(
                 NormalizationForm.FormD);
 
-        var sb = new StringBuilder();
 
-        foreach (var c in normalized)
+        var sb =
+            new StringBuilder();
+
+
+        foreach (var c
+                 in normalized)
         {
             var category =
-                CharUnicodeInfo.GetUnicodeCategory(c);
+                CharUnicodeInfo.GetUnicodeCategory(
+                    c);
+
 
             if (category !=
                 UnicodeCategory.NonSpacingMark)
@@ -925,12 +1402,16 @@ public class PerfumeMatchController : ControllerBase
             }
         }
 
+
         return sb
             .ToString()
-            .Normalize(NormalizationForm.FormC)
+            .Normalize(
+                NormalizationForm.FormC)
             .ToLowerInvariant()
             .Trim()
-            .Replace(" ", "-");
+            .Replace(
+                " ",
+                "-");
     }
 }
 

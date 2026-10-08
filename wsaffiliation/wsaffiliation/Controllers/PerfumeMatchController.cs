@@ -287,7 +287,16 @@ public class PerfumeMatchController : ControllerBase
 
         // =========================================================
         // 2. NOTES
-        // PRIORITÉ MAXIMALE
+        //
+        // Une note sélectionnée = un seul score.
+        //
+        // Priorité :
+        // Cœur = 25
+        // Tête  = 20
+        // Fond  = 20
+        //
+        // Si une même note existe dans plusieurs catégories,
+        // on prend uniquement la catégorie avec le score le plus élevé.
         // =========================================================
 
         var topNotes =
@@ -307,28 +316,9 @@ public class PerfumeMatchController : ControllerBase
 
         foreach (var requestedNote in request.Notes)
         {
-            // -------------------------
-            // NOTE DE TÊTE
-            // -------------------------
+            bool matched = false;
 
-            if (ContainsAny(
-                    topNotes,
-                    requestedNote))
-            {
-                if (!result.MatchedTopNotes.Contains(
-                        requestedNote))
-                {
-                    result.MatchedTopNotes.Add(
-                        requestedNote);
-                }
-
-                score += 20;
-            }
-
-            // -------------------------
-            // NOTE DE CŒUR
-            // -------------------------
-
+            // CŒUR = priorité maximale
             if (ContainsAny(
                     heartNotes,
                     requestedNote))
@@ -341,15 +331,29 @@ public class PerfumeMatchController : ControllerBase
                 }
 
                 score += 25;
+
+                matched = true;
             }
+            // TÊTE
+            else if (ContainsAny(
+                         topNotes,
+                         requestedNote))
+            {
+                if (!result.MatchedTopNotes.Contains(
+                        requestedNote))
+                {
+                    result.MatchedTopNotes.Add(
+                        requestedNote);
+                }
 
-            // -------------------------
-            // NOTE DE FOND
-            // -------------------------
+                score += 20;
 
-            if (ContainsAny(
-                    baseNotes,
-                    requestedNote))
+                matched = true;
+            }
+            // FOND
+            else if (ContainsAny(
+                         baseNotes,
+                         requestedNote))
             {
                 if (!result.MatchedBaseNotes.Contains(
                         requestedNote))
@@ -359,6 +363,8 @@ public class PerfumeMatchController : ControllerBase
                 }
 
                 score += 20;
+
+                matched = true;
             }
         }
 
@@ -594,8 +600,8 @@ public class PerfumeMatchController : ControllerBase
     // ================================================================
 
     private static int CalculateMaximumScore(
-     PerfumeMatchRequest request,
-     List<string> occasions)
+    PerfumeMatchRequest request,
+    List<string> occasions)
     {
         int score = 0;
 
@@ -607,10 +613,7 @@ public class PerfumeMatchController : ControllerBase
         }
 
         // Notes
-        //
-        // On prend 25 comme maximum par note
-        // car une note de cœur vaut 25.
-        //
+        // Maximum par note = 25
         score +=
             request.Notes.Count * 25;
 

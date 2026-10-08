@@ -275,7 +275,9 @@ public class PerfumeMatchController : ControllerBase
         // GENRE
         // =========================================================
 
-        if (HasExplicitGenderMatch(product, request.Whom))
+        if (HasExplicitGenderMatch(
+            product,
+            request.Whom))
         {
             score += 10;
             result.MatchedGender = true;
@@ -290,44 +292,71 @@ public class PerfumeMatchController : ControllerBase
         // =========================================================
 
         var topNotes =
-            GetStringList(attr, "top_notes");
+            GetStringList(
+                attr,
+                "top_notes");
 
         var heartNotes =
-            GetStringList(attr, "heart_notes");
+            GetStringList(
+                attr,
+                "heart_notes");
 
         var baseNotes =
-            GetStringList(attr, "base_notes");
+            GetStringList(
+                attr,
+                "base_notes");
 
         foreach (var requestedNote in request.Notes)
         {
+            // -----------------------------------------------------
             // NOTE DE TÊTE
-            if (ContainsAny(topNotes, requestedNote))
+            // -----------------------------------------------------
+
+            if (ContainsAny(
+                topNotes,
+                requestedNote))
             {
-                if (!result.MatchedTopNotes.Contains(requestedNote))
+                if (!result.MatchedTopNotes.Contains(
+                    requestedNote))
                 {
-                    result.MatchedTopNotes.Add(requestedNote);
+                    result.MatchedTopNotes.Add(
+                        requestedNote);
                 }
 
                 score += 10;
             }
 
+            // -----------------------------------------------------
             // NOTE DE CŒUR
-            if (ContainsAny(heartNotes, requestedNote))
+            // -----------------------------------------------------
+
+            if (ContainsAny(
+                heartNotes,
+                requestedNote))
             {
-                if (!result.MatchedHeartNotes.Contains(requestedNote))
+                if (!result.MatchedHeartNotes.Contains(
+                    requestedNote))
                 {
-                    result.MatchedHeartNotes.Add(requestedNote);
+                    result.MatchedHeartNotes.Add(
+                        requestedNote);
                 }
 
                 score += 12;
             }
 
+            // -----------------------------------------------------
             // NOTE DE FOND
-            if (ContainsAny(baseNotes, requestedNote))
+            // -----------------------------------------------------
+
+            if (ContainsAny(
+                baseNotes,
+                requestedNote))
             {
-                if (!result.MatchedBaseNotes.Contains(requestedNote))
+                if (!result.MatchedBaseNotes.Contains(
+                    requestedNote))
                 {
-                    result.MatchedBaseNotes.Add(requestedNote);
+                    result.MatchedBaseNotes.Add(
+                        requestedNote);
                 }
 
                 score += 10;
@@ -339,37 +368,62 @@ public class PerfumeMatchController : ControllerBase
         // =========================================================
 
         var productStyles =
-            GetStringList(attr, "style");
+            GetStringList(
+                attr,
+                "style");
+
+        var productFamilies =
+            GetStringList(
+                attr,
+                "fragrance_family");
 
         foreach (var requestedStyle in request.Styles)
         {
-            if (ContainsAny(productStyles, requestedStyle))
+            var possibleValues =
+                GetStyleMapping(
+                    requestedStyle);
+
+            bool exactStyleMatch =
+                possibleValues.Any(
+                    value =>
+                        ContainsAny(
+                            productStyles,
+                            value));
+
+            bool familyMatch =
+                possibleValues.Any(
+                    value =>
+                        ContainsAny(
+                            productFamilies,
+                            value));
+
+            // -----------------------------------------------------
+            // STYLE EXACT = 8 POINTS
+            // -----------------------------------------------------
+
+            if (exactStyleMatch)
             {
-                if (!result.MatchedStyles.Contains(requestedStyle))
+                if (!result.MatchedStyles.Contains(
+                    requestedStyle))
                 {
-                    result.MatchedStyles.Add(requestedStyle);
+                    result.MatchedStyles.Add(
+                        requestedStyle);
                 }
 
                 score += 8;
             }
-        }
+            // -----------------------------------------------------
+            // FAMILLE = 4 POINTS
+            // seulement si le style n'est pas trouvé
+            // -----------------------------------------------------
 
-        // =========================================================
-        // FAMILLE OLFACTIVE
-        // =========================================================
-
-        var productFamilies =
-            GetStringList(attr, "fragrance_family");
-
-        foreach (var requestedStyle in request.Styles)
-        {
-            // Si le style sélectionné correspond à une famille
-            // olfactive, on donne 4 points.
-            if (ContainsAny(productFamilies, requestedStyle))
+            else if (familyMatch)
             {
-                if (!result.MatchedFamilies.Contains(requestedStyle))
+                if (!result.MatchedFamilies.Contains(
+                    requestedStyle))
                 {
-                    result.MatchedFamilies.Add(requestedStyle);
+                    result.MatchedFamilies.Add(
+                        requestedStyle);
                 }
 
                 score += 4;
@@ -383,13 +437,15 @@ public class PerfumeMatchController : ControllerBase
         foreach (var mood in request.Moods)
         {
             if (MoodMatches(
-    mood,
-    productStyles,
-    productFamilies))
+                mood,
+                productStyles,
+                productFamilies))
             {
-                if (!result.MatchedMoods.Contains(mood))
+                if (!result.MatchedMoods.Contains(
+                    mood))
                 {
-                    result.MatchedMoods.Add(mood);
+                    result.MatchedMoods.Add(
+                        mood);
                 }
 
                 score += 4;
@@ -401,18 +457,45 @@ public class PerfumeMatchController : ControllerBase
         // =========================================================
 
         var productOccasions =
-            GetStringList(attr, "occasion");
+            GetStringList(
+                attr,
+                "occasion");
 
         foreach (var occasion in occasions)
         {
-            if (ContainsAny(productOccasions, occasion))
+            if (ContainsAny(
+                productOccasions,
+                occasion))
             {
-                if (!result.MatchedOccasions.Contains(occasion))
+                if (!result.MatchedOccasions.Contains(
+                    occasion))
                 {
-                    result.MatchedOccasions.Add(occasion);
+                    result.MatchedOccasions.Add(
+                        occasion);
                 }
 
                 score += 3;
+            }
+        }
+
+        // =========================================================
+        // FAMILLES EXPLICITEMENT SÉLECTIONNÉES
+        // =========================================================
+
+        foreach (var requestedFamily in request.Families)
+        {
+            if (ContainsAny(
+                productFamilies,
+                requestedFamily))
+            {
+                if (!result.MatchedFamilies.Contains(
+                    requestedFamily))
+                {
+                    result.MatchedFamilies.Add(
+                        requestedFamily);
+                }
+
+                score += 4;
             }
         }
 
@@ -427,7 +510,8 @@ public class PerfumeMatchController : ControllerBase
                 ? Math.Min(
                     100,
                     (int)Math.Round(
-                        score * 100.0 / maximumScore))
+                        score * 100.0 /
+                        maximumScore))
                 : 0;
 
         return result;
@@ -525,30 +609,59 @@ public class PerfumeMatchController : ControllerBase
     {
         int score = 0;
 
-        // Genre
-        if (!string.IsNullOrWhiteSpace(request.Whom))
+        // =========================================================
+        // GENRE
+        // =========================================================
+
+        if (!string.IsNullOrWhiteSpace(
+            request.Whom))
         {
             score += 10;
         }
 
-        // Notes
-        score += request.Notes.Count * 12;
+        // =========================================================
+        // NOTES
+        // =========================================================
 
-        // Styles
-        score += request.Styles.Count * 8;
+        // Une note peut théoriquement être trouvée
+        // en tête, cœur ou fond.
+        //
+        // Le maximum retenu est donc 12,
+        // correspondant à une note de cœur.
+        score +=
+            request.Notes.Count * 12;
 
-        // Moods
-        score += request.Moods.Count * 4;
+        // =========================================================
+        // STYLE
+        // =========================================================
 
-        // Occasions
-        score += occasions.Count * 3;
+        // Match direct du style = 8
+        score +=
+            request.Styles.Count * 8;
 
-        // Familles
-        score += request.Families.Count * 4;
+        // =========================================================
+        // MOODS
+        // =========================================================
+
+        score +=
+            request.Moods.Count * 4;
+
+        // =========================================================
+        // OCCASION
+        // =========================================================
+
+        score +=
+            occasions.Count * 3;
+
+        // =========================================================
+        // FAMILLES
+        // =========================================================
+
+        score +=
+            request.Families.Count * 4;
 
         return score;
     }
-
 
     // ================================================================
     // FILTRE PARFUM

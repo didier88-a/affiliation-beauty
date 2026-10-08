@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace wsaffiliation.Controllers
 {
@@ -521,6 +522,7 @@ namespace wsaffiliation.Controllers
 
         public string? Slug { get; set; }
 
+        [JsonPropertyName("naya_attributes")]
         public JsonElement NayaAttributes { get; set; }
     }
 

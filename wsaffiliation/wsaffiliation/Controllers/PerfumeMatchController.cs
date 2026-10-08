@@ -529,6 +529,10 @@ public class PerfumeMatchController : ControllerBase
     // FILTRE PARFUM
     // ================================================================
 
+    // ================================================================
+    // FILTRE DES VRAIS PARFUMS
+    // ================================================================
+
     private static bool IsPerfume(
         Product product)
     {
@@ -548,64 +552,128 @@ public class PerfumeMatchController : ControllerBase
             Normalize(product.ShortName);
 
 
-        var all =
-            $"{category} " +
-            $"{subCategory} " +
-            $"{type} " +
-            $"{name} " +
-            $"{shortName}";
+        // ============================================================
+        // 1. LES CHAMPS DE CATEGORIE SONT PRIORITAIRES
+        // ============================================================
+
+        var perfumeCategory =
+            IsPerfumeCategory(category) ||
+            IsPerfumeCategory(subCategory) ||
+            IsPerfumeCategory(type);
 
 
-        // ------------------------------------------------------------
-        // MOTS QUI IDENTIFIENT UN VRAI PARFUM
-        // ------------------------------------------------------------
+        if (perfumeCategory)
+        {
+            return true;
+        }
 
-        string[] perfumeKeywords =
+
+        // ============================================================
+        // 2. APPELLATIONS EXPLICITES DANS LE NOM
+        // ============================================================
+
+        string[] explicitPerfumeNames =
             new string[]
             {
-                "eau-de-parfum",
-                "eau-de-toilette",
-                "eau-de-cologne",
-                "parfum",
-                "extrait-de-parfum",
-                "extrait",
-                "perfume"
+            "eau-de-parfum",
+            "eau-de-toilette",
+            "eau-de-cologne",
+            "extrait-de-parfum",
+            "extrait",
+            "parfum",
+            "perfume"
             };
 
 
-        var hasPerfumeKeyword =
-            perfumeKeywords.Any(
-                x => all.Contains(x));
+        foreach (var keyword in explicitPerfumeNames)
+        {
+            if (name.Contains(keyword) ||
+                shortName.Contains(keyword))
+            {
+                return true;
+            }
+        }
 
 
-        // ------------------------------------------------------------
-        // CATEGORIE PARFUMERIE
-        // ------------------------------------------------------------
-
-        var perfumeCategory =
-            category.Contains("parfum") ||
-            category.Contains("parfumerie") ||
-            subCategory.Contains("parfum") ||
-            subCategory.Contains("parfumerie");
-
-
-        // ------------------------------------------------------------
-        // TYPE PARFUM
-        // ------------------------------------------------------------
-
-        var perfumeType =
-            type.Contains("parfum") ||
-            type.Contains("eau-de-parfum") ||
-            type.Contains("eau-de-toilette") ||
-            type.Contains("extrait");
-
-
-        return
-            hasPerfumeKeyword ||
-            perfumeCategory ||
-            perfumeType;
+        return false;
     }
 
+
+    // ================================================================
+    // CATEGORIE PARFUM
+    // ================================================================
+
+    private static bool IsPerfumeCategory(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+
+        // ------------------------------------------------------------
+        // CATEGORIES EXPLICITES
+        // ------------------------------------------------------------
+
+        if (value == "parfum" ||
+            value == "parfums" ||
+            value == "parfumerie" ||
+            value == "fragrance" ||
+            value == "fragrances")
+        {
+            return true;
+        }
+
+
+        // ------------------------------------------------------------
+        // EAU DE PARFUM
+        // ------------------------------------------------------------
+
+        if (value.Contains("eau-de-parfum"))
+        {
+            return true;
+        }
+
+
+        // ------------------------------------------------------------
+        // EAU DE TOILETTE
+        // ------------------------------------------------------------
+
+        if (value.Contains("eau-de-toilette"))
+        {
+            return true;
+        }
+
+
+        // ------------------------------------------------------------
+        // EAU DE COLOGNE
+        // ------------------------------------------------------------
+
+        if (value.Contains("eau-de-cologne"))
+        {
+            return true;
+        }
+
+
+        // ------------------------------------------------------------
+        // EXTRAIT
+        // ------------------------------------------------------------
+
+        if (value.Contains("extrait-de-parfum"))
+        {
+            return true;
+        }
+
+
+        if (value == "extrait")
+        {
+            return true;
+        }
+
+
+        return false;
+    }
 
     // ================================================================
     // EXCLUSIONS

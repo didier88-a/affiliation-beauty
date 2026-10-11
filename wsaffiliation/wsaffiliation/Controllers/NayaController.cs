@@ -110,10 +110,11 @@ namespace wsaffiliation.Controllers
                     return BadRequest("Slug manquant");
                 }
 
-                if (path != null && path.Contains("amz-"))
+                if (!string.IsNullOrWhiteSpace(path) &&
+                         path.StartsWith("amz-", StringComparison.OrdinalIgnoreCase))
                 {
-                    path = path.Replace("amz-", "");
-                    return await ShopifyProxy2(path);
+                    string slug = path.Substring(4);
+                    return await ShopifyProxy2(slug);
                 }
 
 

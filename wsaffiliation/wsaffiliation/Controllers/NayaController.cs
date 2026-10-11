@@ -110,6 +110,15 @@ namespace wsaffiliation.Controllers
                     return BadRequest("Slug manquant");
                 }
 
+                if (path.StartsWith("amz-", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Retirer le préfixe amz-
+                    string slug = path.Substring(4);
+
+                    // Appeler ShopifyProxy avec le slug
+                    return await ShopifyProxy2(slug);
+                }
+
                 var cleanSlug =
                     CreateUrlSlug(path.Trim('/'));
 

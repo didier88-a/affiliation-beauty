@@ -99,9 +99,9 @@ namespace wsaffiliation.Controllers
         }
 
         [HttpGet]
-        [Route("~/api/shopify/proxy/{*path}")]
+        [Route("~/api/shopify/proxy1/{*path}")]
         //public IActionResult ShopifyProxy(string? path)
-        public async Task<IActionResult> ShopifyProxy(string? path)
+        public async Task<IActionResult> ShopifyProxy1(string? path)
         {
             try
             {
@@ -1939,8 +1939,8 @@ namespace wsaffiliation.Controllers
 
 
         [HttpGet]
-        [Route("~/api/shopify/proxy1/{*path}")]
-        public async Task<IActionResult> ShopifyProxy1(
+        [Route("~/api/shopify/proxy/{*path}")]
+        public async Task<IActionResult> ShopifyProxy(
     string? path)
         {
             if (string.IsNullOrWhiteSpace(path))

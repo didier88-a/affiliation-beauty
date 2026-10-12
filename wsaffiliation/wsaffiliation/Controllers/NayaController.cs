@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 
+
 namespace wsaffiliation.Controllers
 {
     [ApiController]
@@ -1649,9 +1650,10 @@ namespace wsaffiliation.Controllers
                         HttpMethod.Get,
                         $"{baseUrl}?select={select}&order=id.asc");
 
-                    request.Headers.Add(
-                        "Range", $"{offset}-{offset + batchSize - 1}");
-                    request.Headers.Add("Range-Unit", "items");
+                    request.Headers.TryAddWithoutValidation(
+                            "Range", $"{offset}-{offset + batchSize - 1}");
+
+                    request.Headers.TryAddWithoutValidation("Range-Unit", "items");
 
                     using var response = await client.SendAsync(
                         request);

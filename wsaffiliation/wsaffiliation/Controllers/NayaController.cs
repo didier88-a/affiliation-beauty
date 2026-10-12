@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -152,7 +153,7 @@ namespace wsaffiliation.Controllers
                         return BadRequest("Slug similar manquant");
                     }
 
-                    return SimilarProduct(similarSlug);
+                    return await GetSimilarProducts(similarSlug);
                 }
 
 
@@ -1228,7 +1229,7 @@ namespace wsaffiliation.Controllers
 
         [HttpGet]
         [Route("~/api/shopify/similar-product/{slug}")]
-        public IActionResult SimilarProduct(string slug)
+        public IActionResult SimilarProduct1(string slug)
         {
             var jsonStr1 = @"
 {
@@ -1594,6 +1595,487 @@ namespace wsaffiliation.Controllers
 
 
 
+        [HttpGet("api/products/{slug}/similar")]
+        public async Task<IActionResult> GetSimilarProducts(
+            string slug
+            )
+        {
+            
+
+            try
+            {
+                var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+                var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+                using var client = new HttpClient();
+
+                client.DefaultRequestHeaders.Add(
+                    "apikey",
+                    supabaseKey
+                );
+
+                client.DefaultRequestHeaders.Add(
+                    "Authorization",
+                    "Bearer " + supabaseKey
+                );
+
+                var root = supabaseUrl.TrimEnd('/');
+                var baseUrl = $"{root}/rest/v1/products";
+
+                const string select =
+                    "id,brand,name,short_name,category,sub_category,type," +
+                    "image,description,product_data,naya_attributes,slug";
+
+                // 1. Trouver le produit à partir du slug.
+                var reference = await FetchProductBySlug(
+                    baseUrl, select, slug,  client);
+
+                if (reference == null)
+                {
+                    return NotFound(new
+                    {
+                        error = "Produit introuvable.",
+                        slug
+                    });
+                }
+
+                // 2. Charger les produits par lots de 1000.
+                var candidates = new List<SimilarProduct>();
+                const int batchSize = 1000;
+
+                for (int offset = 0; ; offset += batchSize)
+                {
+                    using var request = new HttpRequestMessage(
+                        HttpMethod.Get,
+                        $"{baseUrl}?select={select}&order=id.asc");
+
+                    request.Headers.Add(
+                        "Range", $"{offset}-{offset + batchSize - 1}");
+                    request.Headers.Add("Range-Unit", "items");
+
+                    using var response = await client.SendAsync(
+                        request);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var error = await response.Content.ReadAsStringAsync(
+                            );
+
+                        return StatusCode((int)response.StatusCode, new
+                        {
+                            error = "Erreur Supabase lors du chargement des produits.",
+                            details = error
+                        });
+                    }
+
+                    var json = await response.Content.ReadAsStringAsync(
+                        );
+
+                    using var document = JsonDocument.Parse(json);
+                    var rows = document.RootElement;
+
+                    if (rows.ValueKind != JsonValueKind.Array ||
+                        rows.GetArrayLength() == 0)
+                        break;
+
+                    foreach (var row in rows.EnumerateArray())
+                    {
+                        var product = ParseSimilarProduct(row);
+
+                        if (product.Id != reference.Id)
+                            candidates.Add(product);
+                    }
+
+                    if (rows.GetArrayLength() < batchSize)
+                        break;
+                }
+
+                // 3. Calculer et classer les similarités.
+                var referenceFeatures = ReadFeatures(reference);
+
+                var ranked = candidates
+                    .Select(p =>
+                    {
+                        var features = ReadFeatures(p);
+                        var result = CompareFeatures(
+                            referenceFeatures, features);
+
+                        return new
+                        {
+                            Product = p,
+                            result.Score,
+                            result.MatchedNotes,
+                            result.Families,
+                            result.Reason
+                        };
+                    })
+                    .Where(x => x.Score > 0)
+                    .OrderByDescending(x => x.Score)
+                    .ThenBy(x => x.Product.Id)
+                    .Take(5)
+                    .ToList();
+
+                // On exige cinq résultats, sans inventer de produits.
+                if (ranked.Count < 5)
+                {
+                    return StatusCode(422, new
+                    {
+                        error = "Impossible de trouver 5 produits similaires.",
+                        required = 5,
+                        found = ranked.Count,
+                        message =
+                            "Ajoute des produits avec des caractéristiques " +
+                            "naya_attributes exploitables."
+                    });
+                }
+
+                var alternatives = new
+                {
+                    title = "Des alternatives similaires",
+                    description =
+                        "Découvrez des parfums au profil olfactif proche, " +
+                        "avec des caractéristiques et des prix différents.",
+                    reference_price = GetNumber(
+                        reference.ProductData, "price"),
+                    reference_currency = GetText(
+                        reference.ProductData, "currency"),
+                    products = ranked.Select(x => new
+                    {
+                        product_id = x.Product.Id,
+                        brand = x.Product.Brand,
+                        name = x.Product.Name,
+                        short_name = x.Product.ShortName ?? x.Product.Name,
+                        image = x.Product.Image,
+                        price = GetNumber(x.Product.ProductData, "price"),
+                        currency = GetText(x.Product.ProductData, "currency"),
+                        original_price = GetNumber(
+                            x.Product.ProductData, "original_price"),
+                        saving_amount = (decimal?)null,
+                        saving_percent = (decimal?)null,
+                        similarity_score = Math.Round(x.Score, 1),
+                        fragrance_family = x.Families,
+                        matched_notes = x.MatchedNotes,
+                        reason = x.Reason,
+                        product_url = GetText(
+                            x.Product.ProductData,
+                            "product_url",
+                            "lookfantastic_url",
+                            "sephora_url",
+                            "affiliate_url"),
+                        marketplace = GetText(
+                            x.Product.ProductData, "marketplace"),
+                        offers = GetArray(
+                            x.Product.ProductData, "offers")
+                    }).ToList()
+                };
+
+                return Ok(new { alternatives });
+            }
+            
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    error = "Erreur pendant la recherche de produits similaires.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        private sealed class SimilarProduct
+        {
+            public long Id { get; set; }
+            public string? Brand { get; set; }
+            public string Name { get; set; } = "";
+            public string? ShortName { get; set; }
+            public string? Category { get; set; }
+            public string? SubCategory { get; set; }
+            public string? Type { get; set; }
+            public string? Image { get; set; }
+            public JsonElement Attributes { get; set; }
+            public JsonElement ProductData { get; set; }
+        }
+
+        private sealed class PerfumeFeatures
+        {
+            public HashSet<string> TopNotes { get; } = new();
+            public HashSet<string> HeartNotes { get; } = new();
+            public HashSet<string> BaseNotes { get; } = new();
+            public HashSet<string> Families { get; } = new();
+            public HashSet<string> Gender { get; } = new();
+            public HashSet<string> Concentration { get; } = new();
+            public HashSet<string> Style { get; } = new();
+            public HashSet<string> Season { get; } = new();
+            public HashSet<string> Occasion { get; } = new();
+            public int? Intensity { get; set; }
+            public int? Longevity { get; set; }
+            public int? Sillage { get; set; }
+
+            public HashSet<string> AllNotes =>
+                TopNotes.Concat(HeartNotes).Concat(BaseNotes)
+                    .ToHashSet();
+        }
+
+        private sealed record SimilarityResult(
+            double Score,
+            List<string> MatchedNotes,
+            List<string> Families,
+            string Reason);
+
+        private async Task<SimilarProduct?> FetchProductBySlug(
+            string baseUrl,
+            string select,
+            string slug,
+            
+            HttpClient client)
+        {
+            var normalized = NormalizeText(slug);
+
+            // D'abord slug_normalized, puis slug si nécessaire.
+            foreach (var column in new[] { "slug_normalized", "slug" })
+            {
+                var url = $"{baseUrl}?select={select}" +
+                          $"&{column}=eq.{Uri.EscapeDataString(
+                              column == "slug_normalized" ? normalized : slug)}" +
+                          "&limit=1";
+
+                using var response = await client.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var details = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException(
+                        $"Supabase ({(int)response.StatusCode}): {details}");
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync());
+
+                var rows = document.RootElement;
+
+                if (rows.ValueKind == JsonValueKind.Array &&
+                    rows.GetArrayLength() > 0)
+                    return ParseSimilarProduct(rows[0]);
+            }
+
+            return null;
+        }
+
+        private static SimilarProduct ParseSimilarProduct(JsonElement row)
+        {
+            return new SimilarProduct
+            {
+                Id = row.GetProperty("id").GetInt64(),
+                Brand = GetText(row, "brand"),
+                Name = GetText(row, "name") ?? "",
+                ShortName = GetText(row, "short_name"),
+                Category = GetText(row, "category"),
+                SubCategory = GetText(row, "sub_category"),
+                Type = GetText(row, "type"),
+                Image = GetText(row, "image"),
+                Attributes = GetElement(row, "naya_attributes"),
+                ProductData = GetElement(row, "product_data")
+            };
+        }
+
+        private static JsonElement GetElement(
+            JsonElement obj, string property)
+        {
+            return obj.TryGetProperty(property, out var value)
+                ? value.Clone()
+                : JsonDocument.Parse("{}").RootElement.Clone();
+        }
+
+        private static string? GetText(JsonElement obj, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                if (obj.ValueKind == JsonValueKind.Object &&
+                    obj.TryGetProperty(key, out var value) &&
+                    value.ValueKind == JsonValueKind.String)
+                    return value.GetString();
+            }
+
+            return null;
+        }
+
+        private static decimal? GetNumber(JsonElement obj, string key)
+        {
+            if (obj.ValueKind == JsonValueKind.Object &&
+                obj.TryGetProperty(key, out var value))
+            {
+                if (value.ValueKind == JsonValueKind.Number &&
+                    value.TryGetDecimal(out var number))
+                    return number;
+
+                if (value.ValueKind == JsonValueKind.String &&
+                    decimal.TryParse(value.GetString(),
+                        CultureInfo.InvariantCulture, out number))
+                    return number;
+            }
+
+            return null;
+        }
+
+        private static List<JsonElement> GetArray(
+            JsonElement obj, string key)
+        {
+            if (obj.ValueKind == JsonValueKind.Object &&
+                obj.TryGetProperty(key, out var value) &&
+                value.ValueKind == JsonValueKind.Array)
+                return value.EnumerateArray()
+                    .Select(x => x.Clone()).ToList();
+
+            return new List<JsonElement>();
+        }
+
+        private static PerfumeFeatures ReadFeatures(SimilarProduct product)
+        {
+            var f = new PerfumeFeatures();
+            var a = product.Attributes;
+
+            AddValues(a, f.TopNotes, "top_notes");
+            AddValues(a, f.HeartNotes, "heart_notes");
+            AddValues(a, f.BaseNotes, "base_notes");
+            AddValues(a, f.Families, "fragrance_family");
+            AddValues(a, f.Style, "style");
+            AddValues(a, f.Season, "season");
+            AddValues(a, f.Occasion, "occasion");
+            AddValues(a, f.Gender, "gender");
+            AddValues(a, f.Concentration, "concentration");
+
+            f.Intensity = GetInt(a, "intensity");
+            f.Longevity = GetInt(a, "longevity");
+            f.Sillage = GetInt(a, "sillage");
+
+            // Fallback : certaines données peuvent se trouver
+            // dans les colonnes ou product_data.
+            Add(f.Families, product.Type);
+            Add(f.Families, product.Category);
+            Add(f.Families, product.SubCategory);
+
+            return f;
+        }
+
+        private static void AddValues(
+            JsonElement obj, HashSet<string> target, string key)
+        {
+            if (obj.ValueKind != JsonValueKind.Object ||
+                !obj.TryGetProperty(key, out var value))
+                return;
+
+            if (value.ValueKind == JsonValueKind.String)
+                Add(target, value.GetString());
+
+            if (value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in value.EnumerateArray())
+                    if (item.ValueKind == JsonValueKind.String)
+                        Add(target, item.GetString());
+            }
+        }
+
+        private static int? GetInt(JsonElement obj, string key)
+        {
+            if (obj.ValueKind == JsonValueKind.Object &&
+                obj.TryGetProperty(key, out var value) &&
+                value.ValueKind == JsonValueKind.Number &&
+                value.TryGetInt32(out var number))
+                return number;
+
+            return null;
+        }
+
+        private static void Add(HashSet<string> set, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                set.Add(NormalizeText(value));
+        }
+
+        private static string NormalizeText(string value)
+        {
+            var decomposed = value.Trim().ToLowerInvariant()
+                .Normalize(NormalizationForm.FormD);
+
+            var sb = new StringBuilder();
+
+            foreach (var c in decomposed)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(c) !=
+                    UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+
+            return sb.ToString().Normalize(NormalizationForm.FormC);
+        }
+
+        private static SimilarityResult CompareFeatures(
+            PerfumeFeatures a, PerfumeFeatures b)
+        {
+            double score = 0;
+            var matched = a.AllNotes.Intersect(b.AllNotes).ToList();
+            var families = a.Families.Intersect(b.Families).ToList();
+            var reasons = new List<string>();
+
+            // Les notes sont le critère principal.
+            score += SetScore(a.TopNotes, b.TopNotes, 15, reasons, "notes de tête");
+            score += SetScore(a.HeartNotes, b.HeartNotes, 20, reasons, "notes de cœur");
+            score += SetScore(a.BaseNotes, b.BaseNotes, 25, reasons, "notes de fond");
+            score += SetScore(a.Families, b.Families, 20, reasons, "famille olfactive");
+            score += SetScore(a.Gender, b.Gender, 5, reasons, "genre");
+            score += SetScore(a.Concentration, b.Concentration, 3, reasons, "concentration");
+            score += SetScore(a.Style, b.Style, 3, reasons, "style");
+            score += SetScore(a.Season, b.Season, 3, reasons, "saison");
+            score += SetScore(a.Occasion, b.Occasion, 3, reasons, "occasion");
+
+            score += NumberScore(a.Intensity, b.Intensity, 1);
+            score += NumberScore(a.Longevity, b.Longevity, 1);
+            score += NumberScore(a.Sillage, b.Sillage, 1);
+
+            score = Math.Min(100, score);
+
+            var reason = reasons.Count > 0
+                ? "Similarité basée sur : " + string.Join(", ", reasons) + "."
+                : "Quelques caractéristiques communes.";
+
+            return new SimilarityResult(
+                score, matched, families.ToList(), reason);
+        }
+
+        private static double SetScore(
+            HashSet<string> reference,
+            HashSet<string> candidate,
+            double weight,
+            List<string> reasons,
+            string label)
+        {
+            if (reference.Count == 0 || candidate.Count == 0)
+                return 0;
+
+            var common = reference.Intersect(candidate).Count();
+
+            if (common == 0)
+                return 0;
+
+            reasons.Add(label);
+            return weight * common / reference.Count;
+        }
+
+        private static double NumberScore(int? a, int? b, double weight)
+        {
+            if (!a.HasValue || !b.HasValue)
+                return 0;
+
+            var difference = Math.Abs(a.Value - b.Value);
+
+            return difference switch
+            {
+                0 => weight,
+                1 => weight * 0.5,
+                _ => 0
+            };
+        }
 
 
 

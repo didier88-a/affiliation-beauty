@@ -1771,13 +1771,15 @@ namespace wsaffiliation.Controllers
 
                 return Ok(new { alternatives });
             }
-            
+
             catch (Exception ex)
             {
+                Console.WriteLine($"ERREUR : {ex}");
+
                 return StatusCode(500, new
                 {
-                    error = "Erreur pendant la recherche de produits similaires.",
-                    details = ex.Message
+                    error = ex.Message,
+                    details = ex.ToString()
                 });
             }
         }

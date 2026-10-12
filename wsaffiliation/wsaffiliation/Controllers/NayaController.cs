@@ -1710,6 +1710,16 @@ namespace wsaffiliation.Controllers
                 Console.WriteLine("==========================================");
 
 
+                
+
+                // Filtrer les produits ayant la même nature
+                // (ex. déodorant avec déodorant).
+                candidates = candidates
+                    .Where(p =>
+                        NormalizeText(p.Nature ?? "") ==
+                        NormalizeText(reference.Nature ?? ""))
+                    .ToList();
+
                 // 3. Calculer et classer les similarités.
                 var referenceFeatures = ReadFeatures(reference);
 
@@ -1766,10 +1776,11 @@ namespace wsaffiliation.Controllers
                         name = x.Product.Name,
                         short_name = x.Product.ShortName ?? x.Product.Name,
                         image = x.Product.Image,
-                        price = GetNumber(x.Product.ProductData, "price"),
+                        price = GetNumber(
+                                 x.Product.ProductData, "price", "currentPrice"),
                         currency = GetText(x.Product.ProductData, "currency"),
                         original_price = GetNumber(
-                            x.Product.ProductData, "original_price"),
+                             x.Product.ProductData, "original_price", "originalPrice"),
                         saving_amount = (decimal?)null,
                         saving_percent = (decimal?)null,
                         similarity_score = Math.Round(x.Score, 1),
@@ -1789,7 +1800,65 @@ namespace wsaffiliation.Controllers
                     }).ToList()
                 };
 
-                return Ok(new { alternatives });
+                // return Ok(new { alternatives });
+
+
+                var result = new
+                {
+                    alternatives
+                };
+
+                // Sérialiser le résultat en JSON
+                var jsonStr1 = JsonSerializer.Serialize(
+                    result,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        WriteIndented = false
+                    }
+                );
+
+                // Sécuriser le JSON pour l'insertion dans un script HTML
+                jsonStr1 = jsonStr1
+                    .Replace("<", "\\u003C")
+                    .Replace(">", "\\u003E")
+                    .Replace("&", "\\u0026")
+                    .Replace("\u2028", "\\u2028")
+                    .Replace("\u2029", "\\u2029");
+
+                // Construire la page Liquid
+                var liquid = @"
+<script>
+window.NAYA_SIMILAR = " + jsonStr1 + @";
+
+console.log(
+    'NAYA_SIMILAR =',
+    window.NAYA_SIMILAR
+);
+</script>
+
+{% section 'page-similar-hero' %}
+
+{% section 'page-similar-result' %}
+
+{% section 'page-similar-5-parfum' %}
+
+{% section 'page-similar-resume' %}
+
+<script>
+document.dispatchEvent(
+    new CustomEvent('naya:similar-loaded', {
+        detail: window.NAYA_SIMILAR
+    })
+);
+</script>
+";
+
+                return Content(liquid, "application/liquid");
+
+
+
+
             }
 
             catch (Exception ex)
@@ -1817,6 +1886,8 @@ namespace wsaffiliation.Controllers
             public string? Image { get; set; }
             public JsonElement Attributes { get; set; }
             public JsonElement ProductData { get; set; }
+            public string? Nature { get; set; }
+            public string? Axis { get; set; }
         }
 
         private sealed class PerfumeFeatures
@@ -1897,7 +1968,12 @@ namespace wsaffiliation.Controllers
                 Type = GetText(row, "type"),
                 Image = GetText(row, "image"),
                 Attributes = GetElement(row, "naya_attributes"),
-                ProductData = GetElement(row, "product_data")
+                ProductData = GetElement(row, "product_data"),
+                Nature = GetText(
+                     GetElement(row, "product_data"), "nature"),
+
+                Axis = GetText(
+                     GetElement(row, "product_data"), "axis"),
             };
         }
 
@@ -1922,19 +1998,26 @@ namespace wsaffiliation.Controllers
             return null;
         }
 
-        private static decimal? GetNumber(JsonElement obj, string key)
+        private static decimal? GetNumber(
+    JsonElement obj,
+    params string[] keys)
         {
-            if (obj.ValueKind == JsonValueKind.Object &&
-                obj.TryGetProperty(key, out var value))
+            foreach (var key in keys)
             {
-                if (value.ValueKind == JsonValueKind.Number &&
-                    value.TryGetDecimal(out var number))
-                    return number;
+                if (obj.ValueKind == JsonValueKind.Object &&
+                    obj.TryGetProperty(key, out var value))
+                {
+                    if (value.ValueKind == JsonValueKind.Number &&
+                        value.TryGetDecimal(out var number))
+                        return number;
 
-                if (value.ValueKind == JsonValueKind.String &&
-                    decimal.TryParse(value.GetString(),
-                        CultureInfo.InvariantCulture, out number))
-                    return number;
+                    if (value.ValueKind == JsonValueKind.String &&
+                        decimal.TryParse(
+                            value.GetString(),
+                            CultureInfo.InvariantCulture,
+                            out number))
+                        return number;
+                }
             }
 
             return null;

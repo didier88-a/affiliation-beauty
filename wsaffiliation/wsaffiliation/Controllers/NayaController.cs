@@ -1692,6 +1692,24 @@ namespace wsaffiliation.Controllers
                         break;
                 }
 
+
+
+                Console.WriteLine("========== PRODUIT DE REFERENCE ==========");
+
+                Console.WriteLine("ID : " + reference.Id);
+                Console.WriteLine("Nom : " + reference.Name);
+
+                Console.WriteLine("========== NAYA_ATTRIBUTES ==========");
+                Console.WriteLine(
+                    reference.Attributes.GetRawText());
+
+                Console.WriteLine("========== PRODUCT_DATA ==========");
+                Console.WriteLine(
+                    reference.ProductData.GetRawText());
+
+                Console.WriteLine("==========================================");
+
+
                 // 3. Calculer et classer les similarités.
                 var referenceFeatures = ReadFeatures(reference);
 

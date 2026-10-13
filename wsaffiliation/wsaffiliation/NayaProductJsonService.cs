@@ -278,25 +278,22 @@ namespace wsaffiliation
                         $"&offset={offset}" +
                         $"&limit={pageSize}";
 
-                    Console.WriteLine("URL : " + url);
+                    
 
                     using HttpRequestMessage request =
                         CreateRequest(HttpMethod.Get, url);
 
-                    Console.WriteLine("Avant SendAsync");
+                    
 
                     using HttpResponseMessage response =
                         await httpClient.SendAsync(request);
 
-                    Console.WriteLine("Après SendAsync");
+                    
 
                     string responseBody =
                         await response.Content.ReadAsStringAsync();
 
-                    Console.WriteLine(
-                        $"Status : {(int)response.StatusCode} {response.ReasonPhrase}");
-
-                    Console.WriteLine("Response : " + responseBody);
+                    
 
                     if (!response.IsSuccessStatusCode)
                     {

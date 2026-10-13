@@ -230,6 +230,11 @@ public class PerfumeMatchController : ControllerBase
                 supabaseUrl,
                 supabaseKey);
 
+            Console.WriteLine("[PerfumeMatch] >>> AVANT ENRICHISSEMENT");
+            Console.WriteLine($"[PerfumeMatch] Nombre de résultats : {results.Count}");
+            Console.WriteLine($"[PerfumeMatch] Nombre de notes SQL : {perfumeNotes.Count}");
+
+
             foreach (var result in results)
             {
                 result.MatchedTopNoteDetails = result.MatchedTopNotes

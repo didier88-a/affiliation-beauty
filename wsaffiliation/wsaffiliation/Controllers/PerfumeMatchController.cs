@@ -538,7 +538,7 @@ public class PerfumeMatchController : ControllerBase
 
         result.TieBreakScore = tieBreakScore;
 
-       
+
 
         result.Score = score;
 
@@ -1805,7 +1805,11 @@ public class PerfumeMatchController : ControllerBase
             return false;
         }
 
-        var normalizedSearch = Normalize(search);
+        var normalizedSearch = NormalizeNoteForMatch(search);
+        if (string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            return false;
+        }
 
         foreach (var value in values)
         {
@@ -1814,25 +1818,82 @@ public class PerfumeMatchController : ControllerBase
                 continue;
             }
 
-            var normalizedValue = Normalize(value);
+            var normalizedValue = NormalizeNoteForMatch(value);
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                continue;
+            }
 
+            // Correspondance exacte.
             if (normalizedValue == normalizedSearch)
             {
                 return true;
             }
 
-            // Correspondance seulement si l'une des valeurs
-            // est réellement une expression contenant l'autre.
-            if (normalizedValue.Contains("-" + normalizedSearch) ||
-                normalizedValue.Contains(normalizedSearch + "-") ||
-                normalizedSearch.Contains("-" + normalizedValue) ||
-                normalizedSearch.Contains(normalizedValue + "-"))
+            // Correspondance par expression complète :
+            // "Mandarin Essence" correspond à "Mandarin".
+            // Les tirets servent de séparateurs de mots après Normalize().
+            var paddedSearch = "-" + normalizedSearch + "-";
+            var paddedValue = "-" + normalizedValue + "-";
+
+            if (paddedSearch.Contains(paddedValue, StringComparison.Ordinal) ||
+                paddedValue.Contains(paddedSearch, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Correspondance par nom de note principal, en ignorant les
+            // mots descriptifs comme "essence" et en gérant Mandarin/Mandarine.
+            var searchTokens = normalizedSearch
+                .Split('-', StringSplitOptions.RemoveEmptyEntries);
+            var valueTokens = normalizedValue
+                .Split('-', StringSplitOptions.RemoveEmptyEntries);
+
+            var meaningfulSearchTokens = searchTokens
+                .Where(t => !IsGenericNoteWord(t))
+                .Select(CanonicalNoteToken)
+                .ToList();
+            var meaningfulValueTokens = valueTokens
+                .Where(t => !IsGenericNoteWord(t))
+                .Select(CanonicalNoteToken)
+                .ToList();
+
+            if (meaningfulSearchTokens.Count > 0 &&
+                meaningfulValueTokens.Count > 0 &&
+                (meaningfulSearchTokens.All(meaningfulValueTokens.Contains) ||
+                 meaningfulValueTokens.All(meaningfulSearchTokens.Contains)))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static bool IsGenericNoteWord(string token)
+    {
+        return token is "essence" or "essences" or "note" or "notes" or
+            "oil" or "extract" or "extrait" or "absolute" or "absolue";
+    }
+
+    private static string CanonicalNoteToken(string token)
+    {
+        // Variantes linguistiques fréquentes pour une même note.
+        return token switch
+        {
+            "mandarine" => "mandarin",
+            "mandarins" => "mandarin",
+            "citrus" => "citrus",
+            _ => token
+        };
+    }
+
+    private static string NormalizeNoteForMatch(string? value)
+    {
+        return Normalize(value)
+            .Replace("’", "-", StringComparison.Ordinal)
+            .Replace("'", "-", StringComparison.Ordinal)
+            .Replace("_", "-", StringComparison.Ordinal);
     }
 
 

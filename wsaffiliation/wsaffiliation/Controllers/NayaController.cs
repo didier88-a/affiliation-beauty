@@ -165,6 +165,9 @@ namespace wsaffiliation.Controllers
 
                 var h = new NayaProductJsonService();
                 var jsonStr = await h.GetProductJson(path);
+                Console.WriteLine(jsonStr);
+
+
                 // =========================================================
                 // RÉCUPÉRATION DU JSON DU PRODUIT
                 // =========================================================

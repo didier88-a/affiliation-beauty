@@ -1744,59 +1744,84 @@ public class PerfumeMatchController : ControllerBase
     // PERFUME NOTES: lecture et recherche de la note + image
     // ================================================================
 
+
     private async Task<List<PerfumeNoteRecord>> FetchPerfumeNotes(
         string supabaseUrl,
         string supabaseKey)
     {
-        var url = $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes?select=*";
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Add("apikey", supabaseKey);
-        request.Headers.Add("Authorization", $"Bearer {supabaseKey}");
-
-        using var response = await _httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-        {
-            // Le matching des parfums doit continuer même si la table de notes
-            // est momentanément indisponible. Les détails d'images resteront vides.
-            return new List<PerfumeNoteRecord>();
-        }
-
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        using var document = await JsonDocument.ParseAsync(stream);
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
-            return new List<PerfumeNoteRecord>();
-
         var notes = new List<PerfumeNoteRecord>();
-        foreach (var row in document.RootElement.EnumerateArray())
+        const int pageSize = 500;
+
+        for (int offset = 0; ; offset += pageSize)
         {
-            if (row.ValueKind != JsonValueKind.Object)
-                continue;
+            var url =
+                $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
+                $"?select=id,name_en,name_fr,type,image_url,is_active" +
+                $"&is_active=eq.true" +
+                $"&order=id.asc" +
+                $"&limit={pageSize}&offset={offset}";
 
-            // Le vrai schéma de public.perfume_notes utilise name_en/name_fr,
-            // image_url et is_active. Ne pas chercher une colonne "name" inexistante.
-            var nameEn = ReadFirstString(row, "name_en");
-            var nameFr = ReadFirstString(row, "name_fr");
-            var image = ReadFirstString(row, "image_url");
-            var isActive = !row.TryGetProperty("is_active", out var activeValue)
-                || activeValue.ValueKind != JsonValueKind.False;
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get, url);
 
-            if (!isActive || string.IsNullOrWhiteSpace(image))
-                continue;
+            request.Headers.Add("apikey", supabaseKey);
+            request.Headers.Add("Authorization", $"Bearer {supabaseKey}");
 
-            if (!string.IsNullOrWhiteSpace(nameEn) || !string.IsNullOrWhiteSpace(nameFr))
+            using var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
             {
+                var error = await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine(
+                    $"[PerfumeMatch] Erreur Supabase notes: " +
+                    $"{(int)response.StatusCode} - {error}");
+
+                throw new Exception(
+                    $"Impossible de charger perfume_notes : {error}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var document = JsonDocument.Parse(json);
+
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                break;
+
+            int count = document.RootElement.GetArrayLength();
+
+            foreach (var row in document.RootElement.EnumerateArray())
+            {
+                var nameEn = ReadFirstString(row, "name_en");
+                var nameFr = ReadFirstString(row, "name_fr");
+                var image = ReadFirstString(row, "image_url");
+
+                if (string.IsNullOrWhiteSpace(nameEn) &&
+                    string.IsNullOrWhiteSpace(nameFr))
+                    continue;
+
                 notes.Add(new PerfumeNoteRecord
                 {
                     NameEn = nameEn?.Trim(),
                     NameFr = nameFr?.Trim(),
-                    Image = image.Trim()
+                    Image = image?.Trim()
                 });
             }
+
+            Console.WriteLine(
+                $"[PerfumeMatch] Notes chargées : {notes.Count} " +
+                $"(lot de {count}, offset={offset})");
+
+            if (count < pageSize)
+                break;
         }
+
+        Console.WriteLine(
+            $"[PerfumeMatch] TOTAL FINAL : {notes.Count} notes");
 
         return notes;
     }
+
 
     // Recherche souple : accepte une correspondance sur une partie significative
     // du nom. Exemples : "Mandarin Essence" -> "Mandarin",

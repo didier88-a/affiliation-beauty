@@ -1930,13 +1930,14 @@ public class PerfumeMatchController : ControllerBase
 
         return normalized
             .Split(
-                new[] { ' ', '-', '_', '\'' },
+                new[] { ' ', '-', '_', '\'', '’' },
                 StringSplitOptions.RemoveEmptyEntries)
             .Select(token =>
                 token.Equals("mandarine", StringComparison.OrdinalIgnoreCase)
                     ? "mandarin"
                     : token)
-            .Where(token => token.Length > 1 && !ignored.Contains(token))
+            .Where(token =>
+                token.Length > 1 && !ignored.Contains(token))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -2178,50 +2179,29 @@ public class PerfumeMatchController : ControllerBase
     // NORMALIZE
     // ================================================================
 
-    private static string Normalize(
-        string? value)
+    private static string Normalize(string? value)
     {
-        if (string.IsNullOrWhiteSpace(
-            value))
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = value.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+
+        foreach (var c in normalized)
         {
-            return "";
-        }
-
-
-        var normalized =
-            value.Normalize(
-                NormalizationForm.FormD);
-
-
-        var sb =
-            new StringBuilder();
-
-
-        foreach (var c
-                 in normalized)
-        {
-            var category =
-                CharUnicodeInfo.GetUnicodeCategory(
-                    c);
-
-
-            if (category !=
-                UnicodeCategory.NonSpacingMark)
+            if (CharUnicodeInfo.GetUnicodeCategory(c)
+                != UnicodeCategory.NonSpacingMark)
             {
                 sb.Append(c);
             }
         }
 
-
         return sb
             .ToString()
-            .Normalize(
-                NormalizationForm.FormC)
+            .Normalize(NormalizationForm.FormC)
             .ToLowerInvariant()
-            .Trim()
-            .Replace(
-                " ",
-                "-");
+            .Replace('’', '\'')
+            .Trim();
     }
 }
 

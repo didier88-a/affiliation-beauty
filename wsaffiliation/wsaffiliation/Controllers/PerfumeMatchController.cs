@@ -220,8 +220,7 @@ public class PerfumeMatchController : ControllerBase
                 .Take(24)
                 .ToList();
 
-            Console.WriteLine(
-                         $"[PerfumeMatch] Recherche image pour la note : '{requestedName}'");
+            
             // ========================================================
             // 8. ENRICHIR LES NOTES AVEC LEURS IMAGES
             //    depuis la table Supabase perfume_notes

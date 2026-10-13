@@ -249,30 +249,19 @@ public class PerfumeMatchController : ControllerBase
 
             foreach (var result in results)
             {
-                Console.WriteLine("[PerfumeMatch] >>> TRAITEMENT D'UN RESULTAT");
-
-                Console.WriteLine(
-                    $"[PerfumeMatch] Top : {result.MatchedTopNotes?.Count ?? 0}");
-
-                Console.WriteLine(
-                    $"[PerfumeMatch] Coeur : {result.MatchedHeartNotes?.Count ?? 0}");
-
-                Console.WriteLine(
-                    $"[PerfumeMatch] Fond : {result.MatchedBaseNotes?.Count ?? 0}");
-
-                result.MatchedTopNoteDetails = (result.MatchedTopNotes ?? new List<string>())
+                result.TopNoteDetails = result.TopNotes
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
-                result.MatchedHeartNoteDetails = (result.MatchedHeartNotes ?? new List<string>())
+                result.HeartNoteDetails = result.HeartNotes
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
-                result.MatchedBaseNoteDetails = (result.MatchedBaseNotes ?? new List<string>())
+                result.BaseNoteDetails = result.BaseNotes
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
@@ -373,6 +362,10 @@ public class PerfumeMatchController : ControllerBase
             GetStringList(
                 attr,
                 "base_notes");
+
+        result.TopNotes = topNotes;
+        result.HeartNotes = heartNotes;
+        result.BaseNotes = baseNotes;
 
         foreach (var requestedNote in request.Notes)
         {
@@ -2368,4 +2361,12 @@ public class PerfumeMatchResult
         new List<string>();
 
     public int TieBreakScore { get; set; }
+
+    public List<string> TopNotes { get; set; } = new();
+    public List<string> HeartNotes { get; set; } = new();
+    public List<string> BaseNotes { get; set; } = new();
+
+    public List<PerfumeNoteMatch> TopNoteDetails { get; set; } = new();
+    public List<PerfumeNoteMatch> HeartNoteDetails { get; set; } = new();
+    public List<PerfumeNoteMatch> BaseNoteDetails { get; set; } = new();
 }

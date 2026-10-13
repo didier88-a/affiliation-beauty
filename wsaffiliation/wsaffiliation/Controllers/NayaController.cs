@@ -1595,353 +1595,353 @@ namespace wsaffiliation.Controllers
         }
 
 
-       
+
 
 
         [HttpGet("api/products/{slug}/similar")]
-    public async Task<IActionResult> GetSimilarProducts(string slug)
-    {
-        try
+        public async Task<IActionResult> GetSimilarProducts(string slug)
         {
-            var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
-            var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
-
-            if (string.IsNullOrWhiteSpace(supabaseUrl) ||
-                string.IsNullOrWhiteSpace(supabaseKey))
+            try
             {
-                return StatusCode(500, new
+                var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+                var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+                if (string.IsNullOrWhiteSpace(supabaseUrl) ||
+                    string.IsNullOrWhiteSpace(supabaseKey))
                 {
-                    error = "SUPABASE_URL ou SUPABASE_KEY est manquant."
-                });
-            }
-
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("apikey", supabaseKey);
-            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + supabaseKey);
-
-            var root = supabaseUrl.TrimEnd('/');
-            var baseUrl = $"{root}/rest/v1/products";
-
-            const string select =
-                "id,brand,name,short_name,category,sub_category,type," +
-                "image,description,product_data,naya_attributes,slug,slug_normalized";
-
-            // 1. Charger le produit de référence depuis son slug.
-            var reference = await FetchProductBySlug(
-                baseUrl, select, slug, client);
-
-            if (reference == null)
-            {
-                return NotFound(new { error = "Produit introuvable.", slug });
-            }
-
-            // Diagnostic temporaire : visible dans les logs Render.
-            Console.WriteLine("========== PRODUIT DE REFERENCE ==========");
-            Console.WriteLine($"ID : {reference.Id}");
-            Console.WriteLine($"Nom : {reference.Name}");
-            Console.WriteLine("NAYA_ATTRIBUTES = " + reference.Attributes.GetRawText());
-            Console.WriteLine("PRODUCT_DATA = " + reference.ProductData.GetRawText());
-            Console.WriteLine("==========================================");
-
-            // 2. Charger les candidats par lots.
-            var candidates = new List<SimilarProduct>();
-            const int batchSize = 1000;
-
-            for (int offset = 0; ; offset += batchSize)
-            {
-                using var request = new HttpRequestMessage(
-                    HttpMethod.Get,
-                    $"{baseUrl}?select={select}&order=id.asc");
-
-                request.Headers.TryAddWithoutValidation(
-                    "Range", $"{offset}-{offset + batchSize - 1}");
-                request.Headers.TryAddWithoutValidation("Range-Unit", "items");
-
-                using var response = await client.SendAsync(request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    return StatusCode((int)response.StatusCode, new
+                    return StatusCode(500, new
                     {
-                        error = "Erreur Supabase lors du chargement des produits.",
-                        details = error
+                        error = "SUPABASE_URL ou SUPABASE_KEY est manquant."
                     });
                 }
 
-                var json = await response.Content.ReadAsStringAsync();
-                using var document = JsonDocument.Parse(json);
-                var rows = document.RootElement;
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("apikey", supabaseKey);
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer " + supabaseKey);
 
-                if (rows.ValueKind != JsonValueKind.Array ||
-                    rows.GetArrayLength() == 0)
-                    break;
+                var root = supabaseUrl.TrimEnd('/');
+                var baseUrl = $"{root}/rest/v1/products";
 
-                foreach (var row in rows.EnumerateArray())
+                const string select =
+                    "id,brand,name,short_name,category,sub_category,type," +
+                    "image,description,product_data,naya_attributes,slug,slug_normalized";
+
+                // 1. Charger le produit de référence depuis son slug.
+                var reference = await FetchProductBySlug(
+                    baseUrl, select, slug, client);
+
+                if (reference == null)
                 {
-                    var candidate = ParseSimilarProduct(row);
-                    if (candidate.Id != reference.Id)
-                        candidates.Add(candidate);
+                    return NotFound(new { error = "Produit introuvable.", slug });
                 }
 
-                if (rows.GetArrayLength() < batchSize)
-                    break;
-            }
+                // Diagnostic temporaire : visible dans les logs Render.
+                Console.WriteLine("========== PRODUIT DE REFERENCE ==========");
+                Console.WriteLine($"ID : {reference.Id}");
+                Console.WriteLine($"Nom : {reference.Name}");
+                Console.WriteLine("NAYA_ATTRIBUTES = " + reference.Attributes.GetRawText());
+                Console.WriteLine("PRODUCT_DATA = " + reference.ProductData.GetRawText());
+                Console.WriteLine("==========================================");
 
-            // 3. Même nature de produit si la nature est connue.
-            // Si elle est absente sur le produit de référence, ne pas
-            // éliminer tous les candidats dont la nature est renseignée.
-            if (!string.IsNullOrWhiteSpace(reference.Nature))
-            {
-                candidates = candidates
-                    .Where(p =>
-                        !string.IsNullOrWhiteSpace(p.Nature) &&
-                        NormalizeText(p.Nature) ==
-                        NormalizeText(reference.Nature))
-                    .ToList();
-            }
+                // 2. Charger les candidats par lots.
+                var candidates = new List<SimilarProduct>();
+                const int batchSize = 1000;
 
-            // 4. Classer les candidats selon les attributs Naya.
-            var referenceFeatures = ReadFeatures(reference);
-
-            var ranked = candidates
-                .Select(p =>
+                for (int offset = 0; ; offset += batchSize)
                 {
-                    var result = CompareFeatures(
-                        referenceFeatures, ReadFeatures(p));
+                    using var request = new HttpRequestMessage(
+                        HttpMethod.Get,
+                        $"{baseUrl}?select={select}&order=id.asc");
 
-                    return new
+                    request.Headers.TryAddWithoutValidation(
+                        "Range", $"{offset}-{offset + batchSize - 1}");
+                    request.Headers.TryAddWithoutValidation("Range-Unit", "items");
+
+                    using var response = await client.SendAsync(request);
+
+                    if (!response.IsSuccessStatusCode)
                     {
-                        Product = p,
-                        result.Score,
-                        result.MatchedNotes,
-                        result.Families,
-                        result.Reason
-                    };
-                })
-                .Where(x => x.Score > 0)
-                .OrderByDescending(x => x.Score)
-                .ThenBy(x => x.Product.Id)
-                .Take(5)
-                .ToList();
-
-            if (ranked.Count < 5)
-            {
-                return StatusCode(422, new
-                {
-                    error = "Impossible de trouver 5 produits similaires.",
-                    required = 5,
-                    found = ranked.Count,
-                    message = "Il faut au moins cinq autres produits compatibles dans products."
-                });
-            }
-
-            // 5. Charger toutes les offres des six produits en une seule requête.
-            var ids = ranked.Select(x => x.Product.Id)
-                .Append(reference.Id)
-                .Distinct()
-                .ToList();
-
-            var offersByProduct = await FetchOffersByProductIds(
-                client, root, ids);
-
-            var referenceOffers = offersByProduct.TryGetValue(
-                reference.Id, out var refOffers)
-                ? refOffers
-                : new List<JsonElement>();
-
-            // Charger le référentiel des notes et leurs images.
-            var perfumeNotes = await FetchPerfumeNotes(client, root);
-
-            // 6. Construire les informations du produit principal.
-            var attributes = reference.Attributes;
-
-            List<object> ReadNotes(string key, string type)
-            {
-                if (!attributes.TryGetProperty(key, out var values) ||
-                    values.ValueKind != JsonValueKind.Array)
-                    return new List<object>();
-
-                return values.EnumerateArray()
-                    .Where(x => x.ValueKind == JsonValueKind.String)
-                    .Select(x =>
-                    {
-                        var noteName = x.GetString()?.Trim() ?? "";
-                        var matchedNote = FindPerfumeNote(noteName, type, perfumeNotes);
-                        return (object)new
+                        var error = await response.Content.ReadAsStringAsync();
+                        return StatusCode((int)response.StatusCode, new
                         {
-                            name = noteName,
-                            image = matchedNote?.ImageUrl
+                            error = "Erreur Supabase lors du chargement des produits.",
+                            details = error
+                        });
+                    }
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    using var document = JsonDocument.Parse(json);
+                    var rows = document.RootElement;
+
+                    if (rows.ValueKind != JsonValueKind.Array ||
+                        rows.GetArrayLength() == 0)
+                        break;
+
+                    foreach (var row in rows.EnumerateArray())
+                    {
+                        var candidate = ParseSimilarProduct(row);
+                        if (candidate.Id != reference.Id)
+                            candidates.Add(candidate);
+                    }
+
+                    if (rows.GetArrayLength() < batchSize)
+                        break;
+                }
+
+                // 3. Même nature de produit si la nature est connue.
+                // Si elle est absente sur le produit de référence, ne pas
+                // éliminer tous les candidats dont la nature est renseignée.
+                if (!string.IsNullOrWhiteSpace(reference.Nature))
+                {
+                    candidates = candidates
+                        .Where(p =>
+                            !string.IsNullOrWhiteSpace(p.Nature) &&
+                            NormalizeText(p.Nature) ==
+                            NormalizeText(reference.Nature))
+                        .ToList();
+                }
+
+                // 4. Classer les candidats selon les attributs Naya.
+                var referenceFeatures = ReadFeatures(reference);
+
+                var ranked = candidates
+                    .Select(p =>
+                    {
+                        var result = CompareFeatures(
+                            referenceFeatures, ReadFeatures(p));
+
+                        return new
+                        {
+                            Product = p,
+                            result.Score,
+                            result.MatchedNotes,
+                            result.Families,
+                            result.Reason
                         };
                     })
+                    .Where(x => x.Score > 0)
+                    .OrderByDescending(x => x.Score)
+                    .ThenBy(x => x.Product.Id)
+                    .Take(5)
                     .ToList();
-            }
 
-            var product = new
-            {
-                id = reference.Id,
-                brand = reference.Brand,
-                name = reference.Name,
-                short_name = reference.ShortName ?? reference.Name,
-                type = reference.Type,
-                image = reference.Image,
-                images = string.IsNullOrWhiteSpace(reference.Image)
-                    ? Array.Empty<string>()
-                    : new[] { reference.Image },
-                description = reference.Description,
-                category = reference.Category,
-                sub_category = reference.SubCategory,
-                slug = reference.Slug,
-                url = GetText(reference.ProductData, "url", "product_url")
-            };
-
-            var details = new
-            {
-                gender = GetText(attributes, "gender"),
-                concentration = GetText(attributes, "concentration"),
-                fragrance_family = ReadStringArray(attributes, "fragrance_family"),
-                style = ReadStringArray(attributes, "style"),
-                season = ReadStringArray(attributes, "season"),
-                occasion = ReadStringArray(attributes, "occasion"),
-                intensity = GetNumber(attributes, "intensity"),
-                longevity = GetNumber(attributes, "longevity"),
-                sillage = GetNumber(attributes, "sillage"),
-                nature = reference.Nature,
-                axis = reference.Axis
-            };
-
-            var notes = new
-            {
-                top = new { title = "Notes de tête", items = ReadNotes("top_notes", "tete") },
-                heart = new { title = "Notes de cœur", items = ReadNotes("heart_notes", "coeur") },
-                @base = new { title = "Notes de fond", items = ReadNotes("base_notes", "fond") }
-            };
-
-            var referenceLowestOffer = referenceOffers
-                .Where(o => GetBool(o, "is_available") != false)
-                .Where(o => GetNumber(o, "price").HasValue)
-                .OrderBy(o => GetNumber(o, "price"))
-                .FirstOrDefault();
-
-            var alternatives = new
-            {
-                title = "Des alternatives similaires",
-                description =
-                    "Découvrez des produits au profil olfactif proche, " +
-                    "avec des caractéristiques et des prix différents.",
-                reference_price = referenceLowestOffer.ValueKind == JsonValueKind.Undefined
-                    ? (decimal?)null
-                    : GetNumber(referenceLowestOffer, "price"),
-                reference_currency = referenceLowestOffer.ValueKind == JsonValueKind.Undefined
-                    ? null
-                    : GetText(referenceLowestOffer, "currency"),
-                products = ranked.Select(x =>
+                if (ranked.Count < 5)
                 {
-                    var productOffers = offersByProduct.TryGetValue(
-                        x.Product.Id, out var foundOffers)
-                        ? foundOffers
-                        : new List<JsonElement>();
-
-                    var availableOffers = productOffers
-                        .Where(o => GetBool(o, "is_available") != false)
-                        .Where(o => GetNumber(o, "price").HasValue)
-                        .OrderBy(o => GetNumber(o, "price"))
-                        .ToList();
-
-                    var bestOffer = availableOffers.FirstOrDefault();
-
-                    return new
+                    return StatusCode(422, new
                     {
-                        product_id = x.Product.Id,
-                        brand = x.Product.Brand,
-                        name = x.Product.Name,
-                        short_name = x.Product.ShortName ?? x.Product.Name,
-                        image = x.Product.Image,
-                        price = bestOffer.ValueKind == JsonValueKind.Undefined
-                            ? (decimal?)null
-                            : GetNumber(bestOffer, "price"),
-                        currency = bestOffer.ValueKind == JsonValueKind.Undefined
-                            ? null
-                            : GetText(bestOffer, "currency"),
-                        original_price = GetNumber(
-                            x.Product.ProductData, "original_price", "originalPrice"),
-                        saving_amount = (decimal?)null,
-                        saving_percent = (decimal?)null,
-                        similarity_score = Math.Round(x.Score, 1),
-                        fragrance_family = x.Families,
-                        matched_notes = x.MatchedNotes,
-                        reason = x.Reason,
-                        product_url = bestOffer.ValueKind == JsonValueKind.Undefined
-                            ? GetText(x.Product.ProductData, "url", "product_url")
-                            : GetText(bestOffer, "product_url"),
-                        marketplace = bestOffer.ValueKind == JsonValueKind.Undefined
-                            ? GetText(x.Product.ProductData, "source", "marketplace")
-                            : GetText(bestOffer, "marketplace"),
-                        offers = productOffers.Select(o => new
-                        {
-                            id = GetNumber(o, "id"),
-                            marketplace = GetText(o, "marketplace"),
-                            marketplace_product_id = GetText(o, "marketplace_product_id"),
-                            sku = GetText(o, "sku"),
-                            price = GetNumber(o, "price"),
-                            currency = GetText(o, "currency"),
-                            variant_name = GetText(o, "variant_name"),
-                            product_url = GetText(o, "product_url"),
-                            is_available = GetBool(o, "is_available"),
-                            rating = GetNumber(o, "rating"),
-                            reviews = GetNumber(o, "reviews")
-                        }).ToList()
-                    };
-                }).ToList()
-            };
-
-            // 7. JSON complet consommé par les sections Shopify.
-            var result = new
-            {
-                page = new
-                {
-                    type = "perfume",
-                    slug = reference.Slug ?? slug,
-                    product_id = reference.Id,
-                    language = "fr"
-                },
-                product,
-                details,
-                notes,
-                offers = referenceOffers.Select(o => new
-                {
-                    id = GetNumber(o, "id"),
-                    marketplace = GetText(o, "marketplace"),
-                    marketplace_product_id = GetText(o, "marketplace_product_id"),
-                    sku = GetText(o, "sku"),
-                    price = GetNumber(o, "price"),
-                    currency = GetText(o, "currency"),
-                    variant_name = GetText(o, "variant_name"),
-                    product_url = GetText(o, "product_url"),
-                    is_available = GetBool(o, "is_available"),
-                    rating = GetNumber(o, "rating"),
-                    reviews = GetNumber(o, "reviews")
-                }).ToList(),
-                alternatives,
-                recommendations = new
-                {
-                    title = "Vous pourriez aussi aimer",
-                    description = "Des produits sélectionnés selon le profil olfactif et les caractéristiques.",
-                    products = alternatives.products
+                        error = "Impossible de trouver 5 produits similaires.",
+                        required = 5,
+                        found = ranked.Count,
+                        message = "Il faut au moins cinq autres produits compatibles dans products."
+                    });
                 }
-            };
 
-            var jsonStr1 = JsonSerializer.Serialize(result);
+                // 5. Charger toutes les offres des six produits en une seule requête.
+                var ids = ranked.Select(x => x.Product.Id)
+                    .Append(reference.Id)
+                    .Distinct()
+                    .ToList();
 
-            // Échapper les caractères spéciaux avant insertion dans un script.
-            jsonStr1 = jsonStr1
-                .Replace("<", "\\u003C")
-                .Replace(">", "\\u003E")
-                .Replace("&", "\\u0026")
-                .Replace("\u2028", "\\u2028")
-                .Replace("\u2029", "\\u2029");
+                var offersByProduct = await FetchOffersByProductIds(
+                    client, root, ids);
 
-            var liquid = @"
+                var referenceOffers = offersByProduct.TryGetValue(
+                    reference.Id, out var refOffers)
+                    ? refOffers
+                    : new List<JsonElement>();
+
+                // Charger le référentiel des notes et leurs images.
+                var perfumeNotes = await FetchPerfumeNotes(client, root);
+
+                // 6. Construire les informations du produit principal.
+                var attributes = reference.Attributes;
+
+                List<object> ReadNotes(string key, string type)
+                {
+                    if (!attributes.TryGetProperty(key, out var values) ||
+                        values.ValueKind != JsonValueKind.Array)
+                        return new List<object>();
+
+                    return values.EnumerateArray()
+                        .Where(x => x.ValueKind == JsonValueKind.String)
+                        .Select(x =>
+                        {
+                            var noteName = x.GetString()?.Trim() ?? "";
+                            var matchedNote = FindPerfumeNote(noteName, type, perfumeNotes);
+                            return (object)new
+                            {
+                                name = noteName,
+                                image = matchedNote?.ImageUrl
+                            };
+                        })
+                        .ToList();
+                }
+
+                var product = new
+                {
+                    id = reference.Id,
+                    brand = reference.Brand,
+                    name = reference.Name,
+                    short_name = reference.ShortName ?? reference.Name,
+                    type = reference.Type,
+                    image = reference.Image,
+                    images = string.IsNullOrWhiteSpace(reference.Image)
+                        ? Array.Empty<string>()
+                        : new[] { reference.Image },
+                    description = reference.Description,
+                    category = reference.Category,
+                    sub_category = reference.SubCategory,
+                    slug = reference.Slug,
+                    url = GetText(reference.ProductData, "url", "product_url")
+                };
+
+                var details = new
+                {
+                    gender = GetText(attributes, "gender"),
+                    concentration = GetText(attributes, "concentration"),
+                    fragrance_family = ReadStringArray(attributes, "fragrance_family"),
+                    style = ReadStringArray(attributes, "style"),
+                    season = ReadStringArray(attributes, "season"),
+                    occasion = ReadStringArray(attributes, "occasion"),
+                    intensity = GetNumber(attributes, "intensity"),
+                    longevity = GetNumber(attributes, "longevity"),
+                    sillage = GetNumber(attributes, "sillage"),
+                    nature = reference.Nature,
+                    axis = reference.Axis
+                };
+
+                var notes = new
+                {
+                    top = new { title = "Notes de tête", items = ReadNotes("top_notes", "tete") },
+                    heart = new { title = "Notes de cœur", items = ReadNotes("heart_notes", "coeur") },
+                    @base = new { title = "Notes de fond", items = ReadNotes("base_notes", "fond") }
+                };
+
+                var referenceLowestOffer = referenceOffers
+                    .Where(o => GetBool(o, "is_available") != false)
+                    .Where(o => GetNumber(o, "price").HasValue)
+                    .OrderBy(o => GetNumber(o, "price"))
+                    .FirstOrDefault();
+
+                var alternatives = new
+                {
+                    title = "Des alternatives similaires",
+                    description =
+                        "Découvrez des produits au profil olfactif proche, " +
+                        "avec des caractéristiques et des prix différents.",
+                    reference_price = referenceLowestOffer.ValueKind == JsonValueKind.Undefined
+                        ? (decimal?)null
+                        : GetNumber(referenceLowestOffer, "price"),
+                    reference_currency = referenceLowestOffer.ValueKind == JsonValueKind.Undefined
+                        ? null
+                        : GetText(referenceLowestOffer, "currency"),
+                    products = ranked.Select(x =>
+                    {
+                        var productOffers = offersByProduct.TryGetValue(
+                            x.Product.Id, out var foundOffers)
+                            ? foundOffers
+                            : new List<JsonElement>();
+
+                        var availableOffers = productOffers
+                            .Where(o => GetBool(o, "is_available") != false)
+                            .Where(o => GetNumber(o, "price").HasValue)
+                            .OrderBy(o => GetNumber(o, "price"))
+                            .ToList();
+
+                        var bestOffer = availableOffers.FirstOrDefault();
+
+                        return new
+                        {
+                            product_id = x.Product.Id,
+                            brand = x.Product.Brand,
+                            name = x.Product.Name,
+                            short_name = x.Product.ShortName ?? x.Product.Name,
+                            image = x.Product.Image,
+                            price = bestOffer.ValueKind == JsonValueKind.Undefined
+                                ? (decimal?)null
+                                : GetNumber(bestOffer, "price"),
+                            currency = bestOffer.ValueKind == JsonValueKind.Undefined
+                                ? null
+                                : GetText(bestOffer, "currency"),
+                            original_price = GetNumber(
+                                x.Product.ProductData, "original_price", "originalPrice"),
+                            saving_amount = (decimal?)null,
+                            saving_percent = (decimal?)null,
+                            similarity_score = Math.Round(x.Score, 1),
+                            fragrance_family = x.Families,
+                            matched_notes = x.MatchedNotes,
+                            reason = x.Reason,
+                            product_url = bestOffer.ValueKind == JsonValueKind.Undefined
+                                ? GetText(x.Product.ProductData, "url", "product_url")
+                                : GetText(bestOffer, "product_url"),
+                            marketplace = bestOffer.ValueKind == JsonValueKind.Undefined
+                                ? GetText(x.Product.ProductData, "source", "marketplace")
+                                : GetText(bestOffer, "marketplace"),
+                            offers = productOffers.Select(o => new
+                            {
+                                id = GetNumber(o, "id"),
+                                marketplace = GetText(o, "marketplace"),
+                                marketplace_product_id = GetText(o, "marketplace_product_id"),
+                                sku = GetText(o, "sku"),
+                                price = GetNumber(o, "price"),
+                                currency = GetText(o, "currency"),
+                                variant_name = GetText(o, "variant_name"),
+                                product_url = GetText(o, "product_url"),
+                                is_available = GetBool(o, "is_available"),
+                                rating = GetNumber(o, "rating"),
+                                reviews = GetNumber(o, "reviews")
+                            }).ToList()
+                        };
+                    }).ToList()
+                };
+
+                // 7. JSON complet consommé par les sections Shopify.
+                var result = new
+                {
+                    page = new
+                    {
+                        type = "perfume",
+                        slug = reference.Slug ?? slug,
+                        product_id = reference.Id,
+                        language = "fr"
+                    },
+                    product,
+                    details,
+                    notes,
+                    offers = referenceOffers.Select(o => new
+                    {
+                        id = GetNumber(o, "id"),
+                        marketplace = GetText(o, "marketplace"),
+                        marketplace_product_id = GetText(o, "marketplace_product_id"),
+                        sku = GetText(o, "sku"),
+                        price = GetNumber(o, "price"),
+                        currency = GetText(o, "currency"),
+                        variant_name = GetText(o, "variant_name"),
+                        product_url = GetText(o, "product_url"),
+                        is_available = GetBool(o, "is_available"),
+                        rating = GetNumber(o, "rating"),
+                        reviews = GetNumber(o, "reviews")
+                    }).ToList(),
+                    alternatives,
+                    recommendations = new
+                    {
+                        title = "Vous pourriez aussi aimer",
+                        description = "Des produits sélectionnés selon le profil olfactif et les caractéristiques.",
+                        products = alternatives.products
+                    }
+                };
+
+                var jsonStr1 = JsonSerializer.Serialize(result);
+
+                // Échapper les caractères spéciaux avant insertion dans un script.
+                jsonStr1 = jsonStr1
+                    .Replace("<", "\\u003C")
+                    .Replace(">", "\\u003E")
+                    .Replace("&", "\\u0026")
+                    .Replace("\u2028", "\\u2028")
+                    .Replace("\u2029", "\\u2029");
+
+                var liquid = @"
 <script>
 window.NAYA_SIMILAR = " + jsonStr1 + @";
 console.log('NAYA_SIMILAR =', window.NAYA_SIMILAR);
@@ -1961,292 +1961,379 @@ document.dispatchEvent(
 </script>
 ";
 
-            return Content(liquid, "application/liquid");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"ERREUR GetSimilarProducts : {ex}");
-            return StatusCode(500, new
-            {
-                error = ex.Message,
-                details = ex.ToString()
-            });
-        }
-    }
-
-    private async Task<List<PerfumeNote>> FetchPerfumeNotes(
-        HttpClient client,
-        string root)
-    {
-        var url = $"{root}/rest/v1/perfume_notes" +
-                  "?select=id,name_en,name_fr,type,image_url,is_active,sort_order" +
-                  "&is_active=eq.true&order=sort_order.asc";
-
-        using var response = await client.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException(
-                $"Erreur perfume_notes ({(int)response.StatusCode}) : {error}");
-        }
-
-        using var document = JsonDocument.Parse(
-            await response.Content.ReadAsStringAsync());
-
-        var result = new List<PerfumeNote>();
-        foreach (var row in document.RootElement.EnumerateArray())
-        {
-            result.Add(new PerfumeNote
-            {
-                NameEn = GetText(row, "name_en") ?? "",
-                NameFr = GetText(row, "name_fr") ?? "",
-                Type = GetText(row, "type") ?? "",
-                ImageUrl = GetText(row, "image_url"),
-                IsActive = GetBool(row, "is_active") != false
-            });
-        }
-
-        Console.WriteLine($"PERFUME NOTES CHARGEES : {result.Count}");
-        return result;
-    }
-
-    private static PerfumeNote? FindPerfumeNote(
-        string noteName,
-        string type,
-        List<PerfumeNote> perfumeNotes)
-    {
-        var normalizedName = NormalizeNoteName(noteName);
-        var normalizedType = NormalizeNoteType(type);
-
-        return perfumeNotes.FirstOrDefault(x =>
-            x.IsActive &&
-            NormalizeNoteType(x.Type) == normalizedType &&
-            (NormalizeNoteName(x.NameEn) == normalizedName ||
-             NormalizeNoteName(x.NameFr) == normalizedName));
-    }
-
-    private static string NormalizeNoteName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "";
-
-        var normalized = NormalizeText(value)
-            .Replace("-", " ")
-            .Replace("_", " ");
-
-        normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
-        return Regex.Replace(normalized, @"\s+", " ").Trim();
-    }
-
-    private static string NormalizeNoteType(string? value)
-    {
-        var type = NormalizeNoteName(value);
-        return type switch
-        {
-            "top" or "tetes" => "tete",
-            "heart" => "coeur",
-            "base" => "fond",
-            _ => type
-        };
-    }
-
-    private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIds(
-        HttpClient client,
-        string root,
-        List<long> productIds)
-    {
-        var result = new Dictionary<long, List<JsonElement>>();
-        if (productIds.Count == 0)
-            return result;
-
-        var idList = string.Join(",", productIds.Distinct());
-        var url = $"{root}/rest/v1/product_offers" +
-                  "?select=id,product_id,marketplace,marketplace_product_id," +
-                  "sku,price,currency,variant_name,product_url,is_available," +
-                  "rating,reviews,marketplace_data" +
-                  $"&product_id=in.({idList})&order=price.asc";
-
-        using var response = await client.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException(
-                $"Erreur product_offers ({(int)response.StatusCode}) : {error}");
-        }
-
-        using var document = JsonDocument.Parse(
-            await response.Content.ReadAsStringAsync());
-
-        foreach (var row in document.RootElement.EnumerateArray())
-        {
-            var productId = row.GetProperty("product_id").GetInt64();
-
-            if (!result.TryGetValue(productId, out var list))
-            {
-                list = new List<JsonElement>();
-                result[productId] = list;
+                return Content(liquid, "application/liquid");
             }
-
-            list.Add(row.Clone());
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERREUR GetSimilarProducts : {ex}");
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    details = ex.ToString()
+                });
+            }
         }
 
-        return result;
-    }
-
-    private static bool? GetBool(JsonElement obj, string key)
-    {
-        if (obj.ValueKind == JsonValueKind.Object &&
-            obj.TryGetProperty(key, out var value))
+        private async Task<List<PerfumeNote>> FetchPerfumeNotes(
+            HttpClient client,
+            string root)
         {
-            if (value.ValueKind == JsonValueKind.True) return true;
-            if (value.ValueKind == JsonValueKind.False) return false;
-        }
-
-        return null;
-    }
-
-    private sealed class PerfumeNote
-    {
-        public string NameEn { get; set; } = "";
-        public string NameFr { get; set; } = "";
-        public string Type { get; set; } = "";
-        public string? ImageUrl { get; set; }
-        public bool IsActive { get; set; } = true;
-    }
-
-    private sealed class SimilarProduct
-    {
-        public long Id { get; set; }
-        public string? Brand { get; set; }
-        public string Name { get; set; } = "";
-        public string? ShortName { get; set; }
-        public string? Category { get; set; }
-        public string? SubCategory { get; set; }
-        public string? Type { get; set; }
-        public string? Image { get; set; }
-        public string? Description { get; set; }
-        public JsonElement Attributes { get; set; }
-        public JsonElement ProductData { get; set; }
-        public string? Nature { get; set; }
-        public string? Axis { get; set; }
-        public string? Slug { get; set; }
-    }
-
-    private sealed class PerfumeFeatures
-    {
-        public HashSet<string> TopNotes { get; } = new();
-        public HashSet<string> HeartNotes { get; } = new();
-        public HashSet<string> BaseNotes { get; } = new();
-        public HashSet<string> Families { get; } = new();
-        public HashSet<string> Gender { get; } = new();
-        public HashSet<string> Concentration { get; } = new();
-        public HashSet<string> Style { get; } = new();
-        public HashSet<string> Season { get; } = new();
-        public HashSet<string> Occasion { get; } = new();
-        public int? Intensity { get; set; }
-        public int? Longevity { get; set; }
-        public int? Sillage { get; set; }
-
-        public HashSet<string> AllNotes =>
-            TopNotes.Concat(HeartNotes).Concat(BaseNotes)
-                .ToHashSet();
-    }
-
-    private sealed record SimilarityResult(
-        double Score,
-        List<string> MatchedNotes,
-        List<string> Families,
-        string Reason);
-
-    private async Task<SimilarProduct?> FetchProductBySlug(
-        string baseUrl,
-        string select,
-        string slug,
-
-        HttpClient client)
-    {
-        var normalized = NormalizeText(slug);
-
-        // D'abord slug_normalized, puis slug si nécessaire.
-        foreach (var column in new[] { "slug_normalized", "slug" })
-        {
-            var url = $"{baseUrl}?select={select}" +
-                      $"&{column}=eq.{Uri.EscapeDataString(
-                          column == "slug_normalized" ? normalized : slug)}" +
-                      "&limit=1";
+            var url = $"{root}/rest/v1/perfume_notes" +
+                      "?select=id,name_en,name_fr,type,image_url,is_active,sort_order" +
+                      "&is_active=eq.true&order=sort_order.asc";
 
             using var response = await client.GetAsync(url);
-
             if (!response.IsSuccessStatusCode)
             {
-                var details = await response.Content.ReadAsStringAsync();
+                var error = await response.Content.ReadAsStringAsync();
                 throw new HttpRequestException(
-                    $"Supabase ({(int)response.StatusCode}): {details}");
+                    $"Erreur perfume_notes ({(int)response.StatusCode}) : {error}");
             }
 
             using var document = JsonDocument.Parse(
                 await response.Content.ReadAsStringAsync());
 
-            var rows = document.RootElement;
+            var result = new List<PerfumeNote>();
+            foreach (var row in document.RootElement.EnumerateArray())
+            {
+                result.Add(new PerfumeNote
+                {
+                    NameEn = GetText(row, "name_en") ?? "",
+                    NameFr = GetText(row, "name_fr") ?? "",
+                    Type = GetText(row, "type") ?? "",
+                    ImageUrl = GetText(row, "image_url"),
+                    IsActive = GetBool(row, "is_active") != false
+                });
+            }
 
-            if (rows.ValueKind == JsonValueKind.Array &&
-                rows.GetArrayLength() > 0)
-                return ParseSimilarProduct(rows[0]);
+            Console.WriteLine($"PERFUME NOTES CHARGEES : {result.Count}");
+            foreach (var note in result.Take(10))
+                Console.WriteLine($"NOTE DB : FR='{note.NameFr}', EN='{note.NameEn}', TYPE='{note.Type}', IMAGE='{note.ImageUrl}'");
+            return result;
         }
 
-        return null;
-    }
-
-    private static SimilarProduct ParseSimilarProduct(JsonElement row)
-    {
-        return new SimilarProduct
+        private static PerfumeNote? FindPerfumeNote(
+            string noteName,
+            string type,
+            List<PerfumeNote> perfumeNotes)
         {
-            Id = row.GetProperty("id").GetInt64(),
-            Brand = GetText(row, "brand"),
-            Name = GetText(row, "name") ?? "",
-            ShortName = GetText(row, "short_name"),
-            Category = GetText(row, "category"),
-            SubCategory = GetText(row, "sub_category"),
-            Type = GetText(row, "type"),
-            Image = GetText(row, "image"),
-            Description = GetText(row, "description"),
-            Attributes = GetElement(row, "naya_attributes"),
-            ProductData = GetElement(row, "product_data"),
-            Nature = GetText(
-                 GetElement(row, "product_data"), "nature"),
+            var normalizedName = NormalizeNoteName(noteName);
+            var normalizedType = NormalizeNoteType(type);
 
-            Axis = GetText(
-                 GetElement(row, "product_data"), "axis"),
-            Slug = GetText(row, "slug")
-        };
-    }
+            if (string.IsNullOrWhiteSpace(normalizedName))
+                return null;
 
-    private static JsonElement GetElement(
-        JsonElement obj, string property)
-    {
-        return obj.TryGetProperty(property, out var value)
-            ? value.Clone()
-            : JsonDocument.Parse("{}").RootElement.Clone();
-    }
+            // 1. Correspondance exacte du nom et du type.
+            var match = perfumeNotes.FirstOrDefault(x =>
+                x.IsActive &&
+                NormalizeNoteType(x.Type) == normalizedType &&
+                (NormalizeNoteName(x.NameEn) == normalizedName ||
+                 NormalizeNoteName(x.NameFr) == normalizedName));
 
-    private static string? GetText(JsonElement obj, params string[] keys)
-    {
-        foreach (var key in keys)
+            if (match != null)
+                return match;
+
+            // 2. Correspondance plus souple : "Cèdre" peut correspondre à
+            // "Cèdre de l'Atlas". Le type demandé est prioritaire.
+            var candidates = perfumeNotes
+                .Where(x => x.IsActive)
+                .Select(x => new
+                {
+                    Note = x,
+                    En = NormalizeNoteName(x.NameEn),
+                    Fr = NormalizeNoteName(x.NameFr),
+                    TypeMatches = NormalizeNoteType(x.Type) == normalizedType
+                })
+                .Where(x =>
+                    x.En == normalizedName || x.Fr == normalizedName ||
+                    (normalizedName.Length >= 4 &&
+                     (x.En.StartsWith(normalizedName + " ") ||
+                      x.Fr.StartsWith(normalizedName + " ") ||
+                      normalizedName.StartsWith(x.En + " ") ||
+                      normalizedName.StartsWith(x.Fr + " "))))
+                .OrderByDescending(x => x.TypeMatches)
+                .ThenBy(x => Math.Min(
+                    Math.Abs(x.En.Length - normalizedName.Length),
+                    Math.Abs(x.Fr.Length - normalizedName.Length)))
+                .ToList();
+
+            match = candidates.FirstOrDefault(x => x.TypeMatches)?.Note
+                    ?? candidates.FirstOrDefault()?.Note;
+
+            if (match == null)
+            {
+                Console.WriteLine($"NOTE NON TROUVEE : '{noteName}' / type='{type}'. Notes en base : {perfumeNotes.Count}");
+            }
+            else
+            {
+                Console.WriteLine($"NOTE ASSOCIEE : '{noteName}' -> '{match.NameFr}' / '{match.NameEn}', type='{match.Type}', image_url='{match.ImageUrl}'");
+            }
+
+            return match;
+        }
+
+        private static string NormalizeNoteName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "";
+
+            var normalized = NormalizeText(value)
+                .Replace("-", " ")
+                .Replace("_", " ");
+
+            normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
+            return Regex.Replace(normalized, @"\s+", " ").Trim();
+        }
+
+        private static string NormalizeNoteType(string? value)
+        {
+            var type = NormalizeNoteName(value);
+            return type switch
+            {
+                "top" or "tetes" => "tete",
+                "heart" => "coeur",
+                "base" => "fond",
+                _ => type
+            };
+        }
+
+        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIds(
+            HttpClient client,
+            string root,
+            List<long> productIds)
+        {
+            var result = new Dictionary<long, List<JsonElement>>();
+            if (productIds.Count == 0)
+                return result;
+
+            var idList = string.Join(",", productIds.Distinct());
+            var url = $"{root}/rest/v1/product_offers" +
+                      "?select=id,product_id,marketplace,marketplace_product_id," +
+                      "sku,price,currency,variant_name,product_url,is_available," +
+                      "rating,reviews,marketplace_data" +
+                      $"&product_id=in.({idList})&order=price.asc";
+
+            using var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException(
+                    $"Erreur product_offers ({(int)response.StatusCode}) : {error}");
+            }
+
+            using var document = JsonDocument.Parse(
+                await response.Content.ReadAsStringAsync());
+
+            foreach (var row in document.RootElement.EnumerateArray())
+            {
+                var productId = row.GetProperty("product_id").GetInt64();
+
+                if (!result.TryGetValue(productId, out var list))
+                {
+                    list = new List<JsonElement>();
+                    result[productId] = list;
+                }
+
+                list.Add(row.Clone());
+            }
+
+            return result;
+        }
+
+        private static bool? GetBool(JsonElement obj, string key)
         {
             if (obj.ValueKind == JsonValueKind.Object &&
-                obj.TryGetProperty(key, out var value) &&
-                value.ValueKind == JsonValueKind.String)
-                return value.GetString();
+                obj.TryGetProperty(key, out var value))
+            {
+                if (value.ValueKind == JsonValueKind.True) return true;
+                if (value.ValueKind == JsonValueKind.False) return false;
+            }
+
+            return null;
         }
 
-        return null;
-    }
+        private sealed class PerfumeNote
+        {
+            public string NameEn { get; set; } = "";
+            public string NameFr { get; set; } = "";
+            public string Type { get; set; } = "";
+            public string? ImageUrl { get; set; }
+            public bool IsActive { get; set; } = true;
+        }
 
-    private static decimal? GetNumber(
-JsonElement obj,
-params string[] keys)
-    {
-        foreach (var key in keys)
+        private sealed class SimilarProduct
+        {
+            public long Id { get; set; }
+            public string? Brand { get; set; }
+            public string Name { get; set; } = "";
+            public string? ShortName { get; set; }
+            public string? Category { get; set; }
+            public string? SubCategory { get; set; }
+            public string? Type { get; set; }
+            public string? Image { get; set; }
+            public string? Description { get; set; }
+            public JsonElement Attributes { get; set; }
+            public JsonElement ProductData { get; set; }
+            public string? Nature { get; set; }
+            public string? Axis { get; set; }
+            public string? Slug { get; set; }
+        }
+
+        private sealed class PerfumeFeatures
+        {
+            public HashSet<string> TopNotes { get; } = new();
+            public HashSet<string> HeartNotes { get; } = new();
+            public HashSet<string> BaseNotes { get; } = new();
+            public HashSet<string> Families { get; } = new();
+            public HashSet<string> Gender { get; } = new();
+            public HashSet<string> Concentration { get; } = new();
+            public HashSet<string> Style { get; } = new();
+            public HashSet<string> Season { get; } = new();
+            public HashSet<string> Occasion { get; } = new();
+            public int? Intensity { get; set; }
+            public int? Longevity { get; set; }
+            public int? Sillage { get; set; }
+
+            public HashSet<string> AllNotes =>
+                TopNotes.Concat(HeartNotes).Concat(BaseNotes)
+                    .ToHashSet();
+        }
+
+        private sealed record SimilarityResult(
+            double Score,
+            List<string> MatchedNotes,
+            List<string> Families,
+            string Reason);
+
+        private async Task<SimilarProduct?> FetchProductBySlug(
+            string baseUrl,
+            string select,
+            string slug,
+
+            HttpClient client)
+        {
+            var normalized = NormalizeText(slug);
+
+            // D'abord slug_normalized, puis slug si nécessaire.
+            foreach (var column in new[] { "slug_normalized", "slug" })
+            {
+                var url = $"{baseUrl}?select={select}" +
+                          $"&{column}=eq.{Uri.EscapeDataString(
+                              column == "slug_normalized" ? normalized : slug)}" +
+                          "&limit=1";
+
+                using var response = await client.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var details = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException(
+                        $"Supabase ({(int)response.StatusCode}): {details}");
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync());
+
+                var rows = document.RootElement;
+
+                if (rows.ValueKind == JsonValueKind.Array &&
+                    rows.GetArrayLength() > 0)
+                    return ParseSimilarProduct(rows[0]);
+            }
+
+            return null;
+        }
+
+        private static SimilarProduct ParseSimilarProduct(JsonElement row)
+        {
+            return new SimilarProduct
+            {
+                Id = row.GetProperty("id").GetInt64(),
+                Brand = GetText(row, "brand"),
+                Name = GetText(row, "name") ?? "",
+                ShortName = GetText(row, "short_name"),
+                Category = GetText(row, "category"),
+                SubCategory = GetText(row, "sub_category"),
+                Type = GetText(row, "type"),
+                Image = GetText(row, "image"),
+                Description = GetText(row, "description"),
+                Attributes = GetElement(row, "naya_attributes"),
+                ProductData = GetElement(row, "product_data"),
+                Nature = GetText(
+                     GetElement(row, "product_data"), "nature"),
+
+                Axis = GetText(
+                     GetElement(row, "product_data"), "axis"),
+                Slug = GetText(row, "slug")
+            };
+        }
+
+        private static JsonElement GetElement(
+            JsonElement obj, string property)
+        {
+            return obj.TryGetProperty(property, out var value)
+                ? value.Clone()
+                : JsonDocument.Parse("{}").RootElement.Clone();
+        }
+
+        private static string? GetText(JsonElement obj, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                if (obj.ValueKind == JsonValueKind.Object &&
+                    obj.TryGetProperty(key, out var value) &&
+                    value.ValueKind == JsonValueKind.String)
+                    return value.GetString();
+            }
+
+            return null;
+        }
+
+        private static decimal? GetNumber(
+    JsonElement obj,
+    params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                if (obj.ValueKind == JsonValueKind.Object &&
+                    obj.TryGetProperty(key, out var value))
+                {
+                    if (value.ValueKind == JsonValueKind.Number &&
+                        value.TryGetDecimal(out var number))
+                        return number;
+
+                    if (value.ValueKind == JsonValueKind.String &&
+                        decimal.TryParse(
+                            value.GetString(),
+                            CultureInfo.InvariantCulture,
+                            out number))
+                        return number;
+                }
+            }
+
+            return null;
+        }
+
+        private static List<string> ReadStringArray(
+            JsonElement obj, string key)
+        {
+            if (obj.ValueKind != JsonValueKind.Object ||
+                !obj.TryGetProperty(key, out var value))
+                return new List<string>();
+
+            if (value.ValueKind == JsonValueKind.String)
+                return new List<string> { value.GetString()! };
+
+            if (value.ValueKind != JsonValueKind.Array)
+                return new List<string>();
+
+            return value.EnumerateArray()
+                .Where(x => x.ValueKind == JsonValueKind.String)
+                .Select(x => x.GetString()!)
+                .ToList();
+        }
+
+        private static decimal? GetNumber(JsonElement obj, string key)
         {
             if (obj.ValueKind == JsonValueKind.Object &&
                 obj.TryGetProperty(key, out var value))
@@ -2256,212 +2343,172 @@ params string[] keys)
                     return number;
 
                 if (value.ValueKind == JsonValueKind.String &&
-                    decimal.TryParse(
-                        value.GetString(),
-                        CultureInfo.InvariantCulture,
-                        out number))
+                    decimal.TryParse(value.GetString(),
+                        CultureInfo.InvariantCulture, out number))
                     return number;
+            }
+
+            return null;
+        }
+
+        private static List<JsonElement> GetArray(
+            JsonElement obj, string key)
+        {
+            if (obj.ValueKind == JsonValueKind.Object &&
+                obj.TryGetProperty(key, out var value) &&
+                value.ValueKind == JsonValueKind.Array)
+                return value.EnumerateArray()
+                    .Select(x => x.Clone()).ToList();
+
+            return new List<JsonElement>();
+        }
+
+        private static PerfumeFeatures ReadFeatures(SimilarProduct product)
+        {
+            var f = new PerfumeFeatures();
+            var a = product.Attributes;
+
+            AddValues(a, f.TopNotes, "top_notes");
+            AddValues(a, f.HeartNotes, "heart_notes");
+            AddValues(a, f.BaseNotes, "base_notes");
+            AddValues(a, f.Families, "fragrance_family");
+            AddValues(a, f.Style, "style");
+            AddValues(a, f.Season, "season");
+            AddValues(a, f.Occasion, "occasion");
+            AddValues(a, f.Gender, "gender");
+            AddValues(a, f.Concentration, "concentration");
+
+            f.Intensity = GetInt(a, "intensity");
+            f.Longevity = GetInt(a, "longevity");
+            f.Sillage = GetInt(a, "sillage");
+
+            // Fallback : certaines données peuvent se trouver
+            // dans les colonnes ou product_data.
+            Add(f.Families, product.Type);
+            Add(f.Families, product.Category);
+            Add(f.Families, product.SubCategory);
+
+            return f;
+        }
+
+        private static void AddValues(
+            JsonElement obj, HashSet<string> target, string key)
+        {
+            if (obj.ValueKind != JsonValueKind.Object ||
+                !obj.TryGetProperty(key, out var value))
+                return;
+
+            if (value.ValueKind == JsonValueKind.String)
+                Add(target, value.GetString());
+
+            if (value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in value.EnumerateArray())
+                    if (item.ValueKind == JsonValueKind.String)
+                        Add(target, item.GetString());
             }
         }
 
-        return null;
-    }
-
-    private static List<string> ReadStringArray(
-        JsonElement obj, string key)
-    {
-        if (obj.ValueKind != JsonValueKind.Object ||
-            !obj.TryGetProperty(key, out var value))
-            return new List<string>();
-
-        if (value.ValueKind == JsonValueKind.String)
-            return new List<string> { value.GetString()! };
-
-        if (value.ValueKind != JsonValueKind.Array)
-            return new List<string>();
-
-        return value.EnumerateArray()
-            .Where(x => x.ValueKind == JsonValueKind.String)
-            .Select(x => x.GetString()!)
-            .ToList();
-    }
-
-    private static decimal? GetNumber(JsonElement obj, string key)
-    {
-        if (obj.ValueKind == JsonValueKind.Object &&
-            obj.TryGetProperty(key, out var value))
+        private static int? GetInt(JsonElement obj, string key)
         {
-            if (value.ValueKind == JsonValueKind.Number &&
-                value.TryGetDecimal(out var number))
+            if (obj.ValueKind == JsonValueKind.Object &&
+                obj.TryGetProperty(key, out var value) &&
+                value.ValueKind == JsonValueKind.Number &&
+                value.TryGetInt32(out var number))
                 return number;
 
-            if (value.ValueKind == JsonValueKind.String &&
-                decimal.TryParse(value.GetString(),
-                    CultureInfo.InvariantCulture, out number))
-                return number;
+            return null;
         }
 
-        return null;
-    }
-
-    private static List<JsonElement> GetArray(
-        JsonElement obj, string key)
-    {
-        if (obj.ValueKind == JsonValueKind.Object &&
-            obj.TryGetProperty(key, out var value) &&
-            value.ValueKind == JsonValueKind.Array)
-            return value.EnumerateArray()
-                .Select(x => x.Clone()).ToList();
-
-        return new List<JsonElement>();
-    }
-
-    private static PerfumeFeatures ReadFeatures(SimilarProduct product)
-    {
-        var f = new PerfumeFeatures();
-        var a = product.Attributes;
-
-        AddValues(a, f.TopNotes, "top_notes");
-        AddValues(a, f.HeartNotes, "heart_notes");
-        AddValues(a, f.BaseNotes, "base_notes");
-        AddValues(a, f.Families, "fragrance_family");
-        AddValues(a, f.Style, "style");
-        AddValues(a, f.Season, "season");
-        AddValues(a, f.Occasion, "occasion");
-        AddValues(a, f.Gender, "gender");
-        AddValues(a, f.Concentration, "concentration");
-
-        f.Intensity = GetInt(a, "intensity");
-        f.Longevity = GetInt(a, "longevity");
-        f.Sillage = GetInt(a, "sillage");
-
-        // Fallback : certaines données peuvent se trouver
-        // dans les colonnes ou product_data.
-        Add(f.Families, product.Type);
-        Add(f.Families, product.Category);
-        Add(f.Families, product.SubCategory);
-
-        return f;
-    }
-
-    private static void AddValues(
-        JsonElement obj, HashSet<string> target, string key)
-    {
-        if (obj.ValueKind != JsonValueKind.Object ||
-            !obj.TryGetProperty(key, out var value))
-            return;
-
-        if (value.ValueKind == JsonValueKind.String)
-            Add(target, value.GetString());
-
-        if (value.ValueKind == JsonValueKind.Array)
+        private static void Add(HashSet<string> set, string? value)
         {
-            foreach (var item in value.EnumerateArray())
-                if (item.ValueKind == JsonValueKind.String)
-                    Add(target, item.GetString());
-        }
-    }
-
-    private static int? GetInt(JsonElement obj, string key)
-    {
-        if (obj.ValueKind == JsonValueKind.Object &&
-            obj.TryGetProperty(key, out var value) &&
-            value.ValueKind == JsonValueKind.Number &&
-            value.TryGetInt32(out var number))
-            return number;
-
-        return null;
-    }
-
-    private static void Add(HashSet<string> set, string? value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-            set.Add(NormalizeText(value));
-    }
-
-    private static string NormalizeText(string value)
-    {
-        var decomposed = value.Trim().ToLowerInvariant()
-            .Normalize(NormalizationForm.FormD);
-
-        var sb = new StringBuilder();
-
-        foreach (var c in decomposed)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) !=
-                UnicodeCategory.NonSpacingMark)
-                sb.Append(c);
+            if (!string.IsNullOrWhiteSpace(value))
+                set.Add(NormalizeText(value));
         }
 
-        return sb.ToString().Normalize(NormalizationForm.FormC);
-    }
-
-    private static SimilarityResult CompareFeatures(
-        PerfumeFeatures a, PerfumeFeatures b)
-    {
-        double score = 0;
-        var matched = a.AllNotes.Intersect(b.AllNotes).ToList();
-        var families = a.Families.Intersect(b.Families).ToList();
-        var reasons = new List<string>();
-
-        // Les notes sont le critère principal.
-        score += SetScore(a.TopNotes, b.TopNotes, 15, reasons, "notes de tête");
-        score += SetScore(a.HeartNotes, b.HeartNotes, 20, reasons, "notes de cœur");
-        score += SetScore(a.BaseNotes, b.BaseNotes, 25, reasons, "notes de fond");
-        score += SetScore(a.Families, b.Families, 20, reasons, "famille olfactive");
-        score += SetScore(a.Gender, b.Gender, 5, reasons, "genre");
-        score += SetScore(a.Concentration, b.Concentration, 3, reasons, "concentration");
-        score += SetScore(a.Style, b.Style, 3, reasons, "style");
-        score += SetScore(a.Season, b.Season, 3, reasons, "saison");
-        score += SetScore(a.Occasion, b.Occasion, 3, reasons, "occasion");
-
-        score += NumberScore(a.Intensity, b.Intensity, 1);
-        score += NumberScore(a.Longevity, b.Longevity, 1);
-        score += NumberScore(a.Sillage, b.Sillage, 1);
-
-        score = Math.Min(100, score);
-
-        var reason = reasons.Count > 0
-            ? "Similarité basée sur : " + string.Join(", ", reasons) + "."
-            : "Quelques caractéristiques communes.";
-
-        return new SimilarityResult(
-            score, matched, families.ToList(), reason);
-    }
-
-    private static double SetScore(
-        HashSet<string> reference,
-        HashSet<string> candidate,
-        double weight,
-        List<string> reasons,
-        string label)
-    {
-        if (reference.Count == 0 || candidate.Count == 0)
-            return 0;
-
-        var common = reference.Intersect(candidate).Count();
-
-        if (common == 0)
-            return 0;
-
-        reasons.Add(label);
-        return weight * common / reference.Count;
-    }
-
-    private static double NumberScore(int? a, int? b, double weight)
-    {
-        if (!a.HasValue || !b.HasValue)
-            return 0;
-
-        var difference = Math.Abs(a.Value - b.Value);
-
-        return difference switch
+        private static string NormalizeText(string value)
         {
-            0 => weight,
-            1 => weight * 0.5,
-            _ => 0
-        };
-    }
+            var decomposed = value.Trim().ToLowerInvariant()
+                .Normalize(NormalizationForm.FormD);
+
+            var sb = new StringBuilder();
+
+            foreach (var c in decomposed)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(c) !=
+                    UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+
+            return sb.ToString().Normalize(NormalizationForm.FormC);
+        }
+
+        private static SimilarityResult CompareFeatures(
+            PerfumeFeatures a, PerfumeFeatures b)
+        {
+            double score = 0;
+            var matched = a.AllNotes.Intersect(b.AllNotes).ToList();
+            var families = a.Families.Intersect(b.Families).ToList();
+            var reasons = new List<string>();
+
+            // Les notes sont le critère principal.
+            score += SetScore(a.TopNotes, b.TopNotes, 15, reasons, "notes de tête");
+            score += SetScore(a.HeartNotes, b.HeartNotes, 20, reasons, "notes de cœur");
+            score += SetScore(a.BaseNotes, b.BaseNotes, 25, reasons, "notes de fond");
+            score += SetScore(a.Families, b.Families, 20, reasons, "famille olfactive");
+            score += SetScore(a.Gender, b.Gender, 5, reasons, "genre");
+            score += SetScore(a.Concentration, b.Concentration, 3, reasons, "concentration");
+            score += SetScore(a.Style, b.Style, 3, reasons, "style");
+            score += SetScore(a.Season, b.Season, 3, reasons, "saison");
+            score += SetScore(a.Occasion, b.Occasion, 3, reasons, "occasion");
+
+            score += NumberScore(a.Intensity, b.Intensity, 1);
+            score += NumberScore(a.Longevity, b.Longevity, 1);
+            score += NumberScore(a.Sillage, b.Sillage, 1);
+
+            score = Math.Min(100, score);
+
+            var reason = reasons.Count > 0
+                ? "Similarité basée sur : " + string.Join(", ", reasons) + "."
+                : "Quelques caractéristiques communes.";
+
+            return new SimilarityResult(
+                score, matched, families.ToList(), reason);
+        }
+
+        private static double SetScore(
+            HashSet<string> reference,
+            HashSet<string> candidate,
+            double weight,
+            List<string> reasons,
+            string label)
+        {
+            if (reference.Count == 0 || candidate.Count == 0)
+                return 0;
+
+            var common = reference.Intersect(candidate).Count();
+
+            if (common == 0)
+                return 0;
+
+            reasons.Add(label);
+            return weight * common / reference.Count;
+        }
+
+        private static double NumberScore(int? a, int? b, double weight)
+        {
+            if (!a.HasValue || !b.HasValue)
+                return 0;
+
+            var difference = Math.Abs(a.Value - b.Value);
+
+            return difference switch
+            {
+                0 => weight,
+                1 => weight * 0.5,
+                _ => 0
+            };
+        }
 
 
 
@@ -2475,353 +2522,354 @@ params string[] keys)
 
 
 
-    //        [HttpGet]
-    //        [Route("~/api/shopify/proxy/{*path}")]
-    //        public async Task<IActionResult> ShopifyProxy(string? path)
-    //        {
-    //            if (string.IsNullOrWhiteSpace(path))
-    //            {
-    //                return BadRequest("Slug manquant");
-    //            }
 
-    //            var cleanSlug =
-    //                CreateUrlSlug(path.Trim('/'));
+        //        [HttpGet]
+        //        [Route("~/api/shopify/proxy/{*path}")]
+        //        public async Task<IActionResult> ShopifyProxy(string? path)
+        //        {
+        //            if (string.IsNullOrWhiteSpace(path))
+        //            {
+        //                return BadRequest("Slug manquant");
+        //            }
 
-    //            if (string.IsNullOrWhiteSpace(cleanSlug))
-    //            {
-    //                return BadRequest("Slug invalide");
-    //            }
+        //            var cleanSlug =
+        //                CreateUrlSlug(path.Trim('/'));
 
-    //            // =========================================================
-    //            // SHOPIFY STORE
-    //            // =========================================================
+        //            if (string.IsNullOrWhiteSpace(cleanSlug))
+        //            {
+        //                return BadRequest("Slug invalide");
+        //            }
 
-    //            var forwardedHost =
-    //                Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        //            // =========================================================
+        //            // SHOPIFY STORE
+        //            // =========================================================
 
-    //            if (string.IsNullOrWhiteSpace(forwardedHost))
-    //            {
-    //                forwardedHost =
-    //                    Request.Host.Host;
-    //            }
+        //            var forwardedHost =
+        //                Request.Headers["X-Forwarded-Host"].FirstOrDefault();
 
-    //            var storefrontOrigin =
-    //                "https://" + forwardedHost;
+        //            if (string.IsNullOrWhiteSpace(forwardedHost))
+        //            {
+        //                forwardedHost =
+        //                    Request.Host.Host;
+        //            }
 
-
-    //            // =========================================================
-    //            // RÉCUPÉRATION DU JSON DU PRODUIT
-    //            // =========================================================
-
-    //            var jsonStr = @"
-    //{
-    //  ""page"": {
-    //    ""type"": ""perfume"",
-    //    ""slug"": ""baccarat-rouge-540"",
-    //    ""product_id"": 659,
-    //    ""language"": ""fr""
-    //  },
-    //  ""product"": {
-    //    ""id"": 659,
-    //    ""brand"": ""Maison Francis Kurkdjian"",
-    //    ""name"": ""Baccarat Rouge 540"",
-    //    ""short_name"": ""Baccarat Rouge 540"",
-    //    ""type"": ""Eau de Parfum"",
-    //    ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
-    //    ""images"": [
-    //      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg""
-    //    ],
-    //    ""description"": ""Une fragrance iconique et envoûtante, au sillage unique, mêlant le safran, l'ambre et des notes boisées."",
-    //    ""category"": ""Parfum"",
-    //    ""sub_category"": ""Parfum femme et homme"",
-    //    ""rating"": 4.8,
-    //    ""reviews"": 2341,
-    //    ""ean"": null,
-    //    ""manufacturer_product_id"": null
-    //  },
-    //  ""details"": {
-    //    ""gender"": ""Unisexe"",
-    //    ""concentration"": ""Eau de Parfum"",
-    //    ""fragrance_family"": ""Ambré Floral"",
-    //    ""olfactory_family"": ""Ambré Floral"",
-    //    ""year"": 2015,
-    //    ""perfumer"": ""Francis Kurkdjian"",
-    //    ""volume"": ""70 ml"",
-    //    ""style"": [
-    //      ""Luxe"",
-    //      ""Élégant"",
-    //      ""Sophistiqué""
-    //    ],
-    //    ""season"": [
-    //      ""Automne"",
-    //      ""Hiver"",
-    //      ""Printemps""
-    //    ],
-    //    ""occasion"": [
-    //      ""Soirée"",
-    //      ""Sortie"",
-    //      ""Occasion spéciale""
-    //    ],
-    //    ""intensity"": ""Forte"",
-    //    ""longevity"": ""Très longue"",
-    //    ""sillage"": ""Exceptionnel"",
-    //    ""best_for"": ""Pour celles et ceux qui recherchent un parfum élégant, reconnaissable et très persistant.""
-    //  },
-    //  ""notes"": {
-    //    ""top"": [
-    //      ""Safran"",
-    //      ""Bergamote""
-    //    ],
-    //    ""heart"": [
-    //      ""Jasmin"",
-    //      ""Ambre gris""
-    //    ],
-    //    ""base"": [
-    //      ""Bois de cèdre"",
-    //      ""Résines""
-    //    ]
-    //  },
-    //  ""performance"": {
-    //    ""intensity"": 4,
-    //    ""longevity"": 5,
-    //    ""sillage"": 5,
-    //    ""labels"": {
-    //      ""intensity"": ""Intensité"",
-    //      ""longevity"": ""Longévité"",
-    //      ""sillage"": ""Sillage""
-    //    }
-    //  },
-    //  ""offers"": [
-    //    {
-    //      ""id"": 368,
-    //      ""marketplace"": ""sephora"",
-    //      ""marketplace_product_id"": ""123456"",
-    //      ""sku"": ""BR540-70"",
-    //      ""variant_name"": ""70 ml"",
-    //      ""price"": 245.00,
-    //      ""currency"": ""EUR"",
-    //      ""original_price"": 250.00,
-    //      ""is_available"": true,
-    //      ""rating"": 4.8,
-    //      ""reviews"": 2341,
-    //      ""product_url"": ""https://www.sephora.fr/example"",
-    //      ""image"": ""https://example.com/sephora-baccarat.jpg""
-    //    },
-    //    {
-    //      ""id"": 349,
-    //      ""marketplace"": ""lookfantastic"",
-    //      ""marketplace_product_id"": ""LF123456"",
-    //      ""sku"": ""BR540-70"",
-    //      ""variant_name"": ""70 ml"",
-    //      ""price"": 238.00,
-    //      ""currency"": ""EUR"",
-    //      ""original_price"": 245.00,
-    //      ""is_available"": true,
-    //      ""rating"": 4.7,
-    //      ""reviews"": 1820,
-    //      ""product_url"": ""https://www.lookfantastic.fr/example"",
-    //      ""image"": ""https://example.com/lookfantastic-baccarat.jpg""
-    //    },
-    //    {
-    //      ""id"": 355,
-    //      ""marketplace"": ""amazon"",
-    //      ""marketplace_product_id"": ""B08XXXXXXX"",
-    //      ""sku"": ""BR540-70"",
-    //      ""variant_name"": ""70 ml"",
-    //      ""price"": 189.00,
-    //      ""currency"": ""EUR"",
-    //      ""original_price"": 230.00,
-    //      ""is_available"": true,
-    //      ""rating"": 4.6,
-    //      ""reviews"": 5320,
-    //      ""product_url"": ""https://www.amazon.fr/example"",
-    //      ""image"": ""https://example.com/amazon-baccarat.jpg""
-    //    }
-    //  ],
-    //  ""price_comparison"": {
-    //    ""currency"": ""EUR"",
-    //    ""lowest_price"": 189.00,
-    //    ""lowest_price_marketplace"": ""amazon"",
-    //    ""saving_vs_reference"": 56.00,
-    //    ""offers_count"": 3,
-    //    ""offers"": [
-    //      {
-    //        ""marketplace"": ""amazon"",
-    //        ""label"": ""Amazon"",
-    //        ""price"": 189.00,
-    //        ""currency"": ""EUR"",
-    //        ""variant"": ""70 ml"",
-    //        ""availability"": ""En stock"",
-    //        ""url"": ""https://www.amazon.fr/example""
-    //      },
-    //      {
-    //        ""marketplace"": ""lookfantastic"",
-    //        ""label"": ""LookFantastic"",
-    //        ""price"": 238.00,
-    //        ""currency"": ""EUR"",
-    //        ""variant"": ""70 ml"",
-    //        ""availability"": ""En stock"",
-    //        ""url"": ""https://www.lookfantastic.fr/example""
-    //      },
-    //      {
-    //        ""marketplace"": ""sephora"",
-    //        ""label"": ""Sephora"",
-    //        ""price"": 245.00,
-    //        ""currency"": ""EUR"",
-    //        ""variant"": ""70 ml"",
-    //        ""availability"": ""En stock"",
-    //        ""url"": ""https://www.sephora.fr/example""
-    //      }
-    //    ]
-    //  },
-    //  ""alternatives"": {
-    //    ""title"": ""5 alternatives au même style"",
-    //    ""description"": ""Des parfums inspirés de Baccarat Rouge 540, avec des notes similaires et un prix plus accessible."",
-    //    ""reference_price"": 245.00,
-    //    ""reference_currency"": ""EUR"",
-    //    ""products"": [
-    //      {
-    //        ""product_id"": 721,
-    //        ""brand"": ""Lattafa"",
-    //        ""name"": ""Ana Abiyedh Rouge"",
-    //        ""image"": ""https://m.media-amazon.com/images/I/41YdnQMDfJL._AC_SY300_SX300_QL70_ML2_.jpg"",
-    //        ""price"": 29.00,
-    //        ""currency"": ""EUR"",
-    //        ""original_price"": 65.00,
-    //        ""saving_amount"": 36.00,
-    //        ""saving_percent"": 55,
-    //        ""similarity_score"": 92,
-    //        ""fragrance_family"": ""Ambré"",
-    //        ""matched_notes"": [
-    //          ""Safran"",
-    //          ""Ambre"",
-    //          ""Jasmin""
-    //        ],
-    //        ""reason"": ""Une alternative très proche avec une signature ambrée et musquée."",
-    //        ""offers"": [
-    //          {
-    //            ""marketplace"": ""amazon"",
-    //            ""price"": 29.00,
-    //            ""currency"": ""EUR"",
-    //            ""url"": ""https://www.amazon.fr/example""
-    //          }
-    //        ]
-    //      }
-    //    ]
-    //  },
-    //  ""guide"": {
-    //    ""available"": true,
-    //    ""id"": ""baccarat-rouge-540"",
-    //    ""slug"": ""baccarat-rouge-540"",
-    //    ""title"": ""Tout savoir sur Baccarat Rouge 540"",
-    //    ""subtitle"": ""Son histoire, ses notes, ses alternatives et nos conseils pour bien le choisir."",
-    //    ""image"": ""https://example.com/guide-baccarat.jpg"",
-    //    ""url"": ""/guide/baccarat-rouge-540"",
-    //    ""reading_time"": ""6 min"",
-    //    ""sections"": [
-    //      ""Présentation"",
-    //      ""Notes olfactives"",
-    //      ""Longévité et sillage"",
-    //      ""Alternatives"",
-    //      ""Conseils""
-    //    ]
-    //  },
-    //  ""recommendations"": {
-    //    ""title"": ""Vous pourriez aussi aimer"",
-    //    ""description"": ""D'autres parfums qui pourraient vous plaire."",
-    //    ""products"": []
-    //  },
-    //  ""seo"": {
-    //    ""title"": ""Baccarat Rouge 540 : prix, alternatives et avis | Viliora"",
-    //    ""description"": ""Découvrez Baccarat Rouge 540, comparez les prix chez les meilleurs revendeurs et trouvez 5 alternatives moins chères."",
-    //    ""canonical"": ""/parfum/baccarat-rouge-540"",
-    //    ""keywords"": [
-    //      ""Baccarat Rouge 540"",
-    //      ""Baccarat Rouge 540 prix"",
-    //      ""Baccarat Rouge 540 alternative"",
-    //      ""Baccarat Rouge 540 dupe"",
-    //      ""parfum similaire Baccarat Rouge 540""
-    //    ]
-    //  }
-    //}";
-
-    //            if (string.IsNullOrWhiteSpace(jsonStr))
-    //            {
-    //                return NotFound(
-    //                    new
-    //                    {
-    //                        message = "Produit introuvable",
-    //                        slug = cleanSlug
-    //                    }
-    //                );
-    //            }
+        //            var storefrontOrigin =
+        //                "https://" + forwardedHost;
 
 
-    //            // =========================================================
-    //            // SEO
-    //            // =========================================================
+        //            // =========================================================
+        //            // RÉCUPÉRATION DU JSON DU PRODUIT
+        //            // =========================================================
 
-    //            var seo =
-    //                BuildGuideSeo(
-    //                    jsonStr,
-    //                    cleanSlug,
-    //                    storefrontOrigin
-    //                );
+        //            var jsonStr = @"
+        //{
+        //  ""page"": {
+        //    ""type"": ""perfume"",
+        //    ""slug"": ""baccarat-rouge-540"",
+        //    ""product_id"": 659,
+        //    ""language"": ""fr""
+        //  },
+        //  ""product"": {
+        //    ""id"": 659,
+        //    ""brand"": ""Maison Francis Kurkdjian"",
+        //    ""name"": ""Baccarat Rouge 540"",
+        //    ""short_name"": ""Baccarat Rouge 540"",
+        //    ""type"": ""Eau de Parfum"",
+        //    ""image"": ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg"",
+        //    ""images"": [
+        //      ""https://media.sephora.eu/content/dam/gdam/europe/digital/pim/published/M/MAISON_FRANCIS_KURKDJIAN/558477/241051-media_swatch-4.jpg""
+        //    ],
+        //    ""description"": ""Une fragrance iconique et envoûtante, au sillage unique, mêlant le safran, l'ambre et des notes boisées."",
+        //    ""category"": ""Parfum"",
+        //    ""sub_category"": ""Parfum femme et homme"",
+        //    ""rating"": 4.8,
+        //    ""reviews"": 2341,
+        //    ""ean"": null,
+        //    ""manufacturer_product_id"": null
+        //  },
+        //  ""details"": {
+        //    ""gender"": ""Unisexe"",
+        //    ""concentration"": ""Eau de Parfum"",
+        //    ""fragrance_family"": ""Ambré Floral"",
+        //    ""olfactory_family"": ""Ambré Floral"",
+        //    ""year"": 2015,
+        //    ""perfumer"": ""Francis Kurkdjian"",
+        //    ""volume"": ""70 ml"",
+        //    ""style"": [
+        //      ""Luxe"",
+        //      ""Élégant"",
+        //      ""Sophistiqué""
+        //    ],
+        //    ""season"": [
+        //      ""Automne"",
+        //      ""Hiver"",
+        //      ""Printemps""
+        //    ],
+        //    ""occasion"": [
+        //      ""Soirée"",
+        //      ""Sortie"",
+        //      ""Occasion spéciale""
+        //    ],
+        //    ""intensity"": ""Forte"",
+        //    ""longevity"": ""Très longue"",
+        //    ""sillage"": ""Exceptionnel"",
+        //    ""best_for"": ""Pour celles et ceux qui recherchent un parfum élégant, reconnaissable et très persistant.""
+        //  },
+        //  ""notes"": {
+        //    ""top"": [
+        //      ""Safran"",
+        //      ""Bergamote""
+        //    ],
+        //    ""heart"": [
+        //      ""Jasmin"",
+        //      ""Ambre gris""
+        //    ],
+        //    ""base"": [
+        //      ""Bois de cèdre"",
+        //      ""Résines""
+        //    ]
+        //  },
+        //  ""performance"": {
+        //    ""intensity"": 4,
+        //    ""longevity"": 5,
+        //    ""sillage"": 5,
+        //    ""labels"": {
+        //      ""intensity"": ""Intensité"",
+        //      ""longevity"": ""Longévité"",
+        //      ""sillage"": ""Sillage""
+        //    }
+        //  },
+        //  ""offers"": [
+        //    {
+        //      ""id"": 368,
+        //      ""marketplace"": ""sephora"",
+        //      ""marketplace_product_id"": ""123456"",
+        //      ""sku"": ""BR540-70"",
+        //      ""variant_name"": ""70 ml"",
+        //      ""price"": 245.00,
+        //      ""currency"": ""EUR"",
+        //      ""original_price"": 250.00,
+        //      ""is_available"": true,
+        //      ""rating"": 4.8,
+        //      ""reviews"": 2341,
+        //      ""product_url"": ""https://www.sephora.fr/example"",
+        //      ""image"": ""https://example.com/sephora-baccarat.jpg""
+        //    },
+        //    {
+        //      ""id"": 349,
+        //      ""marketplace"": ""lookfantastic"",
+        //      ""marketplace_product_id"": ""LF123456"",
+        //      ""sku"": ""BR540-70"",
+        //      ""variant_name"": ""70 ml"",
+        //      ""price"": 238.00,
+        //      ""currency"": ""EUR"",
+        //      ""original_price"": 245.00,
+        //      ""is_available"": true,
+        //      ""rating"": 4.7,
+        //      ""reviews"": 1820,
+        //      ""product_url"": ""https://www.lookfantastic.fr/example"",
+        //      ""image"": ""https://example.com/lookfantastic-baccarat.jpg""
+        //    },
+        //    {
+        //      ""id"": 355,
+        //      ""marketplace"": ""amazon"",
+        //      ""marketplace_product_id"": ""B08XXXXXXX"",
+        //      ""sku"": ""BR540-70"",
+        //      ""variant_name"": ""70 ml"",
+        //      ""price"": 189.00,
+        //      ""currency"": ""EUR"",
+        //      ""original_price"": 230.00,
+        //      ""is_available"": true,
+        //      ""rating"": 4.6,
+        //      ""reviews"": 5320,
+        //      ""product_url"": ""https://www.amazon.fr/example"",
+        //      ""image"": ""https://example.com/amazon-baccarat.jpg""
+        //    }
+        //  ],
+        //  ""price_comparison"": {
+        //    ""currency"": ""EUR"",
+        //    ""lowest_price"": 189.00,
+        //    ""lowest_price_marketplace"": ""amazon"",
+        //    ""saving_vs_reference"": 56.00,
+        //    ""offers_count"": 3,
+        //    ""offers"": [
+        //      {
+        //        ""marketplace"": ""amazon"",
+        //        ""label"": ""Amazon"",
+        //        ""price"": 189.00,
+        //        ""currency"": ""EUR"",
+        //        ""variant"": ""70 ml"",
+        //        ""availability"": ""En stock"",
+        //        ""url"": ""https://www.amazon.fr/example""
+        //      },
+        //      {
+        //        ""marketplace"": ""lookfantastic"",
+        //        ""label"": ""LookFantastic"",
+        //        ""price"": 238.00,
+        //        ""currency"": ""EUR"",
+        //        ""variant"": ""70 ml"",
+        //        ""availability"": ""En stock"",
+        //        ""url"": ""https://www.lookfantastic.fr/example""
+        //      },
+        //      {
+        //        ""marketplace"": ""sephora"",
+        //        ""label"": ""Sephora"",
+        //        ""price"": 245.00,
+        //        ""currency"": ""EUR"",
+        //        ""variant"": ""70 ml"",
+        //        ""availability"": ""En stock"",
+        //        ""url"": ""https://www.sephora.fr/example""
+        //      }
+        //    ]
+        //  },
+        //  ""alternatives"": {
+        //    ""title"": ""5 alternatives au même style"",
+        //    ""description"": ""Des parfums inspirés de Baccarat Rouge 540, avec des notes similaires et un prix plus accessible."",
+        //    ""reference_price"": 245.00,
+        //    ""reference_currency"": ""EUR"",
+        //    ""products"": [
+        //      {
+        //        ""product_id"": 721,
+        //        ""brand"": ""Lattafa"",
+        //        ""name"": ""Ana Abiyedh Rouge"",
+        //        ""image"": ""https://m.media-amazon.com/images/I/41YdnQMDfJL._AC_SY300_SX300_QL70_ML2_.jpg"",
+        //        ""price"": 29.00,
+        //        ""currency"": ""EUR"",
+        //        ""original_price"": 65.00,
+        //        ""saving_amount"": 36.00,
+        //        ""saving_percent"": 55,
+        //        ""similarity_score"": 92,
+        //        ""fragrance_family"": ""Ambré"",
+        //        ""matched_notes"": [
+        //          ""Safran"",
+        //          ""Ambre"",
+        //          ""Jasmin""
+        //        ],
+        //        ""reason"": ""Une alternative très proche avec une signature ambrée et musquée."",
+        //        ""offers"": [
+        //          {
+        //            ""marketplace"": ""amazon"",
+        //            ""price"": 29.00,
+        //            ""currency"": ""EUR"",
+        //            ""url"": ""https://www.amazon.fr/example""
+        //          }
+        //        ]
+        //      }
+        //    ]
+        //  },
+        //  ""guide"": {
+        //    ""available"": true,
+        //    ""id"": ""baccarat-rouge-540"",
+        //    ""slug"": ""baccarat-rouge-540"",
+        //    ""title"": ""Tout savoir sur Baccarat Rouge 540"",
+        //    ""subtitle"": ""Son histoire, ses notes, ses alternatives et nos conseils pour bien le choisir."",
+        //    ""image"": ""https://example.com/guide-baccarat.jpg"",
+        //    ""url"": ""/guide/baccarat-rouge-540"",
+        //    ""reading_time"": ""6 min"",
+        //    ""sections"": [
+        //      ""Présentation"",
+        //      ""Notes olfactives"",
+        //      ""Longévité et sillage"",
+        //      ""Alternatives"",
+        //      ""Conseils""
+        //    ]
+        //  },
+        //  ""recommendations"": {
+        //    ""title"": ""Vous pourriez aussi aimer"",
+        //    ""description"": ""D'autres parfums qui pourraient vous plaire."",
+        //    ""products"": []
+        //  },
+        //  ""seo"": {
+        //    ""title"": ""Baccarat Rouge 540 : prix, alternatives et avis | Viliora"",
+        //    ""description"": ""Découvrez Baccarat Rouge 540, comparez les prix chez les meilleurs revendeurs et trouvez 5 alternatives moins chères."",
+        //    ""canonical"": ""/parfum/baccarat-rouge-540"",
+        //    ""keywords"": [
+        //      ""Baccarat Rouge 540"",
+        //      ""Baccarat Rouge 540 prix"",
+        //      ""Baccarat Rouge 540 alternative"",
+        //      ""Baccarat Rouge 540 dupe"",
+        //      ""parfum similaire Baccarat Rouge 540""
+        //    ]
+        //  }
+        //}";
 
-    //            var seoJson =
-    //                JsonSerializer.Serialize(
-    //                    seo,
-    //                    new JsonSerializerOptions
-    //                    {
-    //                        PropertyNamingPolicy =
-    //                            JsonNamingPolicy.CamelCase,
-
-    //                        Encoder =
-    //                            JavaScriptEncoder.Default
-    //                    }
-    //                );
+        //            if (string.IsNullOrWhiteSpace(jsonStr))
+        //            {
+        //                return NotFound(
+        //                    new
+        //                    {
+        //                        message = "Produit introuvable",
+        //                        slug = cleanSlug
+        //                    }
+        //                );
+        //            }
 
 
-    //            // =========================================================
-    //            // SHOPIFY LIQUID
-    //            // =========================================================
+        //            // =========================================================
+        //            // SEO
+        //            // =========================================================
 
-    //            var liquid = $@"
+        //            var seo =
+        //                BuildGuideSeo(
+        //                    jsonStr,
+        //                    cleanSlug,
+        //                    storefrontOrigin
+        //                );
 
-    //        {{% section 'naya-perfume-hero' %}}
+        //            var seoJson =
+        //                JsonSerializer.Serialize(
+        //                    seo,
+        //                    new JsonSerializerOptions
+        //                    {
+        //                        PropertyNamingPolicy =
+        //                            JsonNamingPolicy.CamelCase,
 
-    //        {{% section 'naya-perfume-details' %}}
-
-    //        {{% section 'naya-perfume-alternatives' %}}
-
-    //        {{% section 'naya-price-profile' %}}
-
-    //        {{% section 'naya-guide-banner' %}}
-
-
-    //        <script>
-
-    //            window.NAYA_PROXY_SLUG =
-    //                {JsonSerializer.Serialize(cleanSlug)};
-
-    //            window.NAYA_GUIDE =
-    //                {jsonStr};
-
-    //            window.NAYA_SEO =
-    //                {seoJson};
-
-    //        </script>
-    //    ";
+        //                        Encoder =
+        //                            JavaScriptEncoder.Default
+        //                    }
+        //                );
 
 
-    //            return Content(
-    //                liquid,
-    //                "application/liquid"
-    //            );
-    //        }
+        //            // =========================================================
+        //            // SHOPIFY LIQUID
+        //            // =========================================================
+
+        //            var liquid = $@"
+
+        //        {{% section 'naya-perfume-hero' %}}
+
+        //        {{% section 'naya-perfume-details' %}}
+
+        //        {{% section 'naya-perfume-alternatives' %}}
+
+        //        {{% section 'naya-price-profile' %}}
+
+        //        {{% section 'naya-guide-banner' %}}
 
 
-    [HttpGet]
+        //        <script>
+
+        //            window.NAYA_PROXY_SLUG =
+        //                {JsonSerializer.Serialize(cleanSlug)};
+
+        //            window.NAYA_GUIDE =
+        //                {jsonStr};
+
+        //            window.NAYA_SEO =
+        //                {seoJson};
+
+        //        </script>
+        //    ";
+
+
+        //            return Content(
+        //                liquid,
+        //                "application/liquid"
+        //            );
+        //        }
+
+
+        [HttpGet]
         [Route("~/api/shopify/proxy2/{*path}")]
         public async Task<IActionResult> ShopifyProxy2(
     string? path)

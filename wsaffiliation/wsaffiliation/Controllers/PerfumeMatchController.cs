@@ -1828,6 +1828,9 @@ public class PerfumeMatchController : ControllerBase
     string requestedName,
     List<PerfumeNoteRecord> perfumeNotes)
     {
+
+        Console.WriteLine(
+                    $"[PerfumeMatch] Recherche image pour la note : '{requestedName}'");
         if (string.IsNullOrWhiteSpace(requestedName))
             return null;
 

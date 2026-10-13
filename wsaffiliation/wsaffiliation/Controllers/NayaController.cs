@@ -1596,8 +1596,6 @@ namespace wsaffiliation.Controllers
 
 
 
-
-
         [HttpGet("api/products/{slug}/similar")]
         public async Task<IActionResult> GetSimilarProducts(string slug)
         {
@@ -2023,20 +2021,8 @@ document.dispatchEvent(
             if (string.IsNullOrWhiteSpace(normalizedName))
                 return null;
 
-            // 1. Correspondance exacte du nom et du type.
-            var match = perfumeNotes.FirstOrDefault(x =>
-                x.IsActive &&
-                NormalizeNoteType(x.Type) == normalizedType &&
-                (NormalizeNoteName(x.NameEn) == normalizedName ||
-                 NormalizeNoteName(x.NameFr) == normalizedName));
-
-            if (match != null)
-                return match;
-
-            // 2. Correspondance plus souple : "Cèdre" peut correspondre à
-            // "Cèdre de l'Atlas". Le type demandé est prioritaire.
-            var candidates = perfumeNotes
-                .Where(x => x.IsActive)
+            var activeNotes = perfumeNotes
+                .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.ImageUrl))
                 .Select(x => new
                 {
                     Note = x,
@@ -2044,31 +2030,47 @@ document.dispatchEvent(
                     Fr = NormalizeNoteName(x.NameFr),
                     TypeMatches = NormalizeNoteType(x.Type) == normalizedType
                 })
-                .Where(x =>
-                    x.En == normalizedName || x.Fr == normalizedName ||
-                    (normalizedName.Length >= 4 &&
-                     (x.En.StartsWith(normalizedName + " ") ||
-                      x.Fr.StartsWith(normalizedName + " ") ||
-                      normalizedName.StartsWith(x.En + " ") ||
-                      normalizedName.StartsWith(x.Fr + " "))))
-                .OrderByDescending(x => x.TypeMatches)
-                .ThenBy(x => Math.Min(
-                    Math.Abs(x.En.Length - normalizedName.Length),
-                    Math.Abs(x.Fr.Length - normalizedName.Length)))
+                .Where(x => x.En.Length > 0 || x.Fr.Length > 0)
                 .ToList();
 
-            match = candidates.FirstOrDefault(x => x.TypeMatches)?.Note
-                    ?? candidates.FirstOrDefault()?.Note;
+            // 1. Priorité au nom exact + type exact.
+            var match = activeNotes.FirstOrDefault(x =>
+                x.TypeMatches && (x.En == normalizedName || x.Fr == normalizedName));
+
+            if (match != null)
+                return LogNoteMatch(noteName, match.Note);
+
+            // 2. Correspondance partielle dans les deux sens :
+            // "Essence de Cannelle" correspond à "Cannelle" ;
+            // "Essence de Patchouli d'Indonésie" correspond à "Patchouli".
+            // Le type est prioritaire, puis on privilégie le nom le plus long
+            // qui correspond pour éviter de choisir une note trop générique.
+            var candidates = activeNotes
+                .Where(x =>
+                    (x.En.Length >= 3 && normalizedName.Contains(x.En)) ||
+                    (x.Fr.Length >= 3 && normalizedName.Contains(x.Fr)) ||
+                    (normalizedName.Length >= 3 && x.En.Contains(normalizedName)) ||
+                    (normalizedName.Length >= 3 && x.Fr.Contains(normalizedName)))
+                .OrderByDescending(x => x.TypeMatches)
+                .ThenByDescending(x => Math.Max(
+                    x.En.Length > 0 && normalizedName.Contains(x.En) ? x.En.Length : 0,
+                    x.Fr.Length > 0 && normalizedName.Contains(x.Fr) ? x.Fr.Length : 0))
+                .ToList();
+
+            match = candidates.FirstOrDefault();
 
             if (match == null)
             {
-                Console.WriteLine($"NOTE NON TROUVEE : '{noteName}' / type='{type}'. Notes en base : {perfumeNotes.Count}");
-            }
-            else
-            {
-                Console.WriteLine($"NOTE ASSOCIEE : '{noteName}' -> '{match.NameFr}' / '{match.NameEn}', type='{match.Type}', image_url='{match.ImageUrl}'");
+                Console.WriteLine($"NOTE NON TROUVEE : '{noteName}' / type='{type}'. Notes actives en base : {activeNotes.Count}");
+                return null;
             }
 
+            return LogNoteMatch(noteName, match.Note);
+        }
+
+        private static PerfumeNote LogNoteMatch(string requestedName, PerfumeNote match)
+        {
+            Console.WriteLine($"NOTE ASSOCIEE : '{requestedName}' -> '{match.NameFr}' / '{match.NameEn}', type='{match.Type}', image_url='{match.ImageUrl}'");
             return match;
         }
 
@@ -2509,6 +2511,7 @@ document.dispatchEvent(
                 _ => 0
             };
         }
+
 
 
 

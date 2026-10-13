@@ -235,6 +235,18 @@ public class PerfumeMatchController : ControllerBase
             Console.WriteLine($"[PerfumeMatch] Résultats : {results.Count}");
             Console.WriteLine($"[PerfumeMatch] Notes SQL : {perfumeNotes.Count}");
 
+            foreach (var result in results.Take(3))
+            {
+                Console.WriteLine(
+                    $"[DEBUG] TopNotes: {string.Join(", ", result.MatchedTopNotes ?? new List<string>())}");
+
+                Console.WriteLine(
+                    $"[DEBUG] HeartNotes: {string.Join(", ", result.MatchedHeartNotes ?? new List<string>())}");
+
+                Console.WriteLine(
+                    $"[DEBUG] BaseNotes: {string.Join(", ", result.MatchedBaseNotes ?? new List<string>())}");
+            }
+
             foreach (var result in results)
             {
                 Console.WriteLine("[PerfumeMatch] >>> TRAITEMENT D'UN RESULTAT");

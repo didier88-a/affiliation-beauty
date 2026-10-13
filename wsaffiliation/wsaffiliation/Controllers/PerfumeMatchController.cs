@@ -233,19 +233,19 @@ public class PerfumeMatchController : ControllerBase
             foreach (var result in results)
             {
                 result.MatchedTopNoteDetails = result.MatchedTopNotes
-                    .Select(note => FindPerfumeNote(note, "tete", perfumeNotes))
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
                 result.MatchedHeartNoteDetails = result.MatchedHeartNotes
-                    .Select(note => FindPerfumeNote(note, "coeur", perfumeNotes))
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
                 result.MatchedBaseNoteDetails = result.MatchedBaseNotes
-                    .Select(note => FindPerfumeNote(note, "fond", perfumeNotes))
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
@@ -1748,10 +1748,7 @@ public class PerfumeMatchController : ControllerBase
         string supabaseUrl,
         string supabaseKey)
     {
-        var url =
-            $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
-            "?select=id,name_en,name_fr,type,image_url,is_active,sort_order" +
-            "&is_active=eq.true&order=sort_order.asc";
+        var url = $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes?select=*";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("apikey", supabaseKey);
@@ -1760,8 +1757,8 @@ public class PerfumeMatchController : ControllerBase
         using var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"PERFUME_NOTES ERROR {(int)response.StatusCode}: {error}");
+            // Le matching des parfums doit continuer même si la table de notes
+            // est momentanément indisponible. Les détails d'images resteront vides.
             return new List<PerfumeNoteRecord>();
         }
 
@@ -1776,135 +1773,113 @@ public class PerfumeMatchController : ControllerBase
             if (row.ValueKind != JsonValueKind.Object)
                 continue;
 
-            var nameEn = ReadFirstString(row, "name_en");
+            // Schéma réel de public.perfume_notes : name_en, name_fr,
+            // type, image_url et is_active. On garde aussi les anciens
+            // alias pour rester compatible avec d'autres schémas éventuels.
+            var nameEn = ReadFirstString(row, "name_en", "name", "note_name", "note", "title", "label");
             var nameFr = ReadFirstString(row, "name_fr");
+            var image = ReadFirstString(row, "image_url", "image", "image_path", "image_filename", "filename", "url");
             var type = ReadFirstString(row, "type");
-            var image = ReadFirstString(row, "image_url");
+            var isActive = !row.TryGetProperty("is_active", out var activeValue) ||
+                           activeValue.ValueKind != JsonValueKind.False;
 
-            var active = !row.TryGetProperty("is_active", out var activeElement)
-                || activeElement.ValueKind != JsonValueKind.False;
-
-            if (active && (!string.IsNullOrWhiteSpace(nameEn) ||
-                           !string.IsNullOrWhiteSpace(nameFr)))
+            if (isActive && (!string.IsNullOrWhiteSpace(nameEn) || !string.IsNullOrWhiteSpace(nameFr)))
             {
                 notes.Add(new PerfumeNoteRecord
                 {
-                    NameEn = nameEn?.Trim() ?? string.Empty,
-                    NameFr = nameFr?.Trim() ?? string.Empty,
-                    Type = type?.Trim() ?? string.Empty,
+                    NameEn = nameEn?.Trim(),
+                    NameFr = nameFr?.Trim(),
+                    Type = type?.Trim(),
                     Image = image?.Trim()
                 });
             }
         }
 
-        Console.WriteLine($"PERFUME_NOTES CHARGEES: {notes.Count}");
+        Console.WriteLine($"[PerfumeMatch] perfume_notes chargées: {notes.Count}");
         return notes;
     }
 
-    // Recherche dans name_en et name_fr, en privilégiant le type
-    // correspondant à la catégorie de la note : tete, coeur ou fond.
+    // Recherche souple dans les deux langues.
+    // Exemple : "Mandarin Essence" -> name_en="Mandarin".
+    // Les mots génériques comme Essence/Notes sont ignorés.
     private static PerfumeNoteMatch? FindPerfumeNote(
         string requestedName,
-        string requestedType,
         List<PerfumeNoteRecord> perfumeNotes)
     {
         if (string.IsNullOrWhiteSpace(requestedName) || perfumeNotes.Count == 0)
             return null;
 
-        var requestedTokens = GetNoteTokens(requestedName);
+        var requestedTokens = GetMeaningfulNoteTokens(requestedName);
         if (requestedTokens.Count == 0)
             return null;
 
-        var type = NormalizeNoteType(requestedType);
-
         var match = perfumeNotes
-            .Select(n => new
+            .Select(note => new
             {
-                Note = n,
-                TypeMatches = NormalizeNoteType(n.Type) == type,
+                Note = note,
                 Score = Math.Max(
-                    NoteNameMatchScore(requestedTokens, GetNoteTokens(n.NameEn)),
-                    NoteNameMatchScore(requestedTokens, GetNoteTokens(n.NameFr)))
+                    GetNoteNameMatchScore(requestedTokens, GetMeaningfulNoteTokens(note.NameEn)),
+                    GetNoteNameMatchScore(requestedTokens, GetMeaningfulNoteTokens(note.NameFr)))
             })
-            .Where(x => x.Score > 0 && !string.IsNullOrWhiteSpace(x.Note.Image))
-            .OrderByDescending(x => x.TypeMatches)
-            .ThenByDescending(x => x.Score)
-            .ThenBy(x => Math.Min(
-                GetNoteTokens(x.Note.NameEn).Count == 0 ? int.MaxValue : GetNoteTokens(x.Note.NameEn).Count,
-                GetNoteTokens(x.Note.NameFr).Count == 0 ? int.MaxValue : GetNoteTokens(x.Note.NameFr).Count))
-            .Select(x => x.Note)
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
             .FirstOrDefault();
 
         if (match == null)
         {
-            Console.WriteLine($"NOTE NON TROUVEE: '{requestedName}', type='{requestedType}'");
+            Console.WriteLine($"[PerfumeMatch] Note non trouvée: '{requestedName}'");
             return null;
         }
 
-        var displayName = !string.IsNullOrWhiteSpace(match.NameFr)
-            ? match.NameFr
-            : match.NameEn;
+        var matchedName = !string.IsNullOrWhiteSpace(match.Note.NameFr)
+            ? match.Note.NameFr!
+            : match.Note.NameEn ?? requestedName;
 
         Console.WriteLine(
-            $"NOTE ASSOCIEE: '{requestedName}' => '{displayName}', " +
-            $"type='{match.Type}', image='{match.Image}'");
+            $"[PerfumeMatch] Note '{requestedName}' associée à '{matchedName}', " +
+            $"type='{match.Note.Type}', image='{match.Note.Image}'");
 
         return new PerfumeNoteMatch
         {
-            Name = displayName,
-            Image = match.Image
+            Name = matchedName,
+            Image = match.Note.Image
         };
     }
 
-    private static List<string> GetNoteTokens(string? value)
+    private static int GetNoteNameMatchScore(List<string> requested, List<string> candidate)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return new List<string>();
+        if (requested.Count == 0 || candidate.Count == 0)
+            return 0;
 
+        if (requested.SequenceEqual(candidate, StringComparer.OrdinalIgnoreCase))
+            return 1000 + candidate.Count;
+
+        // La note en base peut être plus courte que le libellé du parfum:
+        // "Mandarin" doit correspondre à "Mandarin Essence".
+        if (requested.All(candidate.Contains) || candidate.All(requested.Contains))
+            return 100 + Math.Min(requested.Count, candidate.Count);
+
+        // Correspondance partielle seulement si au moins un mot significatif
+        // est identique; cela évite de faire correspondre des notes sans rapport.
+        var common = requested.Intersect(candidate, StringComparer.OrdinalIgnoreCase).Count();
+        return common > 0 ? common : 0;
+    }
+
+    private static List<string> GetMeaningfulNoteTokens(string? value)
+    {
         var ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "essence", "essences", "note", "notes", "oil", "extract",
-            "extrait", "absolute", "absolue", "de", "du", "des",
-            "la", "le", "les", "d", "l", "the", "of", "and"
+            "essence", "essences", "note", "notes", "oil", "oils",
+            "extract", "extrait", "absolute", "absolue", "accord", "accords",
+            "de", "du", "des", "la", "le", "les", "the", "of", "and"
         };
 
         return NormalizeNoteForMatch(value)
-            .Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split('-', StringSplitOptions.RemoveEmptyEntries)
             .Select(CanonicalNoteToken)
             .Where(token => token.Length > 1 && !ignored.Contains(token))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-    }
-
-    private static int NoteNameMatchScore(
-        List<string> requested,
-        List<string> databaseName)
-    {
-        if (requested.Count == 0 || databaseName.Count == 0)
-            return 0;
-
-        if (requested.SequenceEqual(databaseName, StringComparer.OrdinalIgnoreCase))
-            return 1000 + databaseName.Count;
-
-        var common = requested.Intersect(databaseName, StringComparer.OrdinalIgnoreCase).Count();
-
-        // Permet "Mandarin Essence" => "Mandarin", ou "Essence de Cannelle" => "Cannelle".
-        if (requested.All(databaseName.Contains) || databaseName.All(requested.Contains))
-            return 100 + common * 10 + databaseName.Count;
-
-        return 0;
-    }
-
-    private static string NormalizeNoteType(string? type)
-    {
-        var normalized = Normalize(type ?? string.Empty);
-        return normalized switch
-        {
-            "tete" or "top" or "top notes" or "top note" => "tete",
-            "coeur" or "heart" or "heart notes" or "heart note" => "coeur",
-            "fond" or "base" or "base notes" or "base note" => "fond",
-            _ => normalized
-        };
     }
 
     private static string? ReadFirstString(JsonElement row, params string[] propertyNames)
@@ -2225,9 +2200,9 @@ public class PerfumeMatchRequest
 
 public class PerfumeNoteRecord
 {
-    public string NameEn { get; set; } = string.Empty;
-    public string NameFr { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public string? NameEn { get; set; }
+    public string? NameFr { get; set; }
+    public string? Type { get; set; }
     public string? Image { get; set; }
 }
 

@@ -231,30 +231,43 @@ public class PerfumeMatchController : ControllerBase
                 supabaseKey);
 
             Console.WriteLine("[PerfumeMatch] >>> AVANT ENRICHISSEMENT");
-            Console.WriteLine($"[PerfumeMatch] Nombre de résultats : {results.Count}");
-            Console.WriteLine($"[PerfumeMatch] Nombre de notes SQL : {perfumeNotes.Count}");
 
+            Console.WriteLine($"[PerfumeMatch] Résultats : {results.Count}");
+            Console.WriteLine($"[PerfumeMatch] Notes SQL : {perfumeNotes.Count}");
 
             foreach (var result in results)
             {
-                result.MatchedTopNoteDetails = result.MatchedTopNotes
+                Console.WriteLine("[PerfumeMatch] >>> TRAITEMENT D'UN RESULTAT");
+
+                Console.WriteLine(
+                    $"[PerfumeMatch] Top : {result.MatchedTopNotes?.Count ?? 0}");
+
+                Console.WriteLine(
+                    $"[PerfumeMatch] Coeur : {result.MatchedHeartNotes?.Count ?? 0}");
+
+                Console.WriteLine(
+                    $"[PerfumeMatch] Fond : {result.MatchedBaseNotes?.Count ?? 0}");
+
+                result.MatchedTopNoteDetails = (result.MatchedTopNotes ?? new List<string>())
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
-                result.MatchedHeartNoteDetails = result.MatchedHeartNotes
+                result.MatchedHeartNoteDetails = (result.MatchedHeartNotes ?? new List<string>())
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
 
-                result.MatchedBaseNoteDetails = result.MatchedBaseNotes
+                result.MatchedBaseNoteDetails = (result.MatchedBaseNotes ?? new List<string>())
                     .Select(note => FindPerfumeNote(note, perfumeNotes))
                     .Where(note => note != null)
                     .Cast<PerfumeNoteMatch>()
                     .ToList();
             }
+
+            Console.WriteLine("[PerfumeMatch] >>> FIN ENRICHISSEMENT");
 
             // ========================================================
             // RESPONSE

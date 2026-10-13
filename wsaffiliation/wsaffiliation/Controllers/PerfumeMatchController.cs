@@ -235,16 +235,20 @@ public class PerfumeMatchController : ControllerBase
             Console.WriteLine($"[PerfumeMatch] Résultats : {results.Count}");
             Console.WriteLine($"[PerfumeMatch] Notes SQL : {perfumeNotes.Count}");
 
-            foreach (var result in results.Take(3))
+            foreach (var result in results)
             {
-                Console.WriteLine(
-                    $"[DEBUG] TopNotes: {string.Join(", ", result.MatchedTopNotes ?? new List<string>())}");
+                Console.WriteLine($"[DEBUG IMAGES] Parfum : {result.Name}");
 
                 Console.WriteLine(
-                    $"[DEBUG] HeartNotes: {string.Join(", ", result.MatchedHeartNotes ?? new List<string>())}");
+                    $"[DEBUG IMAGES] Notes tête à traiter : {string.Join(", ", result.TopNotes)}");
 
                 Console.WriteLine(
-                    $"[DEBUG] BaseNotes: {string.Join(", ", result.MatchedBaseNotes ?? new List<string>())}");
+                    $"[DEBUG IMAGES] Notes cœur à traiter : {string.Join(", ", result.HeartNotes)}");
+
+                Console.WriteLine(
+                    $"[DEBUG IMAGES] Notes fond à traiter : {string.Join(", ", result.BaseNotes)}");
+
+                // Garde ici tes appels actuels à FindPerfumeNote().
             }
 
             foreach (var result in results)
@@ -363,9 +367,18 @@ public class PerfumeMatchController : ControllerBase
                 attr,
                 "base_notes");
 
+        Console.WriteLine($"[DEBUG NOTES] Parfum : {product.Brand} - {product.Name}");
+        Console.WriteLine($"[DEBUG NOTES] Tête : {string.Join(", ", topNotes)}");
+        Console.WriteLine($"[DEBUG NOTES] Cœur : {string.Join(", ", heartNotes)}");
+        Console.WriteLine($"[DEBUG NOTES] Fond : {string.Join(", ", baseNotes)}");
+
         result.TopNotes = topNotes;
         result.HeartNotes = heartNotes;
         result.BaseNotes = baseNotes;
+
+        Console.WriteLine($"[DEBUG NOTES] TopNotes résultat : {result.TopNotes.Count}");
+        Console.WriteLine($"[DEBUG NOTES] HeartNotes résultat : {result.HeartNotes.Count}");
+        Console.WriteLine($"[DEBUG NOTES] BaseNotes résultat : {result.BaseNotes.Count}");
 
         foreach (var requestedNote in request.Notes)
         {

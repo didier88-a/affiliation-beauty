@@ -222,6 +222,36 @@ public class PerfumeMatchController : ControllerBase
 
 
             // ========================================================
+            // 8. ENRICHIR LES NOTES AVEC LEURS IMAGES
+            //    depuis la table Supabase perfume_notes
+            // ========================================================
+
+            var perfumeNotes = await FetchPerfumeNotes(
+                supabaseUrl,
+                supabaseKey);
+
+            foreach (var result in results)
+            {
+                result.MatchedTopNoteDetails = result.MatchedTopNotes
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
+                    .Where(note => note != null)
+                    .Cast<PerfumeNoteMatch>()
+                    .ToList();
+
+                result.MatchedHeartNoteDetails = result.MatchedHeartNotes
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
+                    .Where(note => note != null)
+                    .Cast<PerfumeNoteMatch>()
+                    .ToList();
+
+                result.MatchedBaseNoteDetails = result.MatchedBaseNotes
+                    .Select(note => FindPerfumeNote(note, perfumeNotes))
+                    .Where(note => note != null)
+                    .Cast<PerfumeNoteMatch>()
+                    .ToList();
+            }
+
+            // ========================================================
             // RESPONSE
             // ========================================================
 
@@ -1708,6 +1738,94 @@ public class PerfumeMatchController : ControllerBase
     }
 
 
+
+
+    // ================================================================
+    // PERFUME NOTES: lecture et recherche de la note + image
+    // ================================================================
+
+    private async Task<List<PerfumeNoteRecord>> FetchPerfumeNotes(
+        string supabaseUrl,
+        string supabaseKey)
+    {
+        var url = $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes?select=*";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Add("apikey", supabaseKey);
+        request.Headers.Add("Authorization", $"Bearer {supabaseKey}");
+
+        using var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            // Le matching des parfums doit continuer même si la table de notes
+            // est momentanément indisponible. Les détails d'images resteront vides.
+            return new List<PerfumeNoteRecord>();
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        using var document = await JsonDocument.ParseAsync(stream);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+            return new List<PerfumeNoteRecord>();
+
+        var notes = new List<PerfumeNoteRecord>();
+        foreach (var row in document.RootElement.EnumerateArray())
+        {
+            if (row.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var name = ReadFirstString(row, "name", "note_name", "note", "title", "label");
+            var image = ReadFirstString(row, "image_url", "image", "image_path", "image_filename", "filename", "url");
+
+            if (!string.IsNullOrWhiteSpace(name))
+                notes.Add(new PerfumeNoteRecord { Name = name.Trim(), Image = image });
+        }
+
+        return notes;
+    }
+
+    // Recherche souple : « Mandarin Essence » correspond à « Mandarin »
+    // et « Mandarine » correspond à « Mandarin ».
+    private static PerfumeNoteMatch? FindPerfumeNote(
+        string requestedName,
+        List<PerfumeNoteRecord> perfumeNotes)
+    {
+        if (string.IsNullOrWhiteSpace(requestedName) || perfumeNotes.Count == 0)
+            return null;
+
+        var requested = NormalizeNoteForMatch(requestedName);
+        var exact = perfumeNotes.FirstOrDefault(n =>
+            NormalizeNoteForMatch(n.Name) == requested);
+
+        var match = exact ?? perfumeNotes.FirstOrDefault(n =>
+            ContainsAny(new List<string> { n.Name }, requestedName));
+
+        if (match == null)
+            return null;
+
+        return new PerfumeNoteMatch
+        {
+            Name = match.Name,
+            Image = match.Image
+        };
+    }
+
+    private static string? ReadFirstString(JsonElement row, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (row.TryGetProperty(propertyName, out var value) &&
+                value.ValueKind == JsonValueKind.String)
+            {
+                var text = value.GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+        }
+
+        return null;
+    }
+
+
     // ================================================================
     // JSON HELPERS
     // ================================================================
@@ -2004,6 +2122,23 @@ public class PerfumeMatchRequest
 
 
 // ====================================================================
+// PERFUME NOTE MODELS
+// ====================================================================
+
+public class PerfumeNoteRecord
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Image { get; set; }
+}
+
+public class PerfumeNoteMatch
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Image { get; set; }
+}
+
+
+// ====================================================================
 // PRODUCT
 // ====================================================================
 
@@ -2066,6 +2201,16 @@ public class PerfumeMatchResult
 
     public List<string> MatchedBaseNotes { get; set; } =
         new List<string>();
+
+    // Même contenu que les listes ci-dessus, enrichi avec l'image Supabase.
+    public List<PerfumeNoteMatch> MatchedTopNoteDetails { get; set; } =
+        new List<PerfumeNoteMatch>();
+
+    public List<PerfumeNoteMatch> MatchedHeartNoteDetails { get; set; } =
+        new List<PerfumeNoteMatch>();
+
+    public List<PerfumeNoteMatch> MatchedBaseNoteDetails { get; set; } =
+        new List<PerfumeNoteMatch>();
 
     public List<string> MatchedStyles { get; set; } =
         new List<string>();

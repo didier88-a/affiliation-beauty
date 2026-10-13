@@ -1802,49 +1802,49 @@ public class PerfumeMatchController : ControllerBase
     // du nom. Exemples : "Mandarin Essence" -> "Mandarin",
     // "Jasmin sambac" -> "Jasmin", "Amande amère" -> "Amande".
     private static PerfumeNoteMatch? FindPerfumeNote(
-        string requestedName,
-        List<PerfumeNoteRecord> perfumeNotes)
+    string requestedName,
+    List<PerfumeNoteRecord> perfumeNotes)
     {
-        if (string.IsNullOrWhiteSpace(requestedName) || perfumeNotes == null || perfumeNotes.Count == 0)
+        if (string.IsNullOrWhiteSpace(requestedName))
             return null;
 
         var requestedTokens = GetNoteTokens(requestedName);
+
         if (requestedTokens.Count == 0)
             return null;
 
         var match = perfumeNotes
-            .Select(note =>
+            .Where(n => !string.IsNullOrWhiteSpace(n.Image))
+            .Select(n =>
             {
-                var enTokens = GetNoteTokens(note.NameEn);
-                var frTokens = GetNoteTokens(note.NameFr);
-                var enScore = GetNoteMatchScore(requestedTokens, enTokens);
-                var frScore = GetNoteMatchScore(requestedTokens, frTokens);
+                var enTokens = GetNoteTokens(n.NameEn);
+                var frTokens = GetNoteTokens(n.NameFr);
+
+                int enScore = GetNoteMatchScore(requestedTokens, enTokens);
+                int frScore = GetNoteMatchScore(requestedTokens, frTokens);
 
                 return new
                 {
-                    Note = note,
-                    Score = Math.Max(enScore, frScore),
-                    Exact = (enTokens.Count > 0 &&
-                             string.Join(" ", requestedTokens) == string.Join(" ", enTokens)) ||
-                            (frTokens.Count > 0 &&
-                             string.Join(" ", requestedTokens) == string.Join(" ", frTokens))
+                    Note = n,
+                    Score = Math.Max(enScore, frScore)
                 };
             })
             .Where(x => x.Score > 0)
-            .OrderByDescending(x => x.Exact)
-            .ThenByDescending(x => x.Score)
+            .OrderByDescending(x => x.Score)
             .FirstOrDefault();
 
         if (match == null)
         {
             Console.WriteLine(
-                $"[PerfumeMatch] NOTE NON TROUVEE: '{requestedName}'. Notes chargées: {perfumeNotes.Count}");
+                $"[PerfumeMatch] NOTE NON TROUVEE: '{requestedName}'");
+
             return null;
         }
 
         Console.WriteLine(
             $"[PerfumeMatch] NOTE TROUVEE: '{requestedName}' => " +
-            $"EN='{match.Note.NameEn}', FR='{match.Note.NameFr}', IMAGE='{match.Note.Image}', score={match.Score}");
+            $"EN='{match.Note.NameEn}', FR='{match.Note.NameFr}', " +
+            $"IMAGE='{match.Note.Image}'");
 
         return new PerfumeNoteMatch
         {
@@ -1856,31 +1856,34 @@ public class PerfumeMatchController : ControllerBase
     }
 
     private static int GetNoteMatchScore(
-        List<string> requestedTokens,
-        List<string> candidateTokens)
+    List<string> requested,
+    List<string> candidate)
     {
-        if (requestedTokens.Count == 0 || candidateTokens.Count == 0)
+        if (requested.Count == 0 || candidate.Count == 0)
             return 0;
 
-        var common = requestedTokens
-            .Intersect(candidateTokens, StringComparer.OrdinalIgnoreCase)
-            .Count();
+        int common = requested.Intersect(
+            candidate,
+            StringComparer.OrdinalIgnoreCase).Count();
 
         if (common == 0)
             return 0;
 
-        // Exact après suppression des mots descriptifs (ex. "Mandarin Essence").
-        if (common == requestedTokens.Count && common == candidateTokens.Count)
+        // Correspondance exacte après normalisation.
+        if (common == requested.Count && common == candidate.Count)
             return 1000 + common;
 
-        // Si le nom de la table est plus court, accepte qu'il soit inclus dans
-        // le nom reçu : "Jasmin sambac" -> "Jasmin".
-        if (common == candidateTokens.Count)
+        // Le nom de la table est entièrement inclus dans le nom demandé.
+        // Exemple : "Jasmin sambac" -> "Jasmin".
+        if (common == candidate.Count)
             return 500 + common * 10;
 
-        // Correspondance partielle d'au moins un mot significatif.
-        // Le score favorise les correspondances contenant le plus de mots.
-        return 100 + common * 10;
+        // Tous les mots du nom demandé sont présents dans le candidat.
+        if (common == requested.Count)
+            return 300 + common * 10;
+
+        // Correspondance partielle, moins prioritaire.
+        return 100 + common;
     }
 
     private static List<string> GetNoteTokens(string? value)
@@ -1888,23 +1891,25 @@ public class PerfumeMatchController : ControllerBase
         if (string.IsNullOrWhiteSpace(value))
             return new List<string>();
 
-        var normalized = Normalize(value)
-            .Replace("’", " ", StringComparison.Ordinal)
-            .Replace("'", " ", StringComparison.Ordinal)
-            .Replace("-", " ", StringComparison.Ordinal)
-            .Replace("_", " ", StringComparison.Ordinal);
+        var normalized = Normalize(value);
 
-        var ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "essence", "essences", "note", "notes", "oil", "oils",
-            "extract", "extrait", "absolute", "absolue", "accord", "accords",
-            "de", "du", "des", "la", "le", "les", "d", "l",
-            "the", "of", "and"
-        };
+        var ignored = new HashSet<string>(
+            new[]
+            {
+            "essence", "note", "notes", "accord", "accords",
+            "de", "du", "des", "la", "le", "les",
+            "d", "l", "the", "of", "and"
+            },
+            StringComparer.OrdinalIgnoreCase);
 
         return normalized
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Select(CanonicalNoteToken)
+            .Split(
+                new[] { ' ', '-', '_', '\'' },
+                StringSplitOptions.RemoveEmptyEntries)
+            .Select(token =>
+                token.Equals("mandarine", StringComparison.OrdinalIgnoreCase)
+                    ? "mandarin"
+                    : token)
             .Where(token => token.Length > 1 && !ignored.Contains(token))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();

@@ -1798,49 +1798,116 @@ public class PerfumeMatchController : ControllerBase
         return notes;
     }
 
-    // Recherche souple : « Mandarin Essence » correspond à « Mandarin »
-    // et « Mandarine » correspond à « Mandarin ».
+    // Recherche souple : accepte une correspondance sur une partie significative
+    // du nom. Exemples : "Mandarin Essence" -> "Mandarin",
+    // "Jasmin sambac" -> "Jasmin", "Amande amère" -> "Amande".
     private static PerfumeNoteMatch? FindPerfumeNote(
         string requestedName,
         List<PerfumeNoteRecord> perfumeNotes)
     {
-        if (string.IsNullOrWhiteSpace(requestedName) || perfumeNotes.Count == 0)
+        if (string.IsNullOrWhiteSpace(requestedName) || perfumeNotes == null || perfumeNotes.Count == 0)
             return null;
 
-        // Comparer le nom demandé aux deux noms de la table : anglais et français.
-        // Exemple : "Mandarin Essence" correspond à name_en="Mandarin".
-        var requested = NormalizeNoteForMatch(requestedName);
+        var requestedTokens = GetNoteTokens(requestedName);
+        if (requestedTokens.Count == 0)
+            return null;
 
         var match = perfumeNotes
-            .Select(n => new
+            .Select(note =>
             {
-                Note = n,
-                EnglishExact = !string.IsNullOrWhiteSpace(n.NameEn) &&
-                    NormalizeNoteForMatch(n.NameEn) == requested,
-                FrenchExact = !string.IsNullOrWhiteSpace(n.NameFr) &&
-                    NormalizeNoteForMatch(n.NameFr) == requested,
-                EnglishMatch = !string.IsNullOrWhiteSpace(n.NameEn) &&
-                    ContainsAny(new List<string> { n.NameEn! }, requestedName),
-                FrenchMatch = !string.IsNullOrWhiteSpace(n.NameFr) &&
-                    ContainsAny(new List<string> { n.NameFr! }, requestedName)
+                var enTokens = GetNoteTokens(note.NameEn);
+                var frTokens = GetNoteTokens(note.NameFr);
+                var enScore = GetNoteMatchScore(requestedTokens, enTokens);
+                var frScore = GetNoteMatchScore(requestedTokens, frTokens);
+
+                return new
+                {
+                    Note = note,
+                    Score = Math.Max(enScore, frScore),
+                    Exact = (enTokens.Count > 0 &&
+                             string.Join(" ", requestedTokens) == string.Join(" ", enTokens)) ||
+                            (frTokens.Count > 0 &&
+                             string.Join(" ", requestedTokens) == string.Join(" ", frTokens))
+                };
             })
-            .Where(x => x.EnglishExact || x.FrenchExact || x.EnglishMatch || x.FrenchMatch)
-            .OrderByDescending(x => x.EnglishExact || x.FrenchExact)
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Exact)
+            .ThenByDescending(x => x.Score)
             .FirstOrDefault();
 
         if (match == null)
         {
-            Console.WriteLine($"[PerfumeMatch] NOTE NON TROUVEE: '{requestedName}'. Notes chargées: {perfumeNotes.Count}");
+            Console.WriteLine(
+                $"[PerfumeMatch] NOTE NON TROUVEE: '{requestedName}'. Notes chargées: {perfumeNotes.Count}");
             return null;
         }
 
-        Console.WriteLine($"[PerfumeMatch] NOTE TROUVEE: '{requestedName}' => EN='{match.Note.NameEn}', FR='{match.Note.NameFr}', IMAGE='{match.Note.Image}'");
+        Console.WriteLine(
+            $"[PerfumeMatch] NOTE TROUVEE: '{requestedName}' => " +
+            $"EN='{match.Note.NameEn}', FR='{match.Note.NameFr}', IMAGE='{match.Note.Image}', score={match.Score}");
 
         return new PerfumeNoteMatch
         {
-            Name = match.Note.NameFr ?? match.Note.NameEn ?? requestedName,
+            Name = !string.IsNullOrWhiteSpace(match.Note.NameFr)
+                ? match.Note.NameFr!
+                : match.Note.NameEn ?? requestedName,
             Image = match.Note.Image
         };
+    }
+
+    private static int GetNoteMatchScore(
+        List<string> requestedTokens,
+        List<string> candidateTokens)
+    {
+        if (requestedTokens.Count == 0 || candidateTokens.Count == 0)
+            return 0;
+
+        var common = requestedTokens
+            .Intersect(candidateTokens, StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        if (common == 0)
+            return 0;
+
+        // Exact après suppression des mots descriptifs (ex. "Mandarin Essence").
+        if (common == requestedTokens.Count && common == candidateTokens.Count)
+            return 1000 + common;
+
+        // Si le nom de la table est plus court, accepte qu'il soit inclus dans
+        // le nom reçu : "Jasmin sambac" -> "Jasmin".
+        if (common == candidateTokens.Count)
+            return 500 + common * 10;
+
+        // Correspondance partielle d'au moins un mot significatif.
+        // Le score favorise les correspondances contenant le plus de mots.
+        return 100 + common * 10;
+    }
+
+    private static List<string> GetNoteTokens(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new List<string>();
+
+        var normalized = Normalize(value)
+            .Replace("’", " ", StringComparison.Ordinal)
+            .Replace("'", " ", StringComparison.Ordinal)
+            .Replace("-", " ", StringComparison.Ordinal)
+            .Replace("_", " ", StringComparison.Ordinal);
+
+        var ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "essence", "essences", "note", "notes", "oil", "oils",
+            "extract", "extrait", "absolute", "absolue", "accord", "accords",
+            "de", "du", "des", "la", "le", "les", "d", "l",
+            "the", "of", "and"
+        };
+
+        return normalized
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .Select(CanonicalNoteToken)
+            .Where(token => token.Length > 1 && !ignored.Contains(token))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string? ReadFirstString(JsonElement row, params string[] propertyNames)

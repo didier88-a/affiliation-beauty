@@ -2968,6 +2968,7 @@ document.dispatchEvent(
                     </script>
 
                     {% section 'naya-ai-search' %}
+                        {% section 'naya-guides-banner' %}
                         {% section 'naya-guides-results' %}
                         {% section 'viliora-guide-hero' %}
                         {% section 'viliora-top-5' %}

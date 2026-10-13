@@ -220,7 +220,8 @@ public class PerfumeMatchController : ControllerBase
                 .Take(24)
                 .ToList();
 
-
+            Console.WriteLine(
+                         $"[PerfumeMatch] Recherche image pour la note : '{requestedName}'");
             // ========================================================
             // 8. ENRICHIR LES NOTES AVEC LEURS IMAGES
             //    depuis la table Supabase perfume_notes
@@ -1808,9 +1809,7 @@ public class PerfumeMatchController : ControllerBase
                 });
             }
 
-            Console.WriteLine(
-                $"[PerfumeMatch] Notes chargées : {notes.Count} " +
-                $"(lot de {count}, offset={offset})");
+            
 
             if (count < pageSize)
                 break;

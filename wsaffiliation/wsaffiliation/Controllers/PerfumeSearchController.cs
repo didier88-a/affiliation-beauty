@@ -80,6 +80,9 @@ namespace wsaffiliation.Controllers
                     openAiKey,
                     cancellationToken);
 
+
+
+
                 Console.WriteLine(
                     "CRITERES OPENAI: " +
                     JsonSerializer.Serialize(criteria, JsonOptions)
@@ -347,6 +350,22 @@ namespace wsaffiliation.Controllers
                     "Impossible de lire les critères OpenAI.");
             }
 
+            CompleteCriteriaFromText(text, criteria);
+
+            Console.WriteLine(
+                "CRITERES FINAUX: " +
+                JsonSerializer.Serialize(criteria, JsonOptions)
+            );
+
+            return criteria;
+
+
+            if (criteria == null)
+            {
+                throw new InvalidOperationException(
+                    "Impossible de lire les critères OpenAI.");
+            }
+
             // Limiter les valeurs à des plages acceptables.
             criteria.MinLongevity =
                 Math.Clamp(criteria.MinLongevity, 0, 5);
@@ -359,6 +378,91 @@ namespace wsaffiliation.Controllers
 
             return criteria;
         }
+
+
+
+        private static void CompleteCriteriaFromText(
+            string text,
+            SearchCriteria criteria)
+        {
+            var normalized = Normalize(text);
+
+            // Famille olfactive et notes
+            if (normalized.Contains("sucr"))
+            {
+                if (!criteria.FragranceFamilies.Contains("Gourmand"))
+                    criteria.FragranceFamilies.Add("Gourmand");
+
+                if (!criteria.FragranceFamilies.Contains("Ambré"))
+                    criteria.FragranceFamilies.Add("Ambré");
+
+                if (!criteria.PreferredNotes.Contains("Vanille"))
+                    criteria.PreferredNotes.Add("Vanille");
+            }
+
+            if (normalized.Contains("vanille"))
+            {
+                if (!criteria.PreferredNotes.Contains("Vanille"))
+                    criteria.PreferredNotes.Add("Vanille");
+            }
+
+            // Tenue du parfum
+            if (normalized.Contains("tenue") ||
+                normalized.Contains("dure longtemps") ||
+                normalized.Contains("longue duree") ||
+                normalized.Contains("longue tenue"))
+            {
+                if (normalized.Contains("tres bonne") ||
+                    normalized.Contains("tres longue") ||
+                    normalized.Contains("exceptionnelle") ||
+                    normalized.Contains("maximale"))
+                {
+                    criteria.MinLongevity = Math.Max(
+                        criteria.MinLongevity, 4);
+                }
+                else
+                {
+                    criteria.MinLongevity = Math.Max(
+                        criteria.MinLongevity, 3);
+                }
+            }
+
+            // Genre
+            if (normalized.Contains("pour homme") ||
+                normalized.Contains("masculin"))
+            {
+                criteria.Gender = "Homme";
+            }
+            else if (normalized.Contains("pour femme") ||
+                     normalized.Contains("feminin"))
+            {
+                criteria.Gender = "Femme";
+            }
+            else if (normalized.Contains("unisexe"))
+            {
+                criteria.Gender = "Unisexe";
+            }
+
+            // Budget : moins de 120 euros, maximum 120 €, etc.
+            var match = System.Text.RegularExpressions.Regex.Match(
+                normalized,
+                @"(?:moins de|maximum|max|budget de|budget maximum|jusqu'a|inferieur a)\s*(\d+(?:[.,]\d+)?)\s*(?:euros?|€)?"
+            );
+
+            if (match.Success &&
+                decimal.TryParse(
+                    match.Groups[1].Value.Replace(',', '.'),
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var price))
+            {
+                criteria.MaxPrice = price;
+            }
+
+            criteria.MaxResults = 20;
+        }
+
+
 
         // ---------------------------------------------------------
         // Supabase : charger les produits

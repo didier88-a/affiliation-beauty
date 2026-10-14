@@ -151,6 +151,8 @@ namespace wsaffiliation.Controllers
                             criteria,
                             productOffers);
 
+
+
                         Console.WriteLine(
                             $"SCORE | {product.Brand} {product.Name} | " +
                             $"Score={score.Score} | " +

@@ -519,10 +519,24 @@ namespace wsaffiliation.Controllers
                     $"Supabase products HTTP {(int)response.StatusCode}: {json}");
             }
 
-            return JsonSerializer.Deserialize<List<PerfumeProduct>>(
-                       json,
-                       JsonOptions)
-                   ?? new List<PerfumeProduct>();
+            var products =
+    JsonSerializer.Deserialize<List<PerfumeProduct>>(
+        json,
+        JsonOptions
+    ) ?? new List<PerfumeProduct>();
+
+            Console.WriteLine($"PRODUITS CHARGES : {products.Count}");
+
+            foreach (var p in products.Take(5))
+            {
+                Console.WriteLine(
+                    $"ID={p.Id}, NOM={p.Name}, " +
+                    $"ATTRIBUTES={p.NayaAttributes.ValueKind}, " +
+                    $"DATA={p.ProductData.ValueKind}"
+                );
+            }
+
+            return products;
         }
 
         // ---------------------------------------------------------
@@ -571,6 +585,10 @@ namespace wsaffiliation.Controllers
                     JsonSerializer.Deserialize<List<ProductOffer>>(
                         json,
                         JsonOptions);
+
+                Console.WriteLine(
+    $"OFFRES DU LOT : {batchOffers?.Count ?? 0}"
+);
 
                 if (batchOffers != null)
                     allOffers.AddRange(batchOffers);
@@ -892,8 +910,11 @@ namespace wsaffiliation.Controllers
         public string? Image { get; set; }
         public string? Slug { get; set; }
 
-        public JsonElement NayaAttributes { get; set; }
-        public JsonElement ProductData { get; set; }
+        public JsonElement NayaAttributes { get; set; } =
+    JsonDocument.Parse("{}").RootElement.Clone();
+
+        public JsonElement ProductData { get; set; } =
+            JsonDocument.Parse("{}").RootElement.Clone();
     }
 
     public sealed class ProductOffer

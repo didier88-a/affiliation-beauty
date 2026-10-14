@@ -101,6 +101,25 @@ namespace wsaffiliation.Controllers
                     products.Select(p => p.Id).ToList(),
                     cancellationToken);
 
+                Console.WriteLine($"PRODUITS CHARGES: {products.Count}");
+                Console.WriteLine($"OFFRES CHARGEES: {offers.Count}");
+
+                Console.WriteLine(
+                    "EXEMPLES PRODUITS: " +
+                    JsonSerializer.Serialize(
+                        products.Take(5).Select(p => new
+                        {
+                            p.Id,
+                            p.Brand,
+                            p.Name,
+                            p.Category,
+                            p.Type,
+                            Attributes = p.NayaAttributes
+                        }),
+                        JsonOptions
+                    )
+                );
+
                 // 4. Classer les parfums selon les critères.
                 var ranked = products
                     .Select(product =>

@@ -88,11 +88,12 @@ namespace wsaffiliation.Controllers
                     JsonSerializer.Serialize(criteria, JsonOptions)
                 );
 
-                // 2. Charger les parfums depuis Supabase.
                 var products = await GetProductsAsync(
                     supabaseUrl,
                     supabaseKey,
                     cancellationToken);
+
+                Console.WriteLine($"PRODUITS CHARGES : {products.Count}");
 
                 // 3. Charger les offres disponibles.
                 var offers = await GetOffersAsync(
@@ -100,6 +101,8 @@ namespace wsaffiliation.Controllers
                     supabaseKey,
                     products.Select(p => p.Id).ToList(),
                     cancellationToken);
+
+               
 
                 Console.WriteLine($"PRODUITS CHARGES: {products.Count}");
                 Console.WriteLine($"OFFRES CHARGEES: {offers.Count}");
@@ -195,13 +198,14 @@ namespace wsaffiliation.Controllers
             }
             catch (Exception ex)
             {
-                // En production, préfère logger l'exception complète
-                // côté serveur et ne pas renvoyer les détails au client.
-                Console.Error.WriteLine(ex);
+                Console.Error.WriteLine(
+                    $"ERREUR PERFUME SEARCH: {ex}"
+                );
 
                 return StatusCode(500, new
                 {
-                    error = "Erreur interne lors de la recherche de parfums."
+                    error = "Erreur interne lors de la recherche de parfums.",
+                    details = ex.Message
                 });
             }
         }

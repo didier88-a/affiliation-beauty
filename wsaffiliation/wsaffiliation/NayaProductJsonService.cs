@@ -859,8 +859,8 @@ private List<string> GetNoteTokensForMatch(string? value)
         }
 
         private int GetNoteMatchScoreForMatch(
-            List<string> requested,
-            List<string> candidate)
+    List<string> requested,
+    List<string> candidate)
         {
             if (requested.Count == 0 || candidate.Count == 0)
                 return 0;
@@ -873,22 +873,24 @@ private List<string> GetNoteTokensForMatch(string? value)
                 return 0;
 
             // Correspondance exacte
-            if (common == requested.Count && common == candidate.Count)
+            if (common == requested.Count &&
+                common == candidate.Count)
                 return 1000 + common;
 
-            // Tous les mots de la note SQL sont présents dans le nom reçu.
-            // Exemple : "orange sanguine" dans "essence d orange sanguine".
+            // Tous les mots SQL sont présents dans le nom demandé
             if (common == candidate.Count)
-                return 500 + common;
+                return 500 + common * 10;
 
-            // Tous les mots demandés sont présents dans le nom SQL.
+            // Tous les mots demandés sont présents dans le nom SQL
             if (common == requested.Count)
-                return 300 + common;
+                return 300 + common * 10;
+
+            // Correspondance partielle sur plusieurs mots
+            if (common >= 2)
+                return 100 + common;
 
             return 0;
         }
-
-
 
 
         // ============================================================

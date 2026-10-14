@@ -80,6 +80,11 @@ namespace wsaffiliation.Controllers
                     openAiKey,
                     cancellationToken);
 
+                Console.WriteLine(
+                    "CRITERES OPENAI: " +
+                    JsonSerializer.Serialize(criteria, JsonOptions)
+                );
+
                 // 2. Charger les parfums depuis Supabase.
                 var products = await GetProductsAsync(
                     supabaseUrl,
@@ -207,41 +212,29 @@ namespace wsaffiliation.Controllers
                 {
                     role = "system",
                     content = """
-                    Tu es le moteur de recherche de parfums de Naya.
-                    Analyse la demande du client et retourne uniquement
-                    les critères utiles pour rechercher dans une base
-                    de données de parfums.
+                    Tu es le moteur de recherche intelligent de parfums de Naya.
 
-                    Les valeurs doivent être en français.
+                    Analyse la demande de l'utilisateur et extrais TOUS les critères explicitement demandés ou clairement implicites.
 
-                    fragrance_families possibles :
-                    Floral, Boisé, Ambré, Oriental, Gourmand,
-                    Agrumes, Épicée, Aromatique, Frais, Aquatique,
-                    Cuiré, Chypré, Fougère, Musqué.
+                    Règles obligatoires :
+                    - "sucré", "odeur sucrée" : ajoute "Gourmand" et "Ambré" dans fragrance_families, et "Vanille" dans preferred_notes.
+                    - "très bonne tenue", "qui dure longtemps", "longue durée" : min_longevity = 4.
+                    - "tenue exceptionnelle", "tenue maximale" : min_longevity = 5.
+                    - "bonne tenue" : min_longevity = 3.
+                    - "pour homme" : gender = "Homme".
+                    - "pour femme" : gender = "Femme".
+                    - "unisexe" : gender = "Unisexe".
+                    - "moins de X euros", "budget maximum X euros", "maximum X €" : max_price = X.
+                    - "fort", "puissant" : min_sillage = 4 si le contexte parle du sillage ou de la projection.
+                    - Si aucun budget n'est précisé, max_price = 0.
+                    - Si aucune tenue minimale n'est demandée, min_longevity = 0.
+                    - Si aucune préférence de sillage n'est demandée, min_sillage = 0.
+                    - Ne supprime jamais un critère parce qu'un autre critère est présent.
+                    - max_results doit toujours être 20.
+                    - Les tableaux doivent être vides uniquement si aucune valeur ne correspond à la demande.
 
-                    N'invente pas de critères que le client n'a pas
-                    exprimés ou clairement impliqués.
-
-                    Une demande "sucré" peut correspondre à des notes
-                    gourmandes, vanillées ou ambrées, mais ne prétends
-                    pas qu'un parfum est sucré sans indice dans ses
-                    attributs ou ses notes.
-
-                    "qui dure longtemps" signifie une tenue élevée.
-                    "fort" peut désigner l'intensité ou le sillage :
-                    utilise les deux si le sens le justifie.
-
-                    max_price = 0 signifie aucun budget précisé.
-                    min_longevity et min_sillage sont entre 1 et 5.
-                    gender doit être Homme, Femme, Unisexe ou vide.
-                    Si le genre n'est pas précisé, laisse-le vide.
-                    max_results doit toujours être 20.
-
-                    preferred_notes contient les notes recherchées.
-                    styles, occasions et seasons contiennent les
-                    préférences correspondantes.
-
-                    Ne renvoie jamais de SQL.
+                    Les familles olfactives et les notes doivent être exprimées en français.
+                    Retourne uniquement le JSON conforme au schéma fourni.
                     """
                 },
                 new

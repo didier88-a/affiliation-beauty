@@ -726,6 +726,7 @@ namespace wsaffiliation
 
 
        
+
 private PerfumeNote? FindPerfumeNote(
     string noteName,
     string type,
@@ -739,61 +740,41 @@ private PerfumeNote? FindPerfumeNote(
 
             var requestedTokens = GetNoteTokensForMatch(normalizedName);
 
-
-            Console.WriteLine(
-    $"[NOTE DEBUG] Reçu='{noteName}' | " +
-    $"Normalisé='{normalizedName}' | " +
-    $"Tokens=[{string.Join(", ", requestedTokens)}]");
-
-            foreach (var x in perfumeNotes.Where(x =>
-                x.IsActive &&
-                NormalizeNoteType(x.Type) == normalizedType &&
-                (x.NameFr?.Contains("Rose", StringComparison.OrdinalIgnoreCase) == true ||
-                 x.NameEn?.Contains("Rose", StringComparison.OrdinalIgnoreCase) == true)))
-            {
-                Console.WriteLine(
-                    $"[NOTE DEBUG] SQL FR='{x.NameFr}' | " +
-                    $"EN='{x.NameEn}' | Type='{x.Type}' | " +
-                    $"Image='{x.ImageUrl}' | Active={x.IsActive}");
-            }
-
-
             if (requestedTokens.Count == 0)
                 return null;
 
-            var match = perfumeNotes
-                .Where(x =>
-                    x.IsActive &&
-                    NormalizeNoteType(x.Type) == normalizedType)
+            var candidates = perfumeNotes
+                .Where(x => x.IsActive)
                 .Select(x =>
                 {
                     var enTokens = GetNoteTokensForMatch(x.NameEn);
                     var frTokens = GetNoteTokensForMatch(x.NameFr);
 
-                    int enScore = GetNoteMatchScoreForMatch(
-                        requestedTokens, enTokens);
-
-                    int frScore = GetNoteMatchScoreForMatch(
-                        requestedTokens, frTokens);
-
                     return new
                     {
                         Note = x,
-                        Score = Math.Max(enScore, frScore)
+                        Score = Math.Max(
+                            GetNoteMatchScoreForMatch(requestedTokens, enTokens),
+                            GetNoteMatchScoreForMatch(requestedTokens, frTokens)),
+                        SameType = NormalizeNoteType(x.Type) == normalizedType
                     };
                 })
                 .Where(x => x.Score > 0)
-                .OrderByDescending(x => x.Score)
-                .FirstOrDefault();
+                .OrderByDescending(x => x.SameType)
+                .ThenByDescending(x => x.Score)
+                .ToList();
+
+            var match = candidates.FirstOrDefault();
 
             Console.WriteLine(
-                $"[NOTE IMAGE] Recherche='{noteName}', " +
-                $"type='{normalizedType}', " +
+                $"[NOTE IMAGE] Recherche='{noteName}', type='{normalizedType}', " +
                 $"résultat='{match?.Note.NameFr ?? match?.Note.NameEn ?? "NON TROUVÉ"}', " +
+                $"type SQL='{match?.Note.Type ?? "N/A"}', " +
                 $"image='{match?.Note.ImageUrl ?? "NULL"}'");
 
             return match?.Note;
         }
+
 
 
 

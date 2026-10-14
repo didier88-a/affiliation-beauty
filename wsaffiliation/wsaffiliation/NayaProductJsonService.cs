@@ -739,6 +739,25 @@ private PerfumeNote? FindPerfumeNote(
 
             var requestedTokens = GetNoteTokensForMatch(normalizedName);
 
+
+            Console.WriteLine(
+    $"[NOTE DEBUG] Reçu='{noteName}' | " +
+    $"Normalisé='{normalizedName}' | " +
+    $"Tokens=[{string.Join(", ", requestedTokens)}]");
+
+            foreach (var x in perfumeNotes.Where(x =>
+                x.IsActive &&
+                NormalizeNoteType(x.Type) == normalizedType &&
+                (x.NameFr?.Contains("Rose", StringComparison.OrdinalIgnoreCase) == true ||
+                 x.NameEn?.Contains("Rose", StringComparison.OrdinalIgnoreCase) == true)))
+            {
+                Console.WriteLine(
+                    $"[NOTE DEBUG] SQL FR='{x.NameFr}' | " +
+                    $"EN='{x.NameEn}' | Type='{x.Type}' | " +
+                    $"Image='{x.ImageUrl}' | Active={x.IsActive}");
+            }
+
+
             if (requestedTokens.Count == 0)
                 return null;
 
@@ -869,29 +888,17 @@ private List<string> GetNoteTokensForMatch(string? value)
                 .Intersect(candidate, StringComparer.OrdinalIgnoreCase)
                 .Count();
 
-            if (common == 0)
-                return 0;
-
-            // Correspondance exacte
-            if (common == requested.Count &&
-                common == candidate.Count)
-                return 1000 + common;
-
-            // Tous les mots SQL sont présents dans le nom demandé
+            // Tous les mots SQL sont présents dans le nom demandé.
+            // Exemple : "rose" dans "essence de rose damascena".
             if (common == candidate.Count)
-                return 500 + common * 10;
+                return 500 + common;
 
-            // Tous les mots demandés sont présents dans le nom SQL
+            // Tous les mots demandés sont présents dans le nom SQL.
             if (common == requested.Count)
-                return 300 + common * 10;
-
-            // Correspondance partielle sur plusieurs mots
-            if (common >= 2)
-                return 100 + common;
+                return 300 + common;
 
             return 0;
         }
-
 
         // ============================================================
         // PERFORMANCE

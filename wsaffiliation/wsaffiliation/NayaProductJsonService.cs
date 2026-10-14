@@ -725,25 +725,57 @@ namespace wsaffiliation
         }
 
 
-        private PerfumeNote? FindPerfumeNote(
-            string noteName,
-            string type,
-            List<PerfumeNote> perfumeNotes)
+       
+private PerfumeNote? FindPerfumeNote(
+    string noteName,
+    string type,
+    List<PerfumeNote> perfumeNotes)
         {
-            string normalizedName =
-                NormalizeNoteName(noteName);
+            string normalizedName = NormalizeNoteName(noteName);
+            string normalizedType = NormalizeNoteType(type);
 
-            string normalizedType =
-                NormalizeNoteType(type);
+            if (string.IsNullOrWhiteSpace(normalizedName))
+                return null;
 
-            return perfumeNotes.FirstOrDefault(x =>
-                x.IsActive &&
-                NormalizeNoteType(x.Type) == normalizedType &&
-                (
-                    NormalizeNoteName(x.NameEn) == normalizedName ||
-                    NormalizeNoteName(x.NameFr) == normalizedName
-                ));
+            var requestedTokens = GetNoteTokensForMatch(normalizedName);
+
+            if (requestedTokens.Count == 0)
+                return null;
+
+            var match = perfumeNotes
+                .Where(x =>
+                    x.IsActive &&
+                    NormalizeNoteType(x.Type) == normalizedType)
+                .Select(x =>
+                {
+                    var enTokens = GetNoteTokensForMatch(x.NameEn);
+                    var frTokens = GetNoteTokensForMatch(x.NameFr);
+
+                    int enScore = GetNoteMatchScoreForMatch(
+                        requestedTokens, enTokens);
+
+                    int frScore = GetNoteMatchScoreForMatch(
+                        requestedTokens, frTokens);
+
+                    return new
+                    {
+                        Note = x,
+                        Score = Math.Max(enScore, frScore)
+                    };
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .FirstOrDefault();
+
+            Console.WriteLine(
+                $"[NOTE IMAGE] Recherche='{noteName}', " +
+                $"type='{normalizedType}', " +
+                $"résultat='{match?.Note.NameFr ?? match?.Note.NameEn ?? "NON TROUVÉ"}', " +
+                $"image='{match?.Note.ImageUrl ?? "NULL"}'");
+
+            return match?.Note;
         }
+
 
 
         private string NormalizeNoteName(
@@ -800,6 +832,63 @@ namespace wsaffiliation
                 _ => value
             };
         }
+
+
+        
+private List<string> GetNoteTokensForMatch(string? value)
+        {
+            string normalized = NormalizeNoteName(value);
+
+            var ignored = new HashSet<string>(
+                new[]
+                {
+            "essence", "note", "notes", "accord", "accords",
+            "de", "du", "des", "la", "le", "les",
+            "d", "l", "the", "of", "and"
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+            return normalized
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(token =>
+                    token == "mandarine" ? "mandarin" : token)
+                .Where(token =>
+                    token.Length > 1 && !ignored.Contains(token))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private int GetNoteMatchScoreForMatch(
+            List<string> requested,
+            List<string> candidate)
+        {
+            if (requested.Count == 0 || candidate.Count == 0)
+                return 0;
+
+            int common = requested
+                .Intersect(candidate, StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            if (common == 0)
+                return 0;
+
+            // Correspondance exacte
+            if (common == requested.Count && common == candidate.Count)
+                return 1000 + common;
+
+            // Tous les mots de la note SQL sont présents dans le nom reçu.
+            // Exemple : "orange sanguine" dans "essence d orange sanguine".
+            if (common == candidate.Count)
+                return 500 + common;
+
+            // Tous les mots demandés sont présents dans le nom SQL.
+            if (common == requested.Count)
+                return 300 + common;
+
+            return 0;
+        }
+
+
 
 
         // ============================================================

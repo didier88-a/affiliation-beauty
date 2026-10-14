@@ -143,7 +143,7 @@ namespace wsaffiliation.Controllers
                     {
                         var productOffers = offers
                             .Where(o => o.ProductId == product.Id)
-                            .ToList();
+                            .ToList(); 
 
 
                         var score = CalculateScore(

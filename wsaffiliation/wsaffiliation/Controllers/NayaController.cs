@@ -1194,7 +1194,7 @@ namespace wsaffiliation.Controllers
                                         seoJson +
                                         @";
                     </script>
-
+                    {% section 'naya-guide-banner' %}
                     {% section 'naya-perfume-hero' %}
                     {% section 'naya-perfume-details' %}
                     {% section 'naya-price-profile' %}

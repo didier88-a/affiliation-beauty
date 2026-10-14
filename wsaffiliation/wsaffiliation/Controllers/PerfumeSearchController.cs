@@ -102,7 +102,21 @@ namespace wsaffiliation.Controllers
                     products.Select(p => p.Id).ToList(),
                     cancellationToken);
 
-               
+
+                Console.WriteLine($"PRODUITS CHARGES : {products.Count}");
+                Console.WriteLine($"OFFRES CHARGEES : {offers.Count}");
+
+                foreach (var p in products.Take(10))
+                {
+                    Console.WriteLine(
+                        $"ID={p.Id} | {p.Brand} | {p.Name} | " +
+                        $"Category={p.Category} | Type={p.Type} | " +
+                        $"Attributes={p.NayaAttributes.ValueKind}"
+                    );
+                }
+
+
+
 
                 Console.WriteLine($"PRODUITS CHARGES: {products.Count}");
                 Console.WriteLine($"OFFRES CHARGEES: {offers.Count}");
@@ -131,10 +145,19 @@ namespace wsaffiliation.Controllers
                             .Where(o => o.ProductId == product.Id)
                             .ToList();
 
+
                         var score = CalculateScore(
                             product,
                             criteria,
                             productOffers);
+
+                        Console.WriteLine(
+                            $"SCORE | {product.Brand} {product.Name} | " +
+                            $"Score={score.Score} | " +
+                            $"Genre={GetString(product.NayaAttributes, "gender")} | " +
+                            $"Tenue={GetNumber(product.NayaAttributes, "longevity")} | " +
+                            $"Familles={string.Join(", ", GetStringArray(product.NayaAttributes, "fragrance_family"))}"
+                        );
 
                         return new
                         {
@@ -143,8 +166,9 @@ namespace wsaffiliation.Controllers
                             Score = score.Score,
                             Reasons = score.Reasons
                         };
+
                     })
-                    .Where(x => x.Score > 0)
+                    //.Where(x => x.Score > 0)
                     .OrderByDescending(x => x.Score)
                     .ThenBy(x => x.Product.Name)
                     .Take(20)

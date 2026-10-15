@@ -177,36 +177,51 @@ namespace wsaffiliation.Controllers
                         };
 
                     })
-                    .Where(x => x.Score > 0)
-                    .OrderByDescending(x => x.Score)
-                    .ThenBy(x => x.Product.Name)
-                    .Take(20)
-                    .Select(x => new
-                    {
-                        id = x.Product.Id,
-                        brand = x.Product.Brand,
-                        name = x.Product.Name,
-                        image = x.Product.Image,
-                        slug = x.Product.Slug,
-                        category = x.Product.Category,
-                        sub_category = x.Product.SubCategory,
-                        naya_attributes = x.Product.NayaAttributes,
-                        match_score = x.Score,
-                        match_reasons = x.Reasons,
-                        offers = x.Offers
-                            .OrderBy(o => o.Price ?? decimal.MaxValue)
-                            .Select(o => new
-                            {
-                                marketplace = o.Marketplace,
-                                price = o.Price,
-                                currency = o.Currency,
-                                url = o.ProductUrl,
-                                available = o.IsAvailable,
-                                rating = o.Rating,
-                                reviews = o.Reviews
-                            })
-                    })
-                    .ToList();
+
+                        .Where(x => x.Score > 0)
+                        .Select(x => new
+                        {
+                            Product = x.Product,
+                            Score = x.Score,
+                            Reasons = x.Reasons,
+                            Offers = x.Offers
+                                .Where(o => o.IsAvailable)
+                                .Where(o => o.Price.HasValue)
+                                .Where(o => criteria.MaxPrice <= 0 ||
+                                            o.Price.Value <= criteria.MaxPrice)
+                                .ToList()
+                        })
+                        .Where(x => x.Offers.Any())
+                        .OrderByDescending(x => x.Score)
+                        .ThenBy(x => x.Product.Name)
+                        .Take(criteria.MaxResults > 0 ? criteria.MaxResults : 20)
+                        .Select(x => new
+                        {
+                            id = x.Product.Id,
+                            brand = x.Product.Brand,
+                            name = x.Product.Name,
+                            image = x.Product.Image,
+                            slug = x.Product.Slug,
+                            category = x.Product.Category,
+                            sub_category = x.Product.SubCategory,
+                            naya_attributes = x.Product.NayaAttributes,
+                            match_score = x.Score,
+                            match_reasons = x.Reasons,
+                            offers = x.Offers
+                                .OrderBy(o => o.Price ?? decimal.MaxValue)
+                                .Select(o => new
+                                {
+                                    marketplace = o.Marketplace,
+                                    price = o.Price,
+                                    currency = o.Currency,
+                                    url = o.ProductUrl,
+                                    available = o.IsAvailable,
+                                    rating = o.Rating,
+                                    reviews = o.Reviews
+                                })
+                        })
+                        .ToList();
+
 
                 return Ok(new
                 {

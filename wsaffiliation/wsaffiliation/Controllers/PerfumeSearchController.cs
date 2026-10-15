@@ -955,7 +955,7 @@ namespace wsaffiliation.Controllers
 
 
 
-        private async Task<List<PerfumeNoteRecord>> GetPerfumeNotesAsync(
+        private async Task<List<PerfumeNoteRecord1>> GetPerfumeNotesAsync(
     string supabaseUrl,
     string supabaseKey,
     CancellationToken cancellationToken)
@@ -981,16 +981,16 @@ namespace wsaffiliation.Controllers
                     $"{(int)response.StatusCode}: {json}");
             }
 
-            return JsonSerializer.Deserialize<List<PerfumeNoteRecord>>(
+            return JsonSerializer.Deserialize<List<PerfumeNoteRecord1>>(
                 json,
-                JsonOptions) ?? new List<PerfumeNoteRecord>();
+                JsonOptions) ?? new List<PerfumeNoteRecord1>();
         }
 
         private static string? FindNoteImage(
     JsonElement attributes,
     string propertyName,
     string noteType,
-    List<PerfumeNoteRecord> notes)
+    List<PerfumeNoteRecord1> notes)
         {
             var productNotes = GetStringArray(attributes, propertyName);
 
@@ -1125,7 +1125,7 @@ namespace wsaffiliation.Controllers
         public int Reviews { get; set; }
     }
 
-    public sealed class PerfumeNoteRecord
+    public sealed class PerfumeNoteRecord1
     {
         [JsonPropertyName("name_fr")]
         public string NameFr { get; set; } = "";
@@ -1142,5 +1142,7 @@ namespace wsaffiliation.Controllers
         [JsonPropertyName("is_active")]
         public bool IsActive { get; set; }
     }
+
+
 
 }

@@ -991,7 +991,7 @@ namespace wsaffiliation.Controllers
             JsonElement attributes,
             string propertyName,
             string noteType,
-            List<PerfumeNoteRecord> notes)
+            List<PerfumeNoteRecord1> notes)
         {
             var productNotes = GetStringArray(attributes, propertyName);
 

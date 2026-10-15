@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace wsaffiliation.Controllers
@@ -93,7 +94,14 @@ namespace wsaffiliation.Controllers
                     supabaseKey,
                     cancellationToken);
 
-                Console.WriteLine($"PRODUITS CHARGES : {products.Count}");
+                foreach (var p in products.Take(5))
+                {
+                    Console.WriteLine(
+                        $"PRODUIT {p.Id} {p.Name} | " +
+                        $"ATTRIBUTES={p.NayaAttributes.ValueKind} | " +
+                        $"JSON={p.NayaAttributes}"
+                    );
+                }
 
                 // 3. Charger les offres disponibles.
                 var offers = await GetOffersAsync(
@@ -103,20 +111,19 @@ namespace wsaffiliation.Controllers
                     cancellationToken);
 
 
-                Console.WriteLine($"PRODUITS CHARGES : {products.Count}");
-                Console.WriteLine($"OFFRES CHARGEES : {offers.Count}");
+                Console.WriteLine(
+                    $"OFFRES : {offers.Count}"
+                );
 
-                foreach (var p in products.Take(10))
+                foreach (var o in offers.Take(5))
                 {
                     Console.WriteLine(
-                        $"ID={p.Id} | {p.Brand} | {p.Name} | " +
-                        $"Category={p.Category} | Type={p.Type} | " +
-                        $"Attributes={p.NayaAttributes.ValueKind}"
+                        $"OFFER product_id={o.ProductId} | " +
+                        $"price={o.Price} | available={o.IsAvailable}"
                     );
                 }
 
-
-
+                
 
                 Console.WriteLine($"PRODUITS CHARGES: {products.Count}");
                 Console.WriteLine($"OFFRES CHARGEES: {offers.Count}");
@@ -924,6 +931,7 @@ namespace wsaffiliation.Controllers
         public int MaxResults { get; set; } = 20;
     }
 
+
     public sealed class PerfumeProduct
     {
         public long Id { get; set; }
@@ -936,23 +944,39 @@ namespace wsaffiliation.Controllers
         public string? Image { get; set; }
         public string? Slug { get; set; }
 
+        [System.Text.Json.Serialization.JsonPropertyName("naya_attributes")]
         public JsonElement NayaAttributes { get; set; } =
-    JsonDocument.Parse("{}").RootElement.Clone();
+            JsonDocument.Parse("{}").RootElement.Clone();
 
+        [System.Text.Json.Serialization.JsonPropertyName("product_data")]
         public JsonElement ProductData { get; set; } =
             JsonDocument.Parse("{}").RootElement.Clone();
     }
 
+
+
     public sealed class ProductOffer
     {
         public long Id { get; set; }
+
+        [JsonPropertyName("product_id")]
         public long ProductId { get; set; }
+
         public string Marketplace { get; set; } = "";
+
         public decimal? Price { get; set; }
+
         public string Currency { get; set; } = "EUR";
+
+        [JsonPropertyName("product_url")]
         public string? ProductUrl { get; set; }
+
+        [JsonPropertyName("is_available")]
         public bool IsAvailable { get; set; }
+
         public decimal? Rating { get; set; }
+
         public int Reviews { get; set; }
     }
+
 }

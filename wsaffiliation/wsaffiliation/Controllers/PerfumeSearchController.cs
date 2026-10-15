@@ -678,7 +678,7 @@ namespace wsaffiliation.Controllers
 
                 if (found != null)
                 {
-                    score += 20;
+                    score += 30;
                     reasons.Add($"Famille olfactive : {found}");
                     break;
                 }
@@ -698,7 +698,7 @@ namespace wsaffiliation.Controllers
 
                 if (found != null)
                 {
-                    score += 15;
+                    score += 25;
                     reasons.Add($"Note recherchée : {found}");
                 }
             }

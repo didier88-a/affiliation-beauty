@@ -987,6 +987,7 @@ namespace wsaffiliation.Controllers
         }
 
 
+
         private static string? FindNoteImage(
             JsonElement attributes,
             string propertyName,
@@ -1005,7 +1006,7 @@ namespace wsaffiliation.Controllers
             {
                 var normalized = Normalize(productNote);
 
-                // 1. Recherche exacte, en privilégiant le type attendu.
+                // 1. Recherche exacte dans le type attendu.
                 var exactMatch = activeNotes
                     .Where(n => string.Equals(
                         n.Type,
@@ -1018,7 +1019,7 @@ namespace wsaffiliation.Controllers
                 if (exactMatch != null)
                     return exactMatch.ImageUrl;
 
-                // 2. Recherche exacte sans tenir compte du type.
+                // 2. Recherche exacte dans tous les types.
                 exactMatch = activeNotes.FirstOrDefault(n =>
                     Normalize(n.NameFr) == normalized ||
                     Normalize(n.NameEn) == normalized);
@@ -1026,40 +1027,47 @@ namespace wsaffiliation.Controllers
                 if (exactMatch != null)
                     return exactMatch.ImageUrl;
 
-                // 3. Recherche partielle, en supprimant les mots descriptifs.
-                var words = normalized
-                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                    .Where(w => w.Length >= 3)
-                    .Where(w => !new[]
-                    {
-                "accord",
-                "huile",
-                "essence",
-                "essentielle",
-                "absolu",
-                "notes",
-                "note",
-                "riche",
-                "riches"
-                    }.Contains(w))
-                    .ToList();
+                // 3. Nettoyer le nom avant la recherche partielle.
+                var normalizedNote = normalized
+                    .Replace("d'", " ")
+                    .Replace("d’", " ")
+                    .Replace("l'", " ")
+                    .Replace("l’", " ")
+                    .Replace("de ", " ")
+                    .Replace("du ", " ")
+                    .Replace("des ", " ")
+                    .Replace("la ", " ")
+                    .Replace("le ", " ")
+                    .Replace("les ", " ");
 
+                var ignoredWords = new HashSet<string>
+        {
+            "accord", "huile", "essence", "essentielle",
+            "absolu", "duo", "pulpeux", "pulpeuse",
+            "notes", "note", "riche", "riches"
+        };
+
+                var words = NormalizeNoteSearch(productNote)
+                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                     .Where(w => w.Length >= 3)
+                     .ToList();
+
+                // 4. Chercher chaque mot d'abord dans le type attendu,
+                // puis dans tous les autres types.
                 foreach (var word in words)
                 {
-                    // Chercher d'abord dans le type attendu.
                     var match = activeNotes
                         .Where(n => string.Equals(
                             n.Type,
                             noteType,
                             StringComparison.OrdinalIgnoreCase))
                         .FirstOrDefault(n =>
-                            Normalize(n.NameFr).Contains(word) ||
-                            Normalize(n.NameEn).Contains(word));
+                            NormalizeNoteSearch(n.NameFr).Contains(word) ||
+                            NormalizeNoteSearch(n.NameEn).Contains(word));
 
-                    // Puis dans tous les types.
                     match ??= activeNotes.FirstOrDefault(n =>
-                        Normalize(n.NameFr).Contains(word) ||
-                        Normalize(n.NameEn).Contains(word));
+                        NormalizeNoteSearch(n.NameFr).Contains(word) ||
+                        NormalizeNoteSearch(n.NameEn).Contains(word));
 
                     if (match != null)
                         return match.ImageUrl;
@@ -1069,7 +1077,26 @@ namespace wsaffiliation.Controllers
             return null;
         }
 
+        private static string NormalizeNoteSearch(string value)
+        {
+            var normalized = Normalize(value)
+                .Replace("d'", " ")
+                .Replace("d’", " ")
+                .Replace("l'", " ")
+                .Replace("l’", " ");
 
+            var ignoredWords = new HashSet<string>
+    {
+        "essence", "essentielle", "huile",
+        "accord", "notes", "note", "duo",
+        "pulpeux", "pulpeuse", "riche", "riches",
+        "absolu", "de", "du", "des", "la", "le", "les"
+    };
+
+            return string.Join(" ",
+                normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(w => !ignoredWords.Contains(w)));
+        }
 
 
     }

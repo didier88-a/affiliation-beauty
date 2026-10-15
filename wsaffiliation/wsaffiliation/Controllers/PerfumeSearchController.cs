@@ -145,28 +145,18 @@ namespace wsaffiliation.Controllers
                 );
 
                 // 4. Classer les parfums selon les critères.
+
                 var ranked = products
                     .Select(product =>
                     {
                         var productOffers = offers
                             .Where(o => o.ProductId == product.Id)
-                            .ToList(); 
-
-
+                            .ToList();
 
                         var score = CalculateScore(
                             product,
                             criteria,
                             productOffers);
-
-
-                        Console.WriteLine(
-                            $"SCORE | {product.Brand} {product.Name} | " +
-                            $"Score={score.Score} | " +
-                            $"Genre={GetString(product.NayaAttributes, "gender")} | " +
-                            $"Tenue={GetNumber(product.NayaAttributes, "longevity")} | " +
-                            $"Familles={string.Join(", ", GetStringArray(product.NayaAttributes, "fragrance_family"))}"
-                        );
 
                         return new
                         {
@@ -175,52 +165,50 @@ namespace wsaffiliation.Controllers
                             Score = score.Score,
                             Reasons = score.Reasons
                         };
-
                     })
+                    .Select(x => new
+                    {
+                        x.Product,
+                        x.Score,
+                        x.Reasons,
+                        Offers = x.Offers
+                            .Where(o => o.IsAvailable)
+                            .Where(o => o.Price.HasValue)
+                            .Where(o => criteria.MaxPrice <= 0 ||
+                                        o.Price.Value <= criteria.MaxPrice)
+                            .ToList()
+                    })
+                    .Where(x => x.Offers.Any())
+                    .OrderByDescending(x => x.Score)
+                    .ThenBy(x => x.Product.Name)
+                    .Take(10)
+                    .Select(x => new
+                    {
+                        id = x.Product.Id,
+                        brand = x.Product.Brand,
+                        name = x.Product.Name,
+                        image = x.Product.Image,
+                        slug = x.Product.Slug,
+                        category = x.Product.Category,
+                        sub_category = x.Product.SubCategory,
+                        naya_attributes = x.Product.NayaAttributes,
+                        match_score = x.Score,
+                        match_reasons = x.Reasons,
+                        offers = x.Offers
+                            .OrderBy(o => o.Price ?? decimal.MaxValue)
+                            .Select(o => new
+                            {
+                                marketplace = o.Marketplace,
+                                price = o.Price,
+                                currency = o.Currency,
+                                url = o.ProductUrl,
+                                available = o.IsAvailable,
+                                rating = o.Rating,
+                                reviews = o.Reviews
+                            })
+                    })
+                    .ToList();
 
-                        .Where(x => x.Score > 0)
-                        .Select(x => new
-                        {
-                            Product = x.Product,
-                            Score = x.Score,
-                            Reasons = x.Reasons,
-                            Offers = x.Offers
-                                .Where(o => o.IsAvailable)
-                                .Where(o => o.Price.HasValue)
-                                .Where(o => criteria.MaxPrice <= 0 ||
-                                            o.Price.Value <= criteria.MaxPrice)
-                                .ToList()
-                        })
-                        .Where(x => x.Offers.Any())
-                        .OrderByDescending(x => x.Score)
-                        .ThenBy(x => x.Product.Name)
-                        .Take(criteria.MaxResults > 0 ? criteria.MaxResults : 20)
-                        .Select(x => new
-                        {
-                            id = x.Product.Id,
-                            brand = x.Product.Brand,
-                            name = x.Product.Name,
-                            image = x.Product.Image,
-                            slug = x.Product.Slug,
-                            category = x.Product.Category,
-                            sub_category = x.Product.SubCategory,
-                            naya_attributes = x.Product.NayaAttributes,
-                            match_score = x.Score,
-                            match_reasons = x.Reasons,
-                            offers = x.Offers
-                                .OrderBy(o => o.Price ?? decimal.MaxValue)
-                                .Select(o => new
-                                {
-                                    marketplace = o.Marketplace,
-                                    price = o.Price,
-                                    currency = o.Currency,
-                                    url = o.ProductUrl,
-                                    available = o.IsAvailable,
-                                    rating = o.Rating,
-                                    reviews = o.Reviews
-                                })
-                        })
-                        .ToList();
 
 
                 return Ok(new

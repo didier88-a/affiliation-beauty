@@ -111,6 +111,19 @@ namespace wsaffiliation.Controllers
                     cancellationToken);
 
 
+                var perfumeNotes = await GetPerfumeNotesAsync(
+                supabaseUrl,
+                supabaseKey,
+                cancellationToken);
+
+                Console.WriteLine(
+                    $"NOTES CHARGEES : {perfumeNotes.Count}");
+
+                Console.WriteLine(
+                    $"NOTES AVEC IMAGE : " +
+                    $"{perfumeNotes.Count(n =>
+                        !string.IsNullOrWhiteSpace(n.ImageUrl))}");
+
                 Console.WriteLine(
                     $"OFFRES : {offers.Count}"
                 );
@@ -123,7 +136,7 @@ namespace wsaffiliation.Controllers
                     );
                 }
 
-                
+
 
                 Console.WriteLine($"PRODUITS CHARGES: {products.Count}");
                 Console.WriteLine($"OFFRES CHARGEES: {offers.Count}");
@@ -145,6 +158,7 @@ namespace wsaffiliation.Controllers
                 );
 
                 // 4. Classer les parfums selon les critères.
+
 
                 var ranked = products
                     .Select(product =>
@@ -191,9 +205,31 @@ namespace wsaffiliation.Controllers
                         slug = x.Product.Slug,
                         category = x.Product.Category,
                         sub_category = x.Product.SubCategory,
+
                         naya_attributes = x.Product.NayaAttributes,
+
+                        // Images des notes récupérées depuis Supabase
+                        top_notes_img = FindNoteImage(
+                            x.Product.NayaAttributes,
+                            "top_notes",
+                            "tete",
+                            perfumeNotes),
+
+                        heart_notes_img = FindNoteImage(
+                            x.Product.NayaAttributes,
+                            "heart_notes",
+                            "coeur",
+                            perfumeNotes),
+
+                        base_notes_img = FindNoteImage(
+                            x.Product.NayaAttributes,
+                            "base_notes",
+                            "fond",
+                            perfumeNotes),
+
                         match_score = x.Score,
                         match_reasons = x.Reasons,
+
                         offers = x.Offers
                             .OrderBy(o => o.Price ?? decimal.MaxValue)
                             .Select(o => new
@@ -208,6 +244,7 @@ namespace wsaffiliation.Controllers
                             })
                     })
                     .ToList();
+
 
 
 
@@ -915,6 +952,105 @@ namespace wsaffiliation.Controllers
         {
             PropertyNameCaseInsensitive = true
         };
+
+
+
+        private async Task<List<PerfumeNoteRecord>> GetPerfumeNotesAsync(
+    string supabaseUrl,
+    string supabaseKey,
+    CancellationToken cancellationToken)
+        {
+            var client = CreateSupabaseClient(supabaseKey);
+
+            var url =
+                $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
+                "?select=name_fr,name_en,type,image_url,is_active" +
+                "&is_active=eq.true";
+
+            using var response = await client.GetAsync(
+                url,
+                cancellationToken);
+
+            var json = await response.Content.ReadAsStringAsync(
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"Supabase perfume_notes HTTP " +
+                    $"{(int)response.StatusCode}: {json}");
+            }
+
+            return JsonSerializer.Deserialize<List<PerfumeNoteRecord>>(
+                json,
+                JsonOptions) ?? new List<PerfumeNoteRecord>();
+        }
+
+        private static string? FindNoteImage(
+    JsonElement attributes,
+    string propertyName,
+    string noteType,
+    List<PerfumeNoteRecord> notes)
+        {
+            var productNotes = GetStringArray(attributes, propertyName);
+
+            var activeNotes = notes
+                .Where(n =>
+                    n.IsActive &&
+                    string.Equals(
+                        n.Type,
+                        noteType,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(n.ImageUrl))
+                .ToList();
+
+            // 1. Essayer chaque nom complet.
+            foreach (var productNote in productNotes)
+            {
+                var normalized = Normalize(productNote);
+
+                var exactMatch = activeNotes.FirstOrDefault(n =>
+                    Normalize(n.NameFr) == normalized ||
+                    Normalize(n.NameEn) == normalized);
+
+                if (exactMatch != null)
+                    return exactMatch.ImageUrl;
+
+                // 2. Chercher avec les mots significatifs.
+                var words = normalized
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(w => w.Length >= 3)
+                    .Where(w => !new[]
+                    {
+                "accord", "huile", "essence",
+                "essentielle", "absolu", "notes",
+                "note", "riche", "riches"
+                    }.Contains(w))
+                    .ToList();
+
+                foreach (var word in words)
+                {
+                    var match = activeNotes.FirstOrDefault(n =>
+                    {
+                        var french = Normalize(n.NameFr);
+                        var english = Normalize(n.NameEn);
+
+                        return french.Contains(word) ||
+                               english.Contains(word) ||
+                               word.Contains(french) ||
+                               word.Contains(english);
+                    });
+
+                    if (match != null)
+                        return match.ImageUrl;
+                }
+            }
+
+            return null;
+        }
+
+
+
     }
 
     // -------------------------------------------------------------
@@ -987,6 +1123,24 @@ namespace wsaffiliation.Controllers
         public decimal? Rating { get; set; }
 
         public int Reviews { get; set; }
+    }
+
+    public sealed class PerfumeNoteRecord
+    {
+        [JsonPropertyName("name_fr")]
+        public string NameFr { get; set; } = "";
+
+        [JsonPropertyName("name_en")]
+        public string NameEn { get; set; } = "";
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "";
+
+        [JsonPropertyName("image_url")]
+        public string? ImageUrl { get; set; }
+
+        [JsonPropertyName("is_active")]
+        public bool IsActive { get; set; }
     }
 
 }

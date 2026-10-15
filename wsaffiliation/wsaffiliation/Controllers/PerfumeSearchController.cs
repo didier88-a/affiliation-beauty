@@ -146,6 +146,7 @@ namespace wsaffiliation.Controllers
                             .ToList(); 
 
 
+
                         var score = CalculateScore(
                             product,
                             criteria,

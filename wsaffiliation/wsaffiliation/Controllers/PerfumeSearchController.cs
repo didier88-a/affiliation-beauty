@@ -681,6 +681,7 @@ namespace wsaffiliation.Controllers
                     score += 30;
                     reasons.Add($"Famille olfactive : {found}");
                     break;
+
                 }
             }
 

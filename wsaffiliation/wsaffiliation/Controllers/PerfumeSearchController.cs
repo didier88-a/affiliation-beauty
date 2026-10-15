@@ -177,7 +177,7 @@ namespace wsaffiliation.Controllers
                         };
 
                     })
-                    //.Where(x => x.Score > 0)
+                    .Where(x => x.Score > 0)
                     .OrderByDescending(x => x.Score)
                     .ThenBy(x => x.Product.Name)
                     .Take(20)
@@ -658,6 +658,12 @@ namespace wsaffiliation.Controllers
             if (!string.IsNullOrWhiteSpace(criteria.Gender))
             {
                 var gender = GetString(attributes, "gender");
+
+                if (!string.IsNullOrWhiteSpace(gender) &&
+                    !ContainsText(gender, criteria.Gender))
+                {
+                    return (0, new List<string>());
+                }
 
                 if (ContainsText(gender, criteria.Gender))
                 {

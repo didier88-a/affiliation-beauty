@@ -986,60 +986,80 @@ namespace wsaffiliation.Controllers
                 JsonOptions) ?? new List<PerfumeNoteRecord1>();
         }
 
+
         private static string? FindNoteImage(
-    JsonElement attributes,
-    string propertyName,
-    string noteType,
-    List<PerfumeNoteRecord1> notes)
+            JsonElement attributes,
+            string propertyName,
+            string noteType,
+            List<PerfumeNoteRecord> notes)
         {
             var productNotes = GetStringArray(attributes, propertyName);
 
             var activeNotes = notes
                 .Where(n =>
                     n.IsActive &&
-                    string.Equals(
-                        n.Type,
-                        noteType,
-                        StringComparison.OrdinalIgnoreCase) &&
                     !string.IsNullOrWhiteSpace(n.ImageUrl))
                 .ToList();
 
-            // 1. Essayer chaque nom complet.
             foreach (var productNote in productNotes)
             {
                 var normalized = Normalize(productNote);
 
-                var exactMatch = activeNotes.FirstOrDefault(n =>
+                // 1. Recherche exacte, en privilégiant le type attendu.
+                var exactMatch = activeNotes
+                    .Where(n => string.Equals(
+                        n.Type,
+                        noteType,
+                        StringComparison.OrdinalIgnoreCase))
+                    .FirstOrDefault(n =>
+                        Normalize(n.NameFr) == normalized ||
+                        Normalize(n.NameEn) == normalized);
+
+                if (exactMatch != null)
+                    return exactMatch.ImageUrl;
+
+                // 2. Recherche exacte sans tenir compte du type.
+                exactMatch = activeNotes.FirstOrDefault(n =>
                     Normalize(n.NameFr) == normalized ||
                     Normalize(n.NameEn) == normalized);
 
                 if (exactMatch != null)
                     return exactMatch.ImageUrl;
 
-                // 2. Chercher avec les mots significatifs.
+                // 3. Recherche partielle, en supprimant les mots descriptifs.
                 var words = normalized
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Where(w => w.Length >= 3)
                     .Where(w => !new[]
                     {
-                "accord", "huile", "essence",
-                "essentielle", "absolu", "notes",
-                "note", "riche", "riches"
+                "accord",
+                "huile",
+                "essence",
+                "essentielle",
+                "absolu",
+                "notes",
+                "note",
+                "riche",
+                "riches"
                     }.Contains(w))
                     .ToList();
 
                 foreach (var word in words)
                 {
-                    var match = activeNotes.FirstOrDefault(n =>
-                    {
-                        var french = Normalize(n.NameFr);
-                        var english = Normalize(n.NameEn);
+                    // Chercher d'abord dans le type attendu.
+                    var match = activeNotes
+                        .Where(n => string.Equals(
+                            n.Type,
+                            noteType,
+                            StringComparison.OrdinalIgnoreCase))
+                        .FirstOrDefault(n =>
+                            Normalize(n.NameFr).Contains(word) ||
+                            Normalize(n.NameEn).Contains(word));
 
-                        return french.Contains(word) ||
-                               english.Contains(word) ||
-                               word.Contains(french) ||
-                               word.Contains(english);
-                    });
+                    // Puis dans tous les types.
+                    match ??= activeNotes.FirstOrDefault(n =>
+                        Normalize(n.NameFr).Contains(word) ||
+                        Normalize(n.NameEn).Contains(word));
 
                     if (match != null)
                         return match.ImageUrl;
@@ -1048,6 +1068,7 @@ namespace wsaffiliation.Controllers
 
             return null;
         }
+
 
 
 

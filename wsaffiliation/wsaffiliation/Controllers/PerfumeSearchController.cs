@@ -989,17 +989,15 @@ namespace wsaffiliation.Controllers
 
 
         private static string? FindNoteImage(
-            JsonElement attributes,
-            string propertyName,
-            string noteType,
-            List<PerfumeNoteRecord1> notes)
+    JsonElement attributes,
+    string propertyName,
+    string noteType,
+    List<PerfumeNoteRecord1> notes)
         {
             var productNotes = GetStringArray(attributes, propertyName);
 
             var activeNotes = notes
-                .Where(n =>
-                    n.IsActive &&
-                    !string.IsNullOrWhiteSpace(n.ImageUrl))
+                .Where(n => n.IsActive && !string.IsNullOrWhiteSpace(n.ImageUrl))
                 .ToList();
 
             foreach (var productNote in productNotes)
@@ -1009,9 +1007,7 @@ namespace wsaffiliation.Controllers
                 // 1. Recherche exacte dans le type attendu.
                 var exactMatch = activeNotes
                     .Where(n => string.Equals(
-                        n.Type,
-                        noteType,
-                        StringComparison.OrdinalIgnoreCase))
+                        n.Type, noteType, StringComparison.OrdinalIgnoreCase))
                     .FirstOrDefault(n =>
                         Normalize(n.NameFr) == normalized ||
                         Normalize(n.NameEn) == normalized);
@@ -1027,95 +1023,121 @@ namespace wsaffiliation.Controllers
                 if (exactMatch != null)
                     return exactMatch.ImageUrl;
 
-                // 3. Nettoyer le nom avant la recherche partielle.
-                var normalizedNote = normalized
-                    .Replace("d'", " ")
-                    .Replace("d’", " ")
-                    .Replace("l'", " ")
-                    .Replace("l’", " ")
-                    .Replace("de ", " ")
-                    .Replace("du ", " ")
-                    .Replace("des ", " ")
-                    .Replace("la ", " ")
-                    .Replace("le ", " ")
-                    .Replace("les ", " ");
+                // 3. Extraire les mots significatifs du texte produit.
+                var searchWords = NormalizeNoteSearch(productNote)
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(NormalizeNoteWord)
+                    .Where(w => w.Length >= 3)
+                    .Distinct()
+                    .ToList();
 
-                var ignoredWords = new HashSet<string>
-        {
-            "accord", "huile", "essence", "essentielle",
-            "absolu", "duo", "pulpeux", "pulpeuse",
-            "notes", "note", "riche", "riches"
-        };
+                if (searchWords.Count == 0)
+                    continue;
 
-                var words = NormalizeNoteSearch(productNote)
-                     .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                     .Where(w => w.Length >= 3)
-                     .ToList();
-
-                // 4. Chercher chaque mot d'abord dans le type attendu,
-                // puis dans tous les autres types.
-                foreach (var word in words)
+                // Recherche dans un type, puis dans les autres.
+                foreach (var typeNotes in new[]
                 {
-                    var match = activeNotes
-                    .Where(n => string.Equals(
-                        n.Type,
-                        noteType,
-                        StringComparison.OrdinalIgnoreCase))
-                    .FirstOrDefault(n =>
-                        NormalizeNoteWord(n.NameFr).Contains(
-                            NormalizeNoteWord(word)) ||
-                        NormalizeNoteWord(n.NameEn).Contains(
-                            NormalizeNoteWord(word)));
+            activeNotes.Where(n => string.Equals(
+                n.Type, noteType, StringComparison.OrdinalIgnoreCase)),
+            activeNotes.Where(n => !string.Equals(
+                n.Type, noteType, StringComparison.OrdinalIgnoreCase))
+        })
+                {
+                    // Préparer les noms français et anglais.
+                    var candidates = typeNotes.Select(n => new
+                    {
+                        Note = n,
+                        FrenchWords = GetNormalizedNoteWords(n.NameFr),
+                        EnglishWords = GetNormalizedNoteWords(n.NameEn)
+                    }).ToList();
 
-                    match ??= activeNotes.FirstOrDefault(n =>
-                        NormalizeNoteWord(n.NameFr).Contains(
-                            NormalizeNoteWord(word)) ||
-                        NormalizeNoteWord(n.NameEn).Contains(
-                            NormalizeNoteWord(word)));
+                    // Favoriser la note qui correspond au plus grand nombre de mots.
+                    var bestMatch = candidates
+                        .Select(c => new
+                        {
+                            c.Note,
+                            Score = searchWords.Count(word =>
+                                c.FrenchWords.Any(nameWord =>
+                                    IsNoteWordMatch(nameWord, word)) ||
+                                c.EnglishWords.Any(nameWord =>
+                                    IsNoteWordMatch(nameWord, word)))
+                        })
+                        .Where(x => x.Score > 0)
+                        .OrderByDescending(x => x.Score)
+                        .FirstOrDefault();
 
-                    if (match != null)
-                        return match.ImageUrl;
+                    if (bestMatch != null)
+                        return bestMatch.Note.ImageUrl;
                 }
             }
 
             return null;
         }
 
+        private static readonly HashSet<string> IgnoredNoteWords =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+        "accord", "huile", "essence", "essentielle",
+        "absolu", "duo", "pulpeux", "pulpeuse",
+        "notes", "note", "riche", "riches",
+        "de", "du", "des", "la", "le", "les",
+        "un", "une", "et", "avec", "pour", "the",
+        "and", "of", "with", "rich", "richly"
+            };
+
         private static string NormalizeNoteSearch(string value)
         {
-            var normalized = Normalize(value)
-                .Replace("d'", " ")
-                .Replace("d’", " ")
-                .Replace("l'", " ")
-                .Replace("l’", " ");
+            var words = GetNormalizedNoteWords(value)
+                .Where(w => !IgnoredNoteWords.Contains(w));
 
-            var ignoredWords = new HashSet<string>
-    {
-        "essence", "essentielle", "huile",
-        "accord", "notes", "note", "duo",
-        "pulpeux", "pulpeuse", "riche", "riches",
-        "absolu", "de", "du", "des", "la", "le", "les"
-    };
-
-            return string.Join(" ",
-                normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                    .Where(w => !ignoredWords.Contains(w)));
+            return string.Join(" ", words);
         }
 
+        private static List<string> GetNormalizedNoteWords(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return new List<string>();
 
+            var normalized = Normalize(value)
+                .Replace("'", " ")
+                .Replace("’", " ")
+                .Replace("-", " ");
+
+            return normalized
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(NormalizeNoteWord)
+                .Where(w => w.Length > 0)
+                .ToList();
+        }
 
         private static string NormalizeNoteWord(string value)
         {
-            var normalized = NormalizeNoteSearch(value);
+            var word = Normalize(value).Trim();
 
-            // Racines utiles pour les variantes fréquentes.
-            normalized = normalized
-                .Replace("vanille", "vanill")
-                .Replace("vanillee", "vanill")
-                .Replace("vanillees", "vanill")
-                .Replace("vanillees", "vanill");
+            // Normalisation grammaticale générique.
+            // Exemples : florales -> floral, boisées -> boise,
+            // vanillées -> vanille, vanille -> vanill.
+            if (word.Length > 6 && word.EndsWith("es"))
+                word = word[..^2];
+            else if (word.Length > 5 && word.EndsWith("s"))
+                word = word[..^1];
 
-            return normalized;
+            if (word.Length > 5 && word.EndsWith("e"))
+                word = word[..^1];
+
+            return word;
+        }
+
+        private static bool IsNoteWordMatch(string nameWord, string searchWord)
+        {
+            if (nameWord == searchWord)
+                return true;
+
+            // Évite les correspondances trop courtes ou accidentelles.
+            return nameWord.Length >= 4 &&
+                   searchWord.Length >= 4 &&
+                   (nameWord.StartsWith(searchWord, StringComparison.Ordinal) ||
+                    searchWord.StartsWith(nameWord, StringComparison.Ordinal));
         }
 
 

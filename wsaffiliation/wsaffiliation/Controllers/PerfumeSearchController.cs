@@ -1057,17 +1057,21 @@ namespace wsaffiliation.Controllers
                 foreach (var word in words)
                 {
                     var match = activeNotes
-                        .Where(n => string.Equals(
-                            n.Type,
-                            noteType,
-                            StringComparison.OrdinalIgnoreCase))
-                        .FirstOrDefault(n =>
-                            NormalizeNoteSearch(n.NameFr).Contains(word) ||
-                            NormalizeNoteSearch(n.NameEn).Contains(word));
+                    .Where(n => string.Equals(
+                        n.Type,
+                        noteType,
+                        StringComparison.OrdinalIgnoreCase))
+                    .FirstOrDefault(n =>
+                        NormalizeNoteWord(n.NameFr).Contains(
+                            NormalizeNoteWord(word)) ||
+                        NormalizeNoteWord(n.NameEn).Contains(
+                            NormalizeNoteWord(word)));
 
                     match ??= activeNotes.FirstOrDefault(n =>
-                        NormalizeNoteSearch(n.NameFr).Contains(word) ||
-                        NormalizeNoteSearch(n.NameEn).Contains(word));
+                        NormalizeNoteWord(n.NameFr).Contains(
+                            NormalizeNoteWord(word)) ||
+                        NormalizeNoteWord(n.NameEn).Contains(
+                            NormalizeNoteWord(word)));
 
                     if (match != null)
                         return match.ImageUrl;
@@ -1099,7 +1103,28 @@ namespace wsaffiliation.Controllers
         }
 
 
+
+        private static string NormalizeNoteWord(string value)
+        {
+            var normalized = NormalizeNoteSearch(value);
+
+            // Racines utiles pour les variantes fréquentes.
+            normalized = normalized
+                .Replace("vanille", "vanill")
+                .Replace("vanillee", "vanill")
+                .Replace("vanillees", "vanill")
+                .Replace("vanillees", "vanill");
+
+            return normalized;
+        }
+
+
+
+
     }
+
+
+
 
     // -------------------------------------------------------------
     // DTOs

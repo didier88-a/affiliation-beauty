@@ -81,8 +81,18 @@ namespace wsaffiliation.Controllers
                     openAiKey,
                     cancellationToken);
 
-
-
+                // Une demande hors sujet ne doit retourner aucun parfum.
+                // On s'arrête avant de charger les produits et les offres.
+                if (!criteria.IsFragranceQuery)
+                {
+                    return Ok(new
+                    {
+                        query = request.Text,
+                        interpreted_criteria = criteria,
+                        total = 0,
+                        results = Array.Empty<object>()
+                    });
+                }
 
                 Console.WriteLine(
                     "CRITERES OPENAI: " +
@@ -331,7 +341,19 @@ namespace wsaffiliation.Controllers
                     - Ne supprime jamais un critère parce qu'un autre critère est présent.
                     - max_results doit toujours être 20.
                     - Les tableaux doivent être vides uniquement si aucune valeur ne correspond à la demande.
-
+                    - La demande doit concerner explicitement un parfum, une odeur,
+                      des notes olfactives, ou une préférence pertinente pour choisir un parfum.
+                    - Si la demande concerne la recherche, le choix, la comparaison
+                      ou les caractéristiques d'un parfum, retourner
+                      "is_fragrance_query": true.
+                    - Si la demande est sans rapport avec les parfums, retourner
+                      "is_fragrance_query": false.
+                    - Ne jamais inventer de critères à partir d'une demande hors sujet.
+                    - Ne jamais attribuer gender = "Unisexe" par défaut.
+                    - Si aucun genre n'est précisé, gender doit être une chaîne vide.
+                    - Pour une demande hors sujet, ne retourner aucun produit.
+                    - Pour une demande valide, si un critère n'est pas précisé,
+                      conserver sa valeur neutre (liste vide, 0 ou null selon le champ).
                     Les familles olfactives et les notes doivent être exprimées en français.
                     Retourne uniquement le JSON conforme au schéma fourni.
                     """
@@ -354,6 +376,10 @@ namespace wsaffiliation.Controllers
                             type = "object",
                             properties = new
                             {
+                                is_fragrance_query = new
+                                {
+                                    type = "boolean"
+                                },
                                 fragrance_families = new
                                 {
                                     type = "array",
@@ -387,6 +413,7 @@ namespace wsaffiliation.Controllers
                             },
                             required = new[]
                             {
+                            "is_fragrance_query",
                             "fragrance_families",
                             "preferred_notes",
                             "styles",
@@ -446,21 +473,19 @@ namespace wsaffiliation.Controllers
                     "Impossible de lire les critères OpenAI.");
             }
 
-            CompleteCriteriaFromText(text, criteria);
-
-            Console.WriteLine(
-                "CRITERES FINAUX: " +
-                JsonSerializer.Serialize(criteria, JsonOptions)
-            );
-
-            return criteria;
-
-
-            if (criteria == null)
+            // Si la demande est hors sujet, ne pas compléter les critères
+            // à partir du texte (cela pourrait inventer des préférences).
+            if (!criteria.IsFragranceQuery)
             {
-                throw new InvalidOperationException(
-                    "Impossible de lire les critères OpenAI.");
+                Console.WriteLine(
+                    "DEMANDE HORS SUJET : aucun parfum ne sera retourné. " +
+                    JsonSerializer.Serialize(criteria, JsonOptions)
+                );
+
+                return criteria;
             }
+
+            CompleteCriteriaFromText(text, criteria);
 
             // Limiter les valeurs à des plages acceptables.
             criteria.MinLongevity =
@@ -471,6 +496,11 @@ namespace wsaffiliation.Controllers
 
             criteria.MaxPrice =
                 Math.Max(0, criteria.MaxPrice);
+
+            Console.WriteLine(
+                "CRITERES FINAUX: " +
+                JsonSerializer.Serialize(criteria, JsonOptions)
+            );
 
             return criteria;
         }
@@ -1159,6 +1189,9 @@ namespace wsaffiliation.Controllers
 
     public sealed class SearchCriteria
     {
+        [JsonPropertyName("is_fragrance_query")]
+        public bool IsFragranceQuery { get; set; }
+
         public List<string> FragranceFamilies { get; set; } = new();
         public List<string> PreferredNotes { get; set; } = new();
         public List<string> Styles { get; set; } = new();

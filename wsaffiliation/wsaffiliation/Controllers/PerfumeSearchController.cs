@@ -168,7 +168,12 @@ namespace wsaffiliation.Controllers
                 );
 
                 // 4. Classer les parfums selon les critères.
-
+                Console.WriteLine($"PRODUITS : {products.Count}");
+                Console.WriteLine($"OFFRES : {offers.Count}");
+                Console.WriteLine($"GENRE : '{criteria.Gender}'");
+                Console.WriteLine($"FAMILLES : {string.Join(", ", criteria.FragranceFamilies)}");
+                Console.WriteLine($"NOTES : {string.Join(", ", criteria.PreferredNotes)}");
+                Console.WriteLine($"BUDGET : {criteria.MaxPrice}");
 
                 var ranked = products
                     .Select(product =>
@@ -202,7 +207,7 @@ namespace wsaffiliation.Controllers
                                         o.Price.Value <= criteria.MaxPrice)
                             .ToList()
                     })
-                    .Where(x => x.Offers.Any())
+                    //.Where(x => x.Offers.Any())
                     .OrderByDescending(x => x.Score)
                     .ThenBy(x => x.Product.Name)
                     .Take(10)

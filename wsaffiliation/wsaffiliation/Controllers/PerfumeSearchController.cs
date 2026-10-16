@@ -724,6 +724,26 @@ namespace wsaffiliation.Controllers
             var score = 0;
             var reasons = new List<string>();
 
+            bool hasSpecificCriteria =
+                    !string.IsNullOrWhiteSpace(criteria.Gender) ||
+                    criteria.FragranceFamilies.Count > 0 ||
+                    criteria.PreferredNotes.Count > 0 ||
+                    criteria.MinLongevity > 0 ||
+                    criteria.MinSillage > 0 ||
+                    criteria.Styles.Count > 0 ||
+                    criteria.Occasions.Count > 0 ||
+                    criteria.Seasons.Count > 0 ||
+                    criteria.MaxPrice > 0;
+
+            // Pour une recherche générale, ne pas laisser tous les produits à 0.
+            if (!hasSpecificCriteria)
+            {
+                score = 1;
+                reasons.Add("Suggestion générale");
+            }
+
+
+
             // Si le client indique un genre, on privilégie ce genre.
             if (!string.IsNullOrWhiteSpace(criteria.Gender))
             {

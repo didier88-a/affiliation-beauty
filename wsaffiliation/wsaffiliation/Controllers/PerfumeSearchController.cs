@@ -207,7 +207,7 @@ namespace wsaffiliation.Controllers
                                         o.Price.Value <= criteria.MaxPrice)
                             .ToList()
                     })
-                    //.Where(x => x.Offers.Any())
+                    .Where(x => x.Offers.Any())
                     .OrderByDescending(x => x.Score)
                     .ThenBy(x => x.Product.Name)
                     .Take(10)
@@ -361,6 +361,24 @@ namespace wsaffiliation.Controllers
                       conserver sa valeur neutre (liste vide, 0 ou null selon le champ).
                     Les familles olfactives et les notes doivent être exprimées en français.
                     Retourne uniquement le JSON conforme au schéma fourni.
+                                        
+                    RÈGLE PRIORITAIRE :
+                    Toute demande qui mentionne un parfum, une eau de parfum,
+                    une eau de toilette, une fragrance ou qui cherche un parfum
+                    pour quelqu'un doit être considérée comme une recherche de parfum.
+
+                    Exemples :
+                    - "Je recherche un parfum pour ma mère" => is_fragrance_query = true, Gender = "Femme"
+                    - "Un parfum pour mon père" => is_fragrance_query = true, Gender = "Homme"
+                    - "Je veux offrir un parfum" => is_fragrance_query = true
+                    - "Un parfum pour ma femme" => is_fragrance_query = true, Gender = "Femme"
+                    - "Un parfum pour mon mari" => is_fragrance_query = true, Gender = "Homme"
+
+                    Si la demande est générale, ne pas inventer de famille olfactive,
+                    de note, de budget ou de contrainte de tenue.
+                    Ne retourner false que si la demande ne concerne réellement
+                    pas les parfums.
+                   
                     """
                 },
                 new
@@ -480,6 +498,20 @@ namespace wsaffiliation.Controllers
 
             // Si la demande est hors sujet, ne pas compléter les critères
             // à partir du texte (cela pourrait inventer des préférences).
+
+            var normalized = Normalize(text);
+
+            bool mentionsPerfume =
+                normalized.Contains("parfum") ||
+                normalized.Contains("fragrance") ||
+                normalized.Contains("eau de toilette") ||
+                normalized.Contains("eau de parfum");
+
+            if (mentionsPerfume)
+            {
+                criteria.IsFragranceQuery = true;
+            }
+
             if (!criteria.IsFragranceQuery)
             {
                 Console.WriteLine(

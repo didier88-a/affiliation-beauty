@@ -1792,7 +1792,8 @@ public class PerfumeMatchController : ControllerBase
         {
             var url =
                 $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
-                $"?select=id,name_en,name_fr,type,image_url,is_active" +
+                "?select=id,name_en,name_fr,type,image_url,is_active," +
+                "category_fr,subcategory_fr,category_en,subcategory_en" +
                 $"&is_active=eq.true" +
                 $"&order=id.asc" +
                 $"&limit={pageSize}&offset={offset}";
@@ -1831,6 +1832,11 @@ public class PerfumeMatchController : ControllerBase
                 var nameEn = ReadFirstString(row, "name_en");
                 var nameFr = ReadFirstString(row, "name_fr");
                 var image = ReadFirstString(row, "image_url");
+                var categoryFr = ReadFirstString(row, "category_fr");
+                var subcategoryFr = ReadFirstString(row, "subcategory_fr");
+
+                var categoryEn = ReadFirstString(row, "category_en");
+                var subcategoryEn = ReadFirstString(row, "subcategory_en");
 
                 if (string.IsNullOrWhiteSpace(nameEn) &&
                     string.IsNullOrWhiteSpace(nameFr))
@@ -1840,7 +1846,12 @@ public class PerfumeMatchController : ControllerBase
                 {
                     NameEn = nameEn?.Trim(),
                     NameFr = nameFr?.Trim(),
-                    Image = image?.Trim()
+                    Image = image?.Trim(),
+                    CategoryFr = categoryFr?.Trim(),
+                    SubcategoryFr = subcategoryFr?.Trim(),
+
+                    CategoryEn = categoryEn?.Trim(),
+                    SubcategoryEn = subcategoryEn?.Trim()
                 });
             }
 
@@ -1911,9 +1922,16 @@ public class PerfumeMatchController : ControllerBase
         return new PerfumeNoteMatch
         {
             Name = !string.IsNullOrWhiteSpace(match.Note.NameFr)
-                ? match.Note.NameFr!
-                : match.Note.NameEn ?? requestedName,
-            Image = match.Note.Image
+        ? match.Note.NameFr!
+        : match.Note.NameEn ?? requestedName,
+
+            Image = match.Note.Image,
+
+            CategoryFr = match.Note.CategoryFr,
+            SubcategoryFr = match.Note.SubcategoryFr,
+
+            CategoryEn = match.Note.CategoryEn,
+            SubcategoryEn = match.Note.SubcategoryEn
         };
     }
 
@@ -2278,12 +2296,24 @@ public class PerfumeNoteRecord
     public string? NameEn { get; set; }
     public string? NameFr { get; set; }
     public string? Image { get; set; }
+
+    public string? CategoryFr { get; set; }
+    public string? SubcategoryFr { get; set; }
+
+    public string? CategoryEn { get; set; }
+    public string? SubcategoryEn { get; set; }
 }
 
 public class PerfumeNoteMatch
 {
     public string Name { get; set; } = string.Empty;
     public string? Image { get; set; }
+
+    public string? CategoryFr { get; set; }
+    public string? SubcategoryFr { get; set; }
+
+    public string? CategoryEn { get; set; }
+    public string? SubcategoryEn { get; set; }
 }
 
 

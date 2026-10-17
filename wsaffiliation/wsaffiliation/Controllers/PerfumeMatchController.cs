@@ -1793,7 +1793,7 @@ public class PerfumeMatchController : ControllerBase
             var url =
                 $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
                 "?select=id,name_en,name_fr,type,image_url,is_active," +
-                "category_fr,subcategory_fr,category_en,subcategory_en" +
+                "category_fr,subcategory_fr,category_en,subcategory_en,category_url" +
                 $"&is_active=eq.true" +
                 $"&order=id.asc" +
                 $"&limit={pageSize}&offset={offset}";
@@ -1837,6 +1837,7 @@ public class PerfumeMatchController : ControllerBase
 
                 var categoryEn = ReadFirstString(row, "category_en");
                 var subcategoryEn = ReadFirstString(row, "subcategory_en");
+                var categoryUrl = ReadFirstString(row, "category_url");
 
                 if (string.IsNullOrWhiteSpace(nameEn) &&
                     string.IsNullOrWhiteSpace(nameFr))
@@ -1851,7 +1852,8 @@ public class PerfumeMatchController : ControllerBase
                     SubcategoryFr = subcategoryFr?.Trim(),
 
                     CategoryEn = categoryEn?.Trim(),
-                    SubcategoryEn = subcategoryEn?.Trim()
+                    SubcategoryEn = subcategoryEn?.Trim(),
+                    CategoryUrl = categoryUrl?.Trim()
                 });
             }
 
@@ -1931,7 +1933,8 @@ public class PerfumeMatchController : ControllerBase
             SubcategoryFr = match.Note.SubcategoryFr,
 
             CategoryEn = match.Note.CategoryEn,
-            SubcategoryEn = match.Note.SubcategoryEn
+            SubcategoryEn = match.Note.SubcategoryEn,
+            CategoryUrl = match.Note.CategoryUrl
         };
     }
 
@@ -2302,6 +2305,8 @@ public class PerfumeNoteRecord
 
     public string? CategoryEn { get; set; }
     public string? SubcategoryEn { get; set; }
+
+    public string? CategoryUrl { get; set; }
 }
 
 public class PerfumeNoteMatch
@@ -2314,6 +2319,7 @@ public class PerfumeNoteMatch
 
     public string? CategoryEn { get; set; }
     public string? SubcategoryEn { get; set; }
+    public string? CategoryUrl { get; set; }
 }
 
 

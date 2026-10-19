@@ -203,6 +203,7 @@ public class NayaGuideService
 
 
 
+
     public async Task<int> SavePerfumesAsync(
         long brandGuideId,
         JsonElement guide,
@@ -216,20 +217,34 @@ public class NayaGuideService
         }
 
         var rows = new List<Dictionary<string, object?>>();
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var slugs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var perfume in perfumes.EnumerateArray())
         {
             var key = GetString(perfume, "id");
             var name = GetString(perfume, "name");
+            var slug = GetString(perfume, "slug");
 
             if (string.IsNullOrWhiteSpace(key) ||
-                string.IsNullOrWhiteSpace(name))
+                string.IsNullOrWhiteSpace(name) ||
+                string.IsNullOrWhiteSpace(slug))
             {
                 throw new InvalidOperationException(
-                    "Chaque parfum doit avoir un id et un name.");
+                    "Chaque parfum doit avoir un id, un name et un slug.");
             }
 
-            var slug = GetString(perfume, "slug") ?? key;
+            if (!keys.Add(key))
+            {
+                throw new InvalidOperationException(
+                    $"Identifiant de parfum en double : {key}");
+            }
+
+            if (!slugs.Add(slug))
+            {
+                throw new InvalidOperationException(
+                    $"Slug de parfum en double : {slug}");
+            }
 
             var editorial = perfume.TryGetProperty(
                 "editorial", out var editorialElement)
@@ -253,34 +268,100 @@ public class NayaGuideService
             });
         }
 
+        // Refuser une liste vide pour éviter une suppression accidentelle.
         if (rows.Count == 0)
-            return 0;
+        {
+            throw new InvalidOperationException(
+                "Aucun parfum reçu : synchronisation annulée.");
+        }
 
-        using var request = new HttpRequestMessage(
+        // 1. Charger les parfums actuellement enregistrés.
+        using var getRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"perfumes?brand_guide_id=eq.{brandGuideId}" +
+            "&select=id,perfume_key");
+
+        using var getResponse = await httpClient.SendAsync(
+            getRequest, cancellationToken);
+
+        var getBody = await getResponse.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur lecture perfumes : " +
+                $"{(int)getResponse.StatusCode} - {getBody}");
+        }
+
+        using var existingDocument = JsonDocument.Parse(getBody);
+
+        var existing = existingDocument.RootElement
+            .EnumerateArray()
+            .Select(p => new
+            {
+                Id = p.GetProperty("id").GetInt64(),
+                Key = GetString(p, "perfume_key") ?? ""
+            })
+            .ToList();
+
+        var incomingKeys = new HashSet<string>(
+            rows.Select(r => (string)r["perfume_key"]!),
+            StringComparer.OrdinalIgnoreCase);
+
+        // 2. Upsert les nouvelles références et mettre à jour les existantes.
+        using var upsertRequest = new HttpRequestMessage(
             HttpMethod.Post,
             "perfumes?on_conflict=brand_guide_id,perfume_key");
 
-        request.Headers.TryAddWithoutValidation(
-            "Prefer", "resolution=merge-duplicates,return=representation");
+        upsertRequest.Headers.TryAddWithoutValidation(
+            "Prefer",
+            "resolution=merge-duplicates,return=representation");
 
-        request.Content = JsonContent.Create(rows);
+        upsertRequest.Content = JsonContent.Create(rows);
 
-        using var response = await httpClient.SendAsync(
-            request, cancellationToken);
+        using var upsertResponse = await httpClient.SendAsync(
+            upsertRequest, cancellationToken);
 
-        var body = await response.Content.ReadAsStringAsync(
+        var upsertBody = await upsertResponse.Content.ReadAsStringAsync(
             cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+        if (!upsertResponse.IsSuccessStatusCode)
         {
             throw new HttpRequestException(
-                $"Erreur sauvegarde perfumes: " +
-                $"{(int)response.StatusCode} - {body}");
+                $"Erreur sauvegarde perfumes : " +
+                $"{(int)upsertResponse.StatusCode} - {upsertBody}");
         }
 
-        using var result = JsonDocument.Parse(body);
+        // 3. Supprimer uniquement les références obsolètes de ce guide.
+        foreach (var oldPerfume in existing.Where(
+            p => !incomingKeys.Contains(p.Key)))
+        {
+            var deleteUrl =
+                $"perfumes?id=eq.{oldPerfume.Id}" +
+                $"&brand_guide_id=eq.{brandGuideId}";
+
+            using var deleteRequest = new HttpRequestMessage(
+                HttpMethod.Delete, deleteUrl);
+
+            using var deleteResponse = await httpClient.SendAsync(
+                deleteRequest, cancellationToken);
+
+            var deleteBody = await deleteResponse.Content.ReadAsStringAsync(
+                cancellationToken);
+
+            if (!deleteResponse.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"Erreur suppression du parfum {oldPerfume.Key} : " +
+                    $"{(int)deleteResponse.StatusCode} - {deleteBody}");
+            }
+        }
+
+        using var result = JsonDocument.Parse(upsertBody);
         return result.RootElement.GetArrayLength();
     }
+
 
     private static string? GetString(
         JsonElement element,

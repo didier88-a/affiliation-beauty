@@ -811,6 +811,12 @@ public class NayaGuideService
 
         var json = string.Join("\n", outputTexts);
 
+        Console.WriteLine($"[NAYA RAW OUTPUT LENGTH] {json.Length}");
+
+        Console.WriteLine(
+            $"[NAYA RAW OUTPUT END] " +
+            json.Substring(Math.Max(0, json.Length - 2500)));
+
         if (string.IsNullOrWhiteSpace(json))
         {
             throw new InvalidOperationException(

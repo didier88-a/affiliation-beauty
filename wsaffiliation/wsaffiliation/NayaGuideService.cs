@@ -1887,30 +1887,25 @@ sans inventer de références pour atteindre un nombre cible.
                         continue;
 
                     // Exclure les coffrets et produits dérivés.
+
+                    // Exclure les coffrets et produits dérivés.
                     var nonPerfumePattern =
-                        @"\b(body lotion|lait corps|body cream|shower gel|gel douche|" +
-                        @"deodorant|déodorant|coffret|gift set|gift sets|discovery set|" +
-                        @"kit découverte|miniatures|discovery kit|travel set)\b";
+                        @"\b(body\s+lotion|lait\s+corps|body\s+cream|" +
+                        @"shower\s+gel|gel\s+douche|deodorants?|déodorants?|" +
+                        @"coffrets?|gift\s+sets?|discovery\s+sets?|" +
+                        @"kits?\s+de\s+découverte|discovery\s+kits?|" +
+                        @"miniatures?|travel\s+sets?)\b";
 
                     if (Regex.IsMatch(
                         name,
                         nonPerfumePattern,
-                        RegexOptions.IgnoreCase))
-                    {
-                        Console.WriteLine(
-                            $"[NAYA RESEARCH SKIP NON-PERFUME] {name}");
-                        continue;
-                    }
-
-                    // Déduplication par nom commercial.
-                    var key = NormalizeResearchKey(name);
-
-                    if (!knownPerfumes.Add(key))
-                        continue;
-
-                    if (Regex.IsMatch(
+                        RegexOptions.IgnoreCase)
+                        ||
+                        Regex.IsMatch(
                             name,
-                            @"\b(et|with|plus)\b.*\b(spray de voyage|travel spray|miniature|mini)\b",
+                            @"\b(et|with|plus)\b.*\b" +
+                            @"(spray\s+de\s+voyage|travel\s+spray|" +
+                            @"miniature|mini)\b",
                             RegexOptions.IgnoreCase))
                     {
                         Console.WriteLine(
@@ -1918,7 +1913,14 @@ sans inventer de références pour atteindre un nombre cible.
                         continue;
                     }
 
+                    // Déduplication après filtrage.
+                    var key = NormalizeResearchKey(name);
+
+                    if (!knownPerfumes.Add(key))
+                        continue;
+
                     allPerfumes.Add(perfume.Clone());
+
                 }
 
                 var added = allPerfumes.Count - countBefore;

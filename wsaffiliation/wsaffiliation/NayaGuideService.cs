@@ -7,6 +7,9 @@ using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Text;
 
+using System.Text.Json.Nodes;
+
+
 
 public sealed class BrandGuideInput
 {
@@ -833,6 +836,18 @@ RÉSULTATS DE LA RECHERCHE PRÉALABLE :
 {researchedCatalogJson}
 
 INSTRUCTIONS :
+
+- Le tableau "collections" doit reprendre toutes les collections
+  distinctes présentes dans "collections" du résultat de recherche préalable.
+- Ne supprime pas une collection simplement parce qu'elle contient
+  peu de parfums ou aucun parfum vérifié.
+- Le tableau "coverage.collections_identified" doit refléter
+  les collections découvertes dans la recherche préalable.
+- Le tableau "coverage.collections_researched" doit refléter
+  les collections effectivement recherchées.
+- N'invente pas de collections supplémentaires.
+- Les noms des collections doivent rester cohérents entre
+  "collections", "coverage" et "perfumes".
 - Utilise les références de la recherche préalable comme base du guide.
 - Couvre les différentes collections identifiées.
 - Conserve les noms commerciaux exacts.
@@ -952,37 +967,282 @@ Retourne uniquement le JSON final.
 
         var cleanJson = ExtractJson(json);
 
-        using var checkDocument = JsonDocument.Parse(cleanJson);
 
-        var perfumeCount = checkDocument.RootElement
-            .GetProperty("perfumes")
-            .GetArrayLength();
+        // Parse le guide éditorial généré par OpenAI.
+        var guideNode = JsonNode.Parse(cleanJson) as JsonObject;
+
+        if (guideNode == null)
+        {
+            throw new InvalidOperationException(
+                "Le guide généré n'est pas un objet JSON valide.");
+        }
+
+        // Garantit l'existence des tableaux.
+        var guideCollections =
+            guideNode["collections"] as JsonArray ?? new JsonArray();
+
+        var guidePerfumes =
+            guideNode["perfumes"] as JsonArray ?? new JsonArray();
+
+        guideNode["collections"] = guideCollections;
+        guideNode["perfumes"] = guidePerfumes;
+
+        // Clé normalisée : les formats 75 ml / 125 ml
+        // ne créent pas de parfums distincts.
+        static string NormalizeName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "";
+
+            var normalized = value.ToLowerInvariant();
+
+            normalized = Regex.Replace(
+                normalized,
+                @"\b\d+(?:[.,]\d+)?\s*(?:ml|mL|cl|oz)\b",
+                "");
+
+            normalized = Regex.Replace(
+                normalized,
+                @"[^a-z0-9]+",
+                "");
+
+            return normalized;
+        }
+
+        static string MakeSlug(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "reference";
+
+            var slug = Regex.Replace(
+                value.ToLowerInvariant(),
+                @"[^a-z0-9]+",
+                "-").Trim('-');
+
+            return string.IsNullOrWhiteSpace(slug)
+                ? "reference"
+                : slug;
+        }
+
+        // Index des parfums déjà générés.
+        var knownPerfumes = new HashSet<string>(
+            guidePerfumes
+                .OfType<JsonObject>()
+                .Select(p => NormalizeName(
+                    p["name"]?.GetValue<string>())),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Index des collections déjà générées.
+        var knownCollections = new HashSet<string>(
+            guideCollections
+                .OfType<JsonObject>()
+                .Select(c => NormalizeName(
+                    c["name"]?.GetValue<string>())),
+            StringComparer.OrdinalIgnoreCase);
+
+        var researchedCollections =
+            researchRoot.GetProperty("collections");
+
+        var researchedPerfumes =
+            researchRoot.GetProperty("perfumes");
+
+        // 1. Fusionner les collections découvertes.
+        foreach (var collection in researchedCollections.EnumerateArray())
+        {
+            var name = GetString(collection, "name")?.Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            var key = NormalizeName(name);
+
+            if (!knownCollections.Add(key))
+                continue;
+
+            var sources = collection.TryGetProperty(
+                "source_urls", out var sourceUrls)
+                ? JsonNode.Parse(sourceUrls.GetRawText())
+                : new JsonArray();
+
+            guideCollections.Add(new JsonObject
+            {
+                ["id"] = MakeSlug(name),
+                ["name"] = name,
+                ["description"] =
+                    "Collection identifiée lors de la recherche. " +
+                    "Description éditoriale à vérifier.",
+                ["perfume_ids"] = new JsonArray(),
+                ["sources"] = sources,
+                ["verification_status"] = "needs_review"
+            });
+
+            Console.WriteLine(
+                $"[NAYA MERGE COLLECTION] {name}");
+        }
+
+        // 2. Fusionner les parfums recherchés absents du guide.
+        var addedPerfumes = 0;
+
+        foreach (var perfume in researchedPerfumes.EnumerateArray())
+        {
+            var name = GetString(perfume, "name")?.Trim();
+            var collectionName =
+                GetString(perfume, "collection_name")?.Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            // Ne pas ajouter de produits dérivés.
+            if (Regex.IsMatch(
+                name,
+                @"\b(body lotion|shower gel|deodorant|déodorant|gel douche)\b",
+                RegexOptions.IgnoreCase))
+            {
+                Console.WriteLine(
+                    $"[NAYA MERGE SKIP NON-PERFUME] {name}");
+                continue;
+            }
+
+            var key = NormalizeName(name);
+
+            if (!knownPerfumes.Add(key))
+                continue;
+
+            var concentration = GetString(perfume, "concentration");
+            var gender = GetString(perfume, "gender");
+
+            var sourceUrls = perfume.TryGetProperty(
+                "source_urls", out var urls)
+                ? JsonNode.Parse(urls.GetRawText()) ?? new JsonArray()
+                : new JsonArray();
+
+            var perfumeId = MakeSlug(name);
+            var perfumeSlug = perfumeId;
+
+            // Garantit un slug unique.
+            var existingSlugs = guidePerfumes
+                .OfType<JsonObject>()
+                .Select(p => p["slug"]?.GetValue<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var suffix = 2;
+
+            while (existingSlugs.Contains(perfumeSlug))
+            {
+                perfumeSlug = $"{perfumeId}-{suffix++}";
+            }
+
+            var editorialSources = JsonNode.Parse(
+                sourceUrls.ToJsonString()) ?? new JsonArray();
+
+            var verificationSources = JsonNode.Parse(
+                sourceUrls.ToJsonString()) ?? new JsonArray();
+
+            guidePerfumes.Add(new JsonObject
+            {
+                ["id"] = perfumeId,
+                ["name"] = name,
+                ["slug"] = perfumeSlug,
+                ["collection_name"] = collectionName,
+                ["concentration"] = concentration,
+                ["gender"] = gender,
+
+                ["editorial"] = new JsonObject
+                {
+                    ["title"] = name,
+                    ["introduction"] =
+                        "Fiche en attente de vérification éditoriale.",
+                    ["description"] =
+                        "Les informations descriptives doivent être " +
+                        "confirmées à partir de sources fiables.",
+                    ["olfactory_family"] = new JsonArray(),
+                    ["character"] = new JsonArray(),
+                    ["accords"] = new JsonArray(),
+                    ["notes"] = new JsonObject
+                    {
+                        ["top"] = new JsonArray(),
+                        ["heart"] = new JsonArray(),
+                        ["base"] = new JsonArray()
+                    },
+                    ["olfactory_explanation"] = "",
+                    ["recommendation"] = "",
+                    ["occasions"] = new JsonArray(),
+                    ["seasons"] = new JsonArray(),
+                    ["sources"] = editorialSources
+                },
+
+                ["verification"] = new JsonObject
+                {
+                    ["status"] = "needs_review",
+                    ["verified_fields"] = new JsonArray(),
+                    ["unverified_fields"] = new JsonArray
+                    {
+                        "name",
+                        "collection_name",
+                        "concentration",
+                        "gender",
+                        "olfactory_notes"
+                    },
+                    ["sources"] = verificationSources
+                }
+            });
+
+            addedPerfumes++;
+
+            Console.WriteLine(
+                $"[NAYA MERGE PERFUME] {name} | {collectionName}");
+        }
+
+        // 3. Mettre à jour la couverture avec les résultats de recherche.
+        if (guideNode["coverage"] is not JsonObject coverage)
+        {
+            coverage = new JsonObject();
+            guideNode["coverage"] = coverage;
+        }
+
+        var collectionNames = guideCollections
+            .OfType<JsonObject>()
+            .Select(c => c["name"]?.GetValue<string>())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        coverage["collections_identified"] =
+            new JsonArray(collectionNames.Select(
+                n => (JsonNode?)JsonValue.Create(n)).ToArray());
+
+        coverage["collections_researched"] =
+            new JsonArray(collectionNames.Select(
+                n => (JsonNode?)JsonValue.Create(n)).ToArray());
+
+        coverage["is_complete"] = false;
+
+        coverage["limitations"] ??= new JsonArray();
+
+        var finalJson = guideNode.ToJsonString(
+            new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+        using var checkDocument = JsonDocument.Parse(finalJson);
 
         Console.WriteLine(
-            $"[NAYA GENERATED PERFUMES] {perfumeCount}");
+            $"[NAYA GENERATED COLLECTIONS] " +
+            $"{checkDocument.RootElement.GetProperty("collections").GetArrayLength()}");
 
-        try
-        {
-            var guide = JsonDocument.Parse(cleanJson);
+        Console.WriteLine(
+            $"[NAYA GENERATED PERFUMES] " +
+            $"{checkDocument.RootElement.GetProperty("perfumes").GetArrayLength()}");
 
-            ValidateGuideJson(guide.RootElement);
+        Console.WriteLine(
+            $"[NAYA MERGE ADDED PERFUMES] {addedPerfumes}");
 
-            return guide;
-        }
-        catch (JsonException ex)
-        {
-            Console.Error.WriteLine(
-                $"[NAYA GUIDE JSON ERROR] {ex.Message}");
+        ValidateGuideJson(checkDocument.RootElement);
 
-            Console.Error.WriteLine(
-                $"[NAYA GUIDE JSON LENGTH] {cleanJson.Length}");
+        return JsonDocument.Parse(finalJson);
 
-            Console.Error.WriteLine(
-                $"[NAYA GUIDE JSON END] " +
-                cleanJson.Substring(Math.Max(0, cleanJson.Length - 1500)));
-
-            throw;
-        }
     }
 
 

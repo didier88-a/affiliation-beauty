@@ -1231,6 +1231,51 @@ Retourne uniquement le JSON final.
 
         coverage["limitations"] ??= new JsonArray();
 
+        //var finalJson = guideNode.ToJsonString(
+        //    new JsonSerializerOptions
+        //    {
+        //        WriteIndented = true
+        //    });
+
+        // Dédupliquer les parfums par identifiant avant validation.
+        if (guideNode["perfumes"] is JsonArray perfumesArray)
+        {
+            var knownIds = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase);
+
+            var uniquePerfumes = new JsonArray();
+
+            foreach (var perfume in perfumesArray)
+            {
+                if (perfume is not JsonObject perfumeObject)
+                    continue;
+
+                var id = perfumeObject["id"]?.GetValue<string>()?.Trim();
+
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    Console.WriteLine(
+                        "[NAYA MERGE SKIP] Parfum sans identifiant");
+                    continue;
+                }
+
+                if (!knownIds.Add(id))
+                {
+                    Console.WriteLine(
+                        $"[NAYA MERGE SKIP DUPLICATE ID] {id}");
+                    continue;
+                }
+
+                uniquePerfumes.Add(
+                    perfume is null
+                        ? null
+                        : JsonNode.Parse(perfume.ToJsonString()));
+                            }
+
+            guideNode["perfumes"] = uniquePerfumes;
+        }
+
+        // Générer le JSON final une seule fois.
         var finalJson = guideNode.ToJsonString(
             new JsonSerializerOptions
             {

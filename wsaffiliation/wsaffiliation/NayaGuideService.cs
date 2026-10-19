@@ -809,7 +809,26 @@ public class NayaGuideService
             }
         }
 
-        var json = string.Join("\n", outputTexts);
+
+        Console.WriteLine($"[NAYA OUTPUT BLOCKS] {outputTexts.Count}");
+
+        for (var i = 0; i < outputTexts.Count; i++)
+        {
+            Console.WriteLine(
+                $"[NAYA OUTPUT BLOCK {i}] Length={outputTexts[i].Length}, " +
+                $"Start={outputTexts[i][..Math.Min(150, outputTexts[i].Length)]}");
+        }
+
+
+
+        if (outputTexts.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"OpenAI a retourné {outputTexts.Count} blocs de texte au lieu d'un seul.");
+        }
+
+        var json = outputTexts[0];
+
 
         Console.WriteLine($"[NAYA RAW OUTPUT LENGTH] {json.Length}");
 

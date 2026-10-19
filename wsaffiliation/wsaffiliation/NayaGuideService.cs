@@ -728,7 +728,9 @@ public class NayaGuideService
                 "OpenAI n'a retourné aucun JSON exploitable.");
         }
 
-        var guide = JsonDocument.Parse(json);
+        var cleanJson = ExtractJson(json);
+
+        var guide = JsonDocument.Parse(cleanJson);
 
         ValidateGuideJson(guide.RootElement);
 
@@ -862,6 +864,42 @@ public class NayaGuideService
         };
     }
 
+
+    private static string ExtractJson(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            throw new InvalidOperationException(
+                "La réponse OpenAI est vide.");
+
+        text = text.Trim();
+
+        // Retirer les marqueurs Markdown ```json ... ```
+        if (text.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNewLine = text.IndexOf('\n');
+
+            if (firstNewLine >= 0)
+                text = text[(firstNewLine + 1)..];
+
+            var lastFence = text.LastIndexOf(
+                "```", StringComparison.Ordinal);
+
+            if (lastFence >= 0)
+                text = text[..lastFence];
+
+            text = text.Trim();
+        }
+
+        // Tolérer du texte avant ou après l'objet JSON.
+        var start = text.IndexOf('{');
+        var end = text.LastIndexOf('}');
+
+        if (start < 0 || end < start)
+            throw new InvalidOperationException(
+                "Aucun objet JSON trouvé dans la réponse OpenAI.");
+
+        return text[start..(end + 1)];
+    }
 
 
 }

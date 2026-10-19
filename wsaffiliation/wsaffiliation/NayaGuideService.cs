@@ -1860,7 +1860,23 @@ sans inventer de références pour atteindre un nombre cible.
                     if (string.IsNullOrWhiteSpace(name))
                         continue;
 
-                    // Déduplication provisoire par nom commercial.
+                    // Exclure les coffrets et produits dérivés.
+                    var nonPerfumePattern =
+                        @"\b(body lotion|lait corps|body cream|shower gel|gel douche|" +
+                        @"deodorant|déodorant|coffret|gift set|gift sets|discovery set|" +
+                        @"kit découverte|miniatures|discovery kit|travel set)\b";
+
+                    if (Regex.IsMatch(
+                        name,
+                        nonPerfumePattern,
+                        RegexOptions.IgnoreCase))
+                    {
+                        Console.WriteLine(
+                            $"[NAYA RESEARCH SKIP NON-PERFUME] {name}");
+                        continue;
+                    }
+
+                    // Déduplication par nom commercial.
                     var key = NormalizeResearchKey(name);
 
                     if (!knownPerfumes.Add(key))

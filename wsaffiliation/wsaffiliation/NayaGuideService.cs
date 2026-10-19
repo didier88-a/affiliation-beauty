@@ -557,6 +557,60 @@ public class NayaGuideService
     Ne crée aucune URL commerciale. Ne génère aucun product_id fictif.
     Les associations commerciales seront faites séparément par le backend.
 
+    
+    IMPORTANT — RECHERCHE ET COUVERTURE DU CATALOGUE
+
+    1. Recherche d'abord le site officiel de la marque :
+       son catalogue, ses collections et ses fiches produits.
+
+    2. Identifie les principales collections et les parfums associés.
+       Recherche plusieurs références dans chaque collection pertinente.
+
+    3. Pour chaque parfum, vérifie autant que possible :
+       - son nom commercial exact ;
+       - sa collection ;
+       - sa concentration ;
+       - son genre, si la marque le précise ;
+       - ses notes olfactives ;
+       - les sources réellement consultées.
+
+    4. Génère un objectif de 15 à 20 références distinctes.
+       Retourne au moins 10 références lorsque ce nombre peut être
+       vérifié à partir des sources disponibles.
+
+    5. Si la recherche initiale ne trouve qu'un ou deux parfums,
+       approfondis la recherche sur les collections et les fiches officielles
+       avant de rédiger le guide final.
+
+    6. N'invente jamais de références pour atteindre un nombre cible.
+       Si les informations sont insuffisantes, retourne uniquement
+       les références identifiables et signale les limites de recherche.
+
+    7. Ne compte pas les coffrets, déodorants, gels douche ou autres
+       produits dérivés comme des parfums distincts.
+
+    8. Les différentes concentrations d'un même parfum peuvent être
+       des références distinctes uniquement si elles existent réellement.
+       Ne crée pas de doublons artificiels.
+
+    9. Recherche également les parfums essentiels absents du catalogue
+       Supabase. Ils peuvent figurer dans le guide sans lien affilié.
+
+    10. Chaque parfum doit avoir un identifiant stable, un nom exact,
+        un slug unique, un objet editorial et un objet verification.
+
+    11. Chaque parfum doit posséder ses propres sources de vérification.
+        N'invente aucune URL et ne déclare pas une référence vérifiée
+        si les sources consultées ne le permettent pas.
+
+    12. Le tableau JSON "perfumes" doit contenir toutes les références
+        identifiées et suffisamment documentées, pas seulement
+        le parfum le plus populaire.
+
+    13. Mets à jour "coverage" en fonction de la recherche réellement faite.
+        Ne marque jamais le catalogue comme exhaustif sans preuve.
+    
+        
     Retourne uniquement un objet JSON valide ayant cette structure :
 
     {
@@ -654,16 +708,40 @@ public class NayaGuideService
     restent à vérifier.
     """;
 
+
         var userPrompt = $"""
-    Génère le guide de parfumerie pour la marque : {brandName}.
+                Crée un guide éditorial complet pour la marque : {brandName}.
 
-    Catalogue commercial déjà présent dans Supabase :
-    {catalogJson}
+                OBJECTIF :
+                Identifier les parfums emblématiques et les références actuelles
+                de cette marque, en recherchant plusieurs collections distinctes.
 
-    Le catalogue commercial sert à identifier les références disponibles.
-    Recherche également les parfums essentiels absents de ce catalogue :
-    ils peuvent apparaître dans le guide, mais sans lien affilié.
-    """;
+                CATALOGUE SUPABASE :
+                {catalogJson}
+
+                MÉTHODE DE RECHERCHE :
+                - Commence par les sources officielles de la marque.
+                - Identifie les collections importantes.
+                - Recherche les parfums de chaque collection.
+                - Consulte les fiches individuelles pour confirmer les références.
+                - Complète avec des sources fiables lorsque les informations officielles
+                  sont insuffisantes.
+                - Recherche les parfums absents du catalogue Supabase.
+
+                RÉSULTAT ATTENDU :
+                - Vise 15 à 20 parfums distincts si les sources le permettent.
+                - Ne retourne pas un seul parfum si d'autres références vérifiables
+                  existent dans les collections de la marque.
+                - Chaque référence doit avoir son nom exact et ses sources.
+                - N'invente aucun parfum, aucune note et aucune source.
+                - Le tableau "perfumes" doit contenir les références documentées.
+                - Le tableau "collections" doit refléter les collections réellement
+                  identifiées pendant la recherche.
+                - Les liens affiliés seront associés séparément par le backend.
+
+                Retourne uniquement le JSON conforme au schéma demandé.
+                """;
+
 
         var requestBody = new
         {

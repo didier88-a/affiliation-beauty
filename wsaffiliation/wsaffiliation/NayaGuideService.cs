@@ -925,6 +925,15 @@ public class NayaGuideService
 
         var cleanJson = ExtractJson(json);
 
+        using var checkDocument = JsonDocument.Parse(cleanJson);
+
+        var perfumeCount = checkDocument.RootElement
+            .GetProperty("perfumes")
+            .GetArrayLength();
+
+        Console.WriteLine(
+            $"[NAYA GENERATED PERFUMES] {perfumeCount}");
+
         try
         {
             var guide = JsonDocument.Parse(cleanJson);

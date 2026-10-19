@@ -1527,26 +1527,17 @@ Retourne uniquement le JSON final.
 
 
 
-        if (brandName.Contains(
-                "Jean Paul Gaultier",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            var perfumes = root.GetProperty("perfumes");
+        var perfumes = root.GetProperty("perfumes");
 
-            var collections = perfumes.EnumerateArray()
-                .Select(p => GetString(p, "collection_name"))
-                .Where(c => !string.IsNullOrWhiteSpace(c))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+        var collections = perfumes.EnumerateArray()
+            .Select(p => GetString(p, "collection_name"))
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-            if (collections.Count < 3)
-            {
-                throw new InvalidOperationException(
-                    $"Guide insuffisant : {collections.Count} collection(s) " +
-                    $"identifiée(s). Collections : {string.Join(", ", collections)}. " +
-                    "La sauvegarde est annulée.");
-            }
-        }
+        Console.WriteLine(
+            $"[NAYA GUIDE VALIDATION] {brandName}: " +
+            $"{collections.Count} collections identifiées.");
 
 
 

@@ -98,8 +98,8 @@ public class NayaGuideService
 
 
     public async Task<JsonDocument> GetBrandProductsAsync(
-        string brand,
-        CancellationToken cancellationToken = default)
+     string brand,
+     CancellationToken cancellationToken = default)
     {
         var encodedBrand = Uri.EscapeDataString(
             $"ilike.{brand}");
@@ -127,6 +127,109 @@ public class NayaGuideService
         return JsonDocument.Parse(body);
     }
 
+    public async Task<string?> GetPerfumeImageAsync(
+    string brand,
+    string perfumeName,
+    CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(brand) ||
+            string.IsNullOrWhiteSpace(perfumeName))
+        {
+            return null;
+        }
+
+        // Recherche par nom contenant le nom du parfum.
+        var encodedName = Uri.EscapeDataString(
+            $"ilike.*{perfumeName.Trim()}*");
+
+        var encodedBrand = Uri.EscapeDataString(
+            $"ilike.{brand.Trim()}");
+
+        var url =
+            $"products?select=name,image,brand" +
+            $"&brand={encodedBrand}" +
+            $"&category=eq.Parfum" +
+            $"&name={encodedName}" +
+            $"&order=name.asc" +
+            $"&limit=20";
+
+        using var response = await httpClient.GetAsync(
+            url, cancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"[NAYA IMAGE SEARCH ERROR] {perfumeName}: " +
+                $"{(int)response.StatusCode} - {body}");
+
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(body);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var products = document.RootElement
+            .EnumerateArray()
+            .Select(p => new
+            {
+                Name = GetString(p, "name")?.Trim(),
+                Image = GetString(p, "image")?.Trim()
+            })
+            .Where(p =>
+                !string.IsNullOrWhiteSpace(p.Name) &&
+                !string.IsNullOrWhiteSpace(p.Image))
+            .ToList();
+
+        if (products.Count == 0)
+        {
+            Console.WriteLine(
+                $"[NAYA IMAGE NOT FOUND] {perfumeName}");
+
+            return null;
+        }
+
+        // 1. Correspondance exacte, sans tenir compte de la casse.
+        var exact = products.FirstOrDefault(p =>
+            string.Equals(
+                p.Name,
+                perfumeName.Trim(),
+                StringComparison.OrdinalIgnoreCase));
+
+        if (exact != null)
+        {
+            Console.WriteLine(
+                $"[NAYA IMAGE EXACT] {perfumeName} -> {exact.Name}");
+
+            return exact.Image;
+        }
+
+        // 2. Correspondance partielle prudente.
+        // Évite de prendre automatiquement l'image d'un flanker
+        // lorsque le nom recherché est plus court.
+        var normalizedSearch = NormalizeResearchKey(perfumeName);
+
+        var partial = products.FirstOrDefault(p =>
+            NormalizeResearchKey(p.Name!) == normalizedSearch);
+
+        if (partial != null)
+        {
+            Console.WriteLine(
+                $"[NAYA IMAGE NORMALIZED] {perfumeName} -> {partial.Name}");
+
+            return partial.Image;
+        }
+
+        Console.WriteLine(
+            $"[NAYA IMAGE AMBIGUOUS] {perfumeName}: " +
+            $"{products.Count} résultats, aucun nom suffisamment proche.");
+
+        return null;
+    }
 
     public async Task<long> SaveBrandGuideAsync(
         JsonElement guide,
@@ -719,11 +822,17 @@ public class NayaGuideService
         N'invente aucune URL et ne déclare pas une référence vérifiée
         si les sources consultées ne le permettent pas.
 
-    12. Le tableau JSON "perfumes" doit contenir toutes les références
+    12. Pour chaque parfum, ajoute le champ "image_url".
+        Utilise uniquement une URL d'image réellement trouvée
+        et vérifiée, correspondant exactement au flacon.
+        Si aucune image fiable n'est disponible, utilise null.
+        N'invente jamais d'URL.
+
+    13. Le tableau JSON "perfumes" doit contenir toutes les références
         identifiées et suffisamment documentées, pas seulement
         le parfum le plus populaire.
 
-    13. Mets à jour "coverage" en fonction de la recherche réellement faite.
+    14. Mets à jour "coverage" en fonction de la recherche réellement faite.
         Ne marque jamais le catalogue comme exhaustif sans preuve.
     
         
@@ -780,6 +889,7 @@ public class NayaGuideService
           "id": "identifiant-stable-du-parfum",
           "name": "Nom exact du parfum",
           "slug": "slug-du-parfum",
+          "image_url": null,
           "collection_name": null,
           "concentration": null,
           "gender": null,
@@ -1149,11 +1259,19 @@ Retourne uniquement le JSON final.
             var verificationSources = JsonNode.Parse(
                 sourceUrls.ToJsonString()) ?? new JsonArray();
 
+            var imageUrl = await GetPerfumeImageAsync(
+                brandName,
+                name,
+                cancellationToken);             
+
             guidePerfumes.Add(new JsonObject
             {
                 ["id"] = perfumeId,
                 ["name"] = name,
                 ["slug"] = perfumeSlug,
+                ["image_url"] = string.IsNullOrWhiteSpace(imageUrl)
+                    ? null
+                    : JsonValue.Create(imageUrl),
                 ["collection_name"] = collectionName,
                 ["concentration"] = concentration,
                 ["gender"] = gender,
@@ -1852,6 +1970,12 @@ Les URL doivent être des URL réellement consultées.
 Le statut doit rester needs_review tant que les informations
 n'ont pas été vérifiées indépendamment.
 
+Pour chaque parfum, recherche également l'URL de son image officielle.
+- Privilégie l'image de la fiche produit officielle de la marque.
+- Retourne image_url uniquement si l'URL a réellement été trouvée et vérifiée.
+- N'invente jamais d'URL d'image.
+- Si aucune image fiable n'est trouvée, utilise null.
+
 Retourne uniquement un JSON valide :
 {
   "perfumes": [
@@ -1861,6 +1985,7 @@ Retourne uniquement un JSON valide :
       "collection_name": "Nom de la collection",
       "concentration": null,
       "gender": null,
+      "image_url": null,
       "source_urls": [],
       "verification_status": "needs_review"
     }
@@ -2040,6 +2165,8 @@ sans inventer de références pour atteindre un nombre cible.
                     concentration = GetString(p, "concentration"),
 
                     gender = GetString(p, "gender"),
+
+                    image_url = GetString(p, "image_url"),
 
                     source_urls = p.TryGetProperty(
                         "source_urls", out var urls)

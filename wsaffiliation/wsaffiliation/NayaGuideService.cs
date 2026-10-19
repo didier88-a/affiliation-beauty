@@ -902,4 +902,233 @@ public class NayaGuideService
     }
 
 
+    public async Task<object?> GetBrandGuideAsync(
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new ArgumentException("Le slug est obligatoire.");
+
+        // 1. Lire le guide.
+        var guideUrl = SupabaseRestUrl(
+            "brand_guides?select=id,brand,slug,language,title," +
+            "meta_description,content_json,research_status," +
+            "publication_status,updated_at" +
+            $"&slug=eq.{Uri.EscapeDataString(slug)}&limit=1");
+
+        using var guideDoc = await GetSupabaseJsonAsync(
+            guideUrl, cancellationToken);
+
+        var guideArray = guideDoc.RootElement;
+
+        if (guideArray.GetArrayLength() == 0)
+            return null;
+
+        var guide = guideArray[0].Clone();
+        var guideId = guide.GetProperty("id").GetInt64();
+
+        // 2. Lire les parfums du guide.
+        var perfumesUrl = SupabaseRestUrl(
+            "perfumes?select=id,perfume_key,name,slug," +
+            "collection_name,concentration,gender,editorial_json," +
+            "verification_status" +
+            $"&brand_guide_id=eq.{guideId}&order=name.asc");
+
+        using var perfumesDoc = await GetSupabaseJsonAsync(
+            perfumesUrl, cancellationToken);
+
+        var perfumeRows = perfumesDoc.RootElement
+            .EnumerateArray()
+            .Select(p => p.Clone())
+            .ToList();
+
+        var perfumeIds = perfumeRows
+            .Select(p => p.GetProperty("id").GetInt64())
+            .ToList();
+
+        // Un guide sans parfum reste lisible.
+        if (perfumeIds.Count == 0)
+        {
+            return new
+            {
+                guide,
+                perfumes = Array.Empty<object>()
+            };
+        }
+
+        // 3. Lire toutes les associations en une requête.
+        var perfumeIdsFilter = string.Join(",", perfumeIds);
+
+        var matchesUrl = SupabaseRestUrl(
+            "perfume_product_matches?select=perfume_id,product_id," +
+            "match_status,match_reason" +
+            $"&perfume_id=in.({perfumeIdsFilter})");
+
+        using var matchesDoc = await GetSupabaseJsonAsync(
+            matchesUrl, cancellationToken);
+
+        var matches = matchesDoc.RootElement
+            .EnumerateArray()
+            .Select(m => m.Clone())
+            .ToList();
+
+        var productIds = matches
+            .Select(m => m.GetProperty("product_id").GetInt64())
+            .Distinct()
+            .ToList();
+
+        // 4. Lire les produits réels dans products.
+        var productsById = new Dictionary<long, JsonElement>();
+
+        if (productIds.Count > 0)
+        {
+            var productIdsFilter = string.Join(",", productIds);
+
+            var productsUrl = SupabaseRestUrl(
+                "products?select=id,brand,name,short_name,image," +
+                "description,product_data,naya_attributes" +
+                $"&id=in.({productIdsFilter})");
+
+            using var productsDoc = await GetSupabaseJsonAsync(
+                productsUrl, cancellationToken);
+
+            foreach (var product in productsDoc.RootElement.EnumerateArray())
+            {
+                var id = product.GetProperty("id").GetInt64();
+                productsById[id] = product.Clone();
+            }
+        }
+
+        // 5. Construire chaque fiche avec ses produits affiliés.
+        var resultPerfumes = new List<object>();
+
+        foreach (var perfume in perfumeRows)
+        {
+            var perfumeId = perfume.GetProperty("id").GetInt64();
+
+            var affiliateProducts = new List<object>();
+
+            foreach (var match in matches.Where(m =>
+                m.GetProperty("perfume_id").GetInt64() == perfumeId))
+            {
+                var productId = match.GetProperty("product_id").GetInt64();
+
+                if (!productsById.TryGetValue(productId, out var product))
+                    continue;
+
+                var productData = GetObjectProperty(
+                    product, "product_data");
+
+                var attributes = GetObjectProperty(
+                    product, "naya_attributes");
+
+                var url = ReadString(productData, "url");
+
+                // N'exposer que les URL HTTP(S) valides.
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                    (uri.Scheme != Uri.UriSchemeHttps &&
+                     uri.Scheme != Uri.UriSchemeHttp))
+                {
+                    url = null;
+                }
+
+                affiliateProducts.Add(new
+                {
+                    id = productId,
+                    brand = ReadString(product, "brand"),
+                    name = ReadString(product, "name"),
+                    shortName = ReadString(product, "short_name"),
+                    image = ReadString(product, "image"),
+                    description = ReadString(product, "description"),
+                    url,
+                    source = ReadString(productData, "source"),
+                    concentration = ReadString(attributes, "concentration"),
+                    matchStatus = ReadString(match, "match_status"),
+                    matchReason = ReadString(match, "match_reason")
+                });
+            }
+
+            resultPerfumes.Add(new
+            {
+                id = perfumeId,
+                perfumeKey = ReadString(perfume, "perfume_key"),
+                name = ReadString(perfume, "name"),
+                slug = ReadString(perfume, "slug"),
+                collectionName = ReadString(perfume, "collection_name"),
+                concentration = ReadString(perfume, "concentration"),
+                gender = ReadString(perfume, "gender"),
+                verificationStatus = ReadString(
+                    perfume, "verification_status"),
+                editorial = GetObjectProperty(
+                    perfume, "editorial_json").Clone(),
+                affiliateProducts
+            });
+        }
+
+        return new
+        {
+            guide,
+            perfumes = resultPerfumes
+        };
+    }
+
+    private string SupabaseRestUrl(string path)
+    {
+        if (string.IsNullOrWhiteSpace(supabaseUrl))
+            throw new InvalidOperationException(
+                "SUPABASE_URL est manquante.");
+
+        return $"{supabaseUrl.TrimEnd('/')}/rest/v1/{path}";
+    }
+
+    private async Task<JsonDocument> GetSupabaseJsonAsync(
+        string url,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.GetAsync(
+            url, cancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur Supabase {(int)response.StatusCode}: {body}");
+        }
+
+        return JsonDocument.Parse(body);
+    }
+
+    private static JsonElement GetObjectProperty(
+        JsonElement element,
+        string propertyName)
+    {
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out var value) &&
+            value.ValueKind == JsonValueKind.Object)
+        {
+            return value;
+        }
+
+        return default;
+    }
+
+    private static string? ReadString(
+        JsonElement element,
+        string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object ||
+            !element.TryGetProperty(propertyName, out var value))
+            return null;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            _ => null
+        };
+    }
+
+
 }

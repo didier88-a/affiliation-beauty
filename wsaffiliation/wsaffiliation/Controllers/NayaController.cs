@@ -2116,6 +2116,53 @@ document.dispatchEvent(
 
 
 
+        [HttpGet("guides/by-slug/{slug}")]
+        public async Task<IActionResult> GetGuideBySlug(
+            string slug,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _guideService.GetBrandGuideAsync(
+                    slug, cancellationToken);
+
+                if (result == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        error = "Guide introuvable."
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    data = result
+                });
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(499, new
+                {
+                    success = false,
+                    error = "Requête annulée."
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"[NAYA GUIDE READ ERROR] {ex}");
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Impossible de charger le guide."
+                });
+            }
+        }
+
 
 
         private async Task<List<PerfumeNote>> FetchPerfumeNotes(

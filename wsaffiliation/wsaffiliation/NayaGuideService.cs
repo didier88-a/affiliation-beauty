@@ -617,6 +617,11 @@ public class NayaGuideService
 
         var catalogJson = JsonSerializer.Serialize(productsForResearch);
 
+        var researchedCatalogJson = await ResearchBrandCatalogAsync(
+    brandName,
+    catalogJson,
+    cancellationToken);
+
         var instructions = """
     Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
 
@@ -790,38 +795,36 @@ public class NayaGuideService
     """;
 
 
+
         var userPrompt = $"""
-                Crée un guide éditorial complet pour la marque : {brandName}.
+Crée un guide éditorial complet pour la marque : {brandName}.
 
-                OBJECTIF :
-                Identifier les parfums emblématiques et les références actuelles
-                de cette marque, en recherchant plusieurs collections distinctes.
+CATALOGUE COMMERCIAL SUPABASE :
+{catalogJson}
 
-                CATALOGUE SUPABASE :
-                {catalogJson}
+RÉSULTATS DE LA RECHERCHE PRÉALABLE :
+{researchedCatalogJson}
 
-                MÉTHODE DE RECHERCHE :
-                - Commence par les sources officielles de la marque.
-                - Identifie les collections importantes.
-                - Recherche les parfums de chaque collection.
-                - Consulte les fiches individuelles pour confirmer les références.
-                - Complète avec des sources fiables lorsque les informations officielles
-                  sont insuffisantes.
-                - Recherche les parfums absents du catalogue Supabase.
+INSTRUCTIONS :
+- Utilise les références de la recherche préalable comme base du guide.
+- Couvre les différentes collections identifiées.
+- Conserve les noms commerciaux exacts.
+- Ne crée pas de nouvelles références sans source vérifiable.
+- Élimine les doublons réels.
+- Conserve les concentrations distinctes lorsqu'elles correspondent
+  à des références réellement commercialisées.
+- Les parfums absents de Supabase peuvent figurer dans le guide,
+  sans lien affilié.
+- Conserve les URL sources disponibles dans les résultats de recherche.
+- N'invente aucune URL ni aucune note olfactive.
+- Signale les informations non vérifiées.
+- Génère les descriptions éditoriales en français.
+- Respecte exactement le schéma JSON demandé dans les instructions.
 
-                RÉSULTAT ATTENDU :
-                - Vise 15 à 20 parfums distincts si les sources le permettent.
-                - Ne retourne pas un seul parfum si d'autres références vérifiables
-                  existent dans les collections de la marque.
-                - Chaque référence doit avoir son nom exact et ses sources.
-                - N'invente aucun parfum, aucune note et aucune source.
-                - Le tableau "perfumes" doit contenir les références documentées.
-                - Le tableau "collections" doit refléter les collections réellement
-                  identifiées pendant la recherche.
-                - Les liens affiliés seront associés séparément par le backend.
+Retourne uniquement le JSON final.
+""";
 
-                Retourne uniquement le JSON conforme au schéma demandé.
-                """;
+
 
 
         var requestBody = new
@@ -829,12 +832,9 @@ public class NayaGuideService
             model = openAiModel,
             instructions,
             input = userPrompt,
-            tools = new[]
-                {
-                new { type = "web_search" }
-                },
             max_output_tokens = 30000
         };
+
 
         using var request = new HttpRequestMessage(
             HttpMethod.Post, "responses");
@@ -1063,6 +1063,31 @@ public class NayaGuideService
             brandName, cancellationToken);
 
         var root = guide.RootElement;
+
+
+
+        if (brandName.Contains(
+                "Jean Paul Gaultier",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var perfumes = root.GetProperty("perfumes");
+
+            var collections = perfumes.EnumerateArray()
+                .Select(p => GetString(p, "collection_name"))
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (collections.Count < 3)
+            {
+                throw new InvalidOperationException(
+                    $"Guide insuffisant : {collections.Count} collection(s) " +
+                    $"identifiée(s). Collections : {string.Join(", ", collections)}. " +
+                    "La sauvegarde est annulée.");
+            }
+        }
+
+
 
         var guideId = await SaveBrandGuideAsync(
             root, cancellationToken);
@@ -1350,6 +1375,180 @@ public class NayaGuideService
             _ => null
         };
     }
+
+
+    private async Task<string> ResearchBrandCatalogAsync(
+        string brandName,
+        string existingCatalogJson,
+        CancellationToken cancellationToken = default)
+    {
+        var instructions = """
+    Tu es un chercheur spécialisé en parfumerie.
+
+    Recherche la marque demandée en utilisant la recherche Web.
+    Privilégie le site officiel de la marque et ses fiches produits.
+
+    Identifie :
+    - les principales collections de parfums ;
+    - les références actuelles et emblématiques de chaque collection ;
+    - le nom commercial exact de chaque parfum ;
+    - sa concentration, lorsqu'elle est confirmée ;
+    - son genre, lorsqu'il est précisé par la marque ;
+    - les sources réellement consultées.
+
+    Recherche plusieurs collections, et pas uniquement la plus populaire.
+    Le nombre de collections dépend de la marque.
+    Ne suppose pas que toutes les marques ont le même catalogue.
+
+    N'inclus pas les coffrets, déodorants ou gels douche comme parfums.
+    Ne crée aucune référence fictive.
+    Ne confonds pas deux concentrations sans vérifier leur existence.
+    Si une information n'est pas confirmée, utilise null.
+    Si une source n'est pas disponible, indique cette limite.
+
+    Retourne uniquement un objet JSON valide avec cette structure :
+
+    {
+      "brand": "Nom de la marque",
+      "collections": [
+        {
+          "name": "Nom de la collection",
+          "source_urls": []
+        }
+      ],
+      "perfumes": [
+        {
+          "id": "identifiant-stable",
+          "name": "Nom commercial exact",
+          "collection_name": "Collection ou null",
+          "concentration": "Concentration ou null",
+          "gender": "Genre ou null",
+          "source_urls": [],
+          "verification_status": "needs_review"
+        }
+      ],
+      "limitations": []
+    }
+
+    Les URL doivent être des URL réellement consultées.
+    Ne déclare pas une référence vérifiée sans éléments suffisants.
+    """;
+
+        var userPrompt = $"""
+    Recherche le catalogue de parfums de la marque :
+    {brandName}
+
+    Produits déjà présents dans le catalogue commercial Supabase :
+    {existingCatalogJson}
+
+    Utilise ce catalogue comme point de départ, pas comme limite.
+    Recherche également les références absentes de Supabase.
+    Évite les doublons et couvre les différentes collections pertinentes.
+    """;
+
+        var requestBody = new
+        {
+            model = openAiModel,
+            instructions,
+            input = userPrompt,
+            tools = new[]
+            {
+            new { type = "web_search" }
+        },
+            max_output_tokens = 10000
+        };
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, "responses");
+
+        request.Content = JsonContent.Create(requestBody);
+
+        using var response = await openAiHttpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur recherche OpenAI {(int)response.StatusCode}: " +
+                responseBody);
+        }
+
+        using var apiResponse = JsonDocument.Parse(responseBody);
+        var root = apiResponse.RootElement;
+
+        var status = GetString(root, "status");
+
+        if (!string.Equals(status, "completed",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Recherche catalogue incomplète. Statut : {status}");
+        }
+
+        var outputTexts = new List<string>();
+
+        if (root.TryGetProperty("output", out var output))
+        {
+            foreach (var item in output.EnumerateArray())
+            {
+                if (!item.TryGetProperty("content", out var content))
+                    continue;
+
+                foreach (var block in content.EnumerateArray())
+                {
+                    if (GetString(block, "type") == "output_text" &&
+                        block.TryGetProperty("text", out var textElement))
+                    {
+                        outputTexts.Add(textElement.GetString() ?? "");
+                    }
+                }
+            }
+        }
+
+        var rawText = string.Join("\n", outputTexts);
+
+        if (string.IsNullOrWhiteSpace(rawText))
+        {
+            throw new InvalidOperationException(
+                "La recherche OpenAI n'a retourné aucun résultat.");
+        }
+
+        var cleanJson = ExtractJson(rawText);
+
+        using var researchDocument = JsonDocument.Parse(cleanJson);
+
+        var researchRoot = researchDocument.RootElement;
+
+        if (!researchRoot.TryGetProperty("collections", out var collections) ||
+            collections.ValueKind != JsonValueKind.Array ||
+            !researchRoot.TryGetProperty("perfumes", out var perfumes) ||
+            perfumes.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException(
+                "Le résultat de recherche ne contient pas les tableaux " +
+                "'collections' et 'perfumes'.");
+        }
+
+        if (perfumes.GetArrayLength() == 0)
+        {
+            throw new InvalidOperationException(
+                $"Aucun parfum trouvé pour {brandName}. " +
+                "La génération du guide est annulée.");
+        }
+
+        Console.WriteLine(
+            $"[NAYA RESEARCH] {brandName}: " +
+            $"{collections.GetArrayLength()} collections, " +
+            $"{perfumes.GetArrayLength()} parfums.");
+
+        return cleanJson;
+    }
+
 
 
 }

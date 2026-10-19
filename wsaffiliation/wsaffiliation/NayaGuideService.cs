@@ -1093,15 +1093,25 @@ Retourne uniquement le JSON final.
                 continue;
 
             // Ne pas ajouter de produits dérivés.
+
+            // Exclure les coffrets et les produits dérivés.
+            var nonPerfumePattern =
+                @"\b(body\s+lotion|body\s+cream|lait\s+corps|" +
+                @"shower\s+gel|gel\s+douche|deodorants?|déodorants?|" +
+                @"coffrets?|gift\s+sets?|discovery\s+sets?|" +
+                @"discovery\s+kits?|kits?\s+de\s+découverte|" +
+                @"miniatures?|travel\s+sets?)\b";
+
             if (Regex.IsMatch(
                 name,
-                @"\b(body lotion|shower gel|deodorant|déodorant|gel douche)\b",
+                nonPerfumePattern,
                 RegexOptions.IgnoreCase))
             {
                 Console.WriteLine(
                     $"[NAYA MERGE SKIP NON-PERFUME] {name}");
                 continue;
             }
+
 
             var key = NormalizeName(name);
 
@@ -1212,9 +1222,10 @@ Retourne uniquement le JSON final.
             new JsonArray(collectionNames.Select(
                 n => (JsonNode?)JsonValue.Create(n)).ToArray());
 
-        coverage["collections_researched"] =
-            new JsonArray(collectionNames.Select(
-                n => (JsonNode?)JsonValue.Create(n)).ToArray());
+        // Ne pas prétendre que toutes les collections ont été vérifiées.
+        coverage["collections_researched"] ??= new JsonArray();
+
+        coverage["limitations"] ??= new JsonArray();
 
         coverage["is_complete"] = false;
 

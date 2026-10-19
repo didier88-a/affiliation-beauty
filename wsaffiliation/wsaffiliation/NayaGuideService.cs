@@ -1741,8 +1741,23 @@ Ne confonds pas une collection avec un parfum individuel.
         var knownCollections = new HashSet<string>(
             StringComparer.OrdinalIgnoreCase);
 
+
+
         foreach (var collection in collectionsElement.EnumerateArray())
         {
+
+            var collectionName = GetString(collection, "name")?.Trim();
+
+            if (string.Equals(
+                collectionName,
+                "Collectors & Gift Sets",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine(
+                    $"[NAYA RESEARCH SKIP COLLECTION] {collectionName}");
+                continue;
+            }
+
             var name = GetString(collection, "name")?.Trim();
 
             if (string.IsNullOrWhiteSpace(name))
@@ -1892,6 +1907,16 @@ sans inventer de références pour atteindre un nombre cible.
 
                     if (!knownPerfumes.Add(key))
                         continue;
+
+                    if (Regex.IsMatch(
+                            name,
+                            @"\b(et|with|plus)\b.*\b(spray de voyage|travel spray|miniature|mini)\b",
+                            RegexOptions.IgnoreCase))
+                    {
+                        Console.WriteLine(
+                            $"[NAYA RESEARCH SKIP NON-PERFUME] {name}");
+                        continue;
+                    }
 
                     allPerfumes.Add(perfume.Clone());
                 }

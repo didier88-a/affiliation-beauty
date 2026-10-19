@@ -671,16 +671,9 @@ public class NayaGuideService
             instructions,
             input = userPrompt,
             tools = new[]
-            {
-            new { type = "web_search_preview" }
-        },
-            text = new
-            {
-                format = new
                 {
-                    type = "json_object"
-                }
-            },
+                new { type = "web_search" }
+                },
             max_output_tokens = 20000
         };
 

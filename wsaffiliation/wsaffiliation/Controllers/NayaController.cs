@@ -21,6 +21,7 @@ namespace wsaffiliation.Controllers
         private readonly NayaSearchService _searchService;
 
         private readonly NayaGuideService _guideService;
+        
 
         private class GuideSeoPayload
         {
@@ -51,6 +52,12 @@ namespace wsaffiliation.Controllers
             _configuration = configuration;
             _searchService = searchService;
             _guideService = guideService;
+        }
+
+
+        public sealed class GenerateGuideRequest
+        {
+            public string BrandName { get; set; } = "";
         }
 
 
@@ -2057,6 +2064,49 @@ document.dispatchEvent(
             }
         }
 
+
+
+        [HttpPost("guides/generate")]
+        public async Task<IActionResult> GenerateGuide(
+            [FromBody] GenerateGuideRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.BrandName))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "BrandName est obligatoire."
+                });
+            }
+
+            try
+            {
+                var result = await _guideService.GenerateAndSaveGuideAsync(
+                    request.BrandName.Trim(),
+                    cancellationToken);
+
+                return Ok(result);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(499, new
+                {
+                    success = false,
+                    error = "La génération a été annulée."
+                });
+            }
+            catch (Exception ex)
+            {
+                // En production, journaliser ex avec ILogger.
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "La génération du guide a échoué."
+                });
+            }
+        }
 
 
 

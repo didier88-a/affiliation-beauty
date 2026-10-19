@@ -1,9 +1,7 @@
 ﻿
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Globalization;
@@ -49,6 +47,21 @@ public class NayaGuideService
 
     private readonly string? supabaseKey =
         Environment.GetEnvironmentVariable("SUPABASE_KEY");
+    
+    private readonly string openAiKey =
+        Environment.GetEnvironmentVariable("OPENAI_API")
+        ?? throw new InvalidOperationException(
+            "OPENAI_API_KEY est manquante.");
+
+    private readonly string openAiModel = "gpt-4o-mini";
+    
+
+    private readonly HttpClient openAiHttpClient = new()
+    {
+        BaseAddress = new Uri("https://api.openai.com/v1/"),
+        Timeout = TimeSpan.FromMinutes(5)
+    };
+
 
     private readonly HttpClient httpClient;
 
@@ -74,7 +87,12 @@ public class NayaGuideService
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
                 "Bearer", supabaseKey);
+
+        openAiHttpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", openAiKey);
+
     }
+
 
     public async Task<JsonDocument> GetBrandProductsAsync(
         string brand,
@@ -478,6 +496,378 @@ public class NayaGuideService
                NormalizeConcentration(available);
     }
 
+
+    public async Task<JsonDocument> GenerateGuideJsonAsync(
+        string brandName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(brandName))
+            throw new ArgumentException("La marque est obligatoire.");
+
+        // Charge les produits existants de cette marque.
+        using var productsDocument =
+            await GetBrandProductsAsync(brandName, cancellationToken);
+
+        // On ne transmet pas les URL commerciales au modèle :
+        // elles seront récupérées directement depuis Supabase.
+        var productsForResearch = productsDocument.RootElement
+            .EnumerateArray()
+            .Select(p => new
+            {
+                id = p.TryGetProperty("id", out var id) ? id.GetInt64() : 0,
+                brand = GetString(p, "brand"),
+                name = GetString(p, "name"),
+                short_name = GetString(p, "short_name"),
+                type = GetString(p, "type"),
+                concentration = GetString(
+                    p.TryGetProperty("naya_attributes", out var attrs)
+                        ? attrs : default,
+                    "concentration"),
+                gender = GetString(
+                    p.TryGetProperty("naya_attributes", out attrs)
+                        ? attrs : default,
+                    "gender"),
+                notes = GetString(
+                    p.TryGetProperty("product_data", out var pd)
+                        ? pd : default,
+                    "notes")
+            })
+            .ToList();
+
+        var catalogJson = JsonSerializer.Serialize(productsForResearch);
+
+        var instructions = """
+    Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
+
+    Recherche des informations fiables sur la marque demandée, ses collections
+    et ses parfums essentiels. Utilise la recherche Web. Privilégie les sources
+    officielles et conserve les URL réellement consultées.
+
+    Rédige en français un guide lumineux, élégant, original et utile au client.
+    Inclus l'histoire, l'identité olfactive, les principales collections,
+    les parfums essentiels, leurs descriptions, leurs notes et les conseils
+    de découverte.
+
+    Ne prétends pas que le catalogue est exhaustif sans vérification.
+    N'invente aucune note, date, concentration, citation ou source.
+    Pour toute donnée inconnue, utilise null ou [].
+    Le contenu doit être rédigé, pas seulement constitué de listes.
+
+    Les produits fournis sont le catalogue commercial disponible dans Supabase.
+    Ne crée aucune URL commerciale. Ne génère aucun product_id fictif.
+    Les associations commerciales seront faites séparément par le backend.
+
+    Retourne uniquement un objet JSON valide ayant cette structure :
+
+    {
+      "brand": {
+        "id": "slug-de-marque",
+        "name": "Nom de la marque"
+      },
+      "metadata": {
+        "language": "fr",
+        "generation_status": "draft",
+        "research_status": "completed",
+        "editorial_status": "generated",
+        "coverage_status": "needs_review"
+      },
+      "seo": {
+        "title": "Titre SEO",
+        "meta_description": "Description SEO",
+        "slug": "guide-parfums-marque",
+        "introduction": "Introduction éditoriale"
+      },
+      "brand_story": {
+        "title": "Histoire de la marque",
+        "history": [],
+        "identity": "Identité de la maison",
+        "olfactory_signature": "Signature olfactive",
+        "editorial_conclusion": "Conclusion",
+        "sources": []
+      },
+      "coverage": {
+        "strategy": "essential_fragrances",
+        "collections_identified": [],
+        "collections_researched": [],
+        "collections_remaining": [],
+        "essential_perfume_count": 0,
+        "catalogue_scope": "current_and_iconic",
+        "is_complete": false,
+        "limitations": []
+      },
+      "collections": [
+        {
+          "id": "collection-slug",
+          "name": "Nom de collection",
+          "description": "Description documentée",
+          "perfume_ids": [],
+          "sources": [],
+          "verification_status": "needs_review"
+        }
+      ],
+      "perfumes": [
+        {
+          "id": "identifiant-stable-du-parfum",
+          "name": "Nom exact du parfum",
+          "slug": "slug-du-parfum",
+          "collection_name": null,
+          "concentration": null,
+          "gender": null,
+          "editorial": {
+            "title": "Titre de la fiche",
+            "introduction": "Texte éditorial original",
+            "description": "Description détaillée",
+            "olfactory_family": [],
+            "character": [],
+            "accords": [],
+            "notes": {
+              "top": [],
+              "heart": [],
+              "base": []
+            },
+            "olfactory_explanation": "Explication des notes",
+            "recommendation": "Conseil de découverte",
+            "occasions": [],
+            "seasons": [],
+            "sources": []
+          },
+          "verification": {
+            "status": "needs_review",
+            "verified_fields": [],
+            "unverified_fields": [],
+            "sources": []
+          }
+        }
+      ],
+      "guide_sections": [],
+      "recommendations": [],
+      "publication": {
+        "status": "draft",
+        "review_required": true,
+        "published_at": null
+      }
+    }
+
+    Chaque parfum doit posséder un id stable, un nom et un slug.
+    Les champs de vérification doivent refléter les recherches réellement faites.
+    Ne marque pas le guide comme complet si des collections importantes
+    restent à vérifier.
+    """;
+
+        var userPrompt = $"""
+    Génère le guide de parfumerie pour la marque : {brandName}.
+
+    Catalogue commercial déjà présent dans Supabase :
+    {catalogJson}
+
+    Le catalogue commercial sert à identifier les références disponibles.
+    Recherche également les parfums essentiels absents de ce catalogue :
+    ils peuvent apparaître dans le guide, mais sans lien affilié.
+    """;
+
+        var requestBody = new
+        {
+            model = openAiModel,
+            instructions,
+            input = userPrompt,
+            tools = new[]
+            {
+            new { type = "web_search_preview" }
+        },
+            text = new
+            {
+                format = new
+                {
+                    type = "json_object"
+                }
+            },
+            max_output_tokens = 20000
+        };
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, "responses");
+
+        request.Content = JsonContent.Create(requestBody);
+
+        using var response = await openAiHttpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur OpenAI {(int)response.StatusCode}: {responseBody}");
+        }
+
+        using var apiResponse = JsonDocument.Parse(responseBody);
+
+        // Extraire le texte de la réponse Responses API.
+        var outputTexts = new List<string>();
+
+        if (apiResponse.RootElement.TryGetProperty(
+            "output", out var output))
+        {
+            foreach (var item in output.EnumerateArray())
+            {
+                if (!item.TryGetProperty("content", out var content))
+                    continue;
+
+                foreach (var block in content.EnumerateArray())
+                {
+                    if (GetString(block, "type") == "output_text" &&
+                        GetString(block, "text") is string text)
+                    {
+                        outputTexts.Add(text);
+                    }
+                }
+            }
+        }
+
+        var json = string.Join("\n", outputTexts);
+
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new InvalidOperationException(
+                "OpenAI n'a retourné aucun JSON exploitable.");
+        }
+
+        var guide = JsonDocument.Parse(json);
+
+        ValidateGuideJson(guide.RootElement);
+
+        return guide;
+    }
+
+
+    private static void ValidateGuideJson(JsonElement guide)
+    {
+        if (guide.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException(
+                "Le guide doit être un objet JSON.");
+
+        if (!guide.TryGetProperty("brand", out var brand) ||
+            string.IsNullOrWhiteSpace(GetString(brand, "name")))
+            throw new InvalidOperationException(
+                "Le champ brand.name est obligatoire.");
+
+        if (!guide.TryGetProperty("seo", out var seo) ||
+            string.IsNullOrWhiteSpace(GetString(seo, "slug")))
+            throw new InvalidOperationException(
+                "Le champ seo.slug est obligatoire.");
+
+        if (!guide.TryGetProperty("perfumes", out var perfumes) ||
+            perfumes.ValueKind != JsonValueKind.Array ||
+            perfumes.GetArrayLength() == 0)
+            throw new InvalidOperationException(
+                "Le guide doit contenir au moins un parfum.");
+
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var perfume in perfumes.EnumerateArray())
+        {
+            var id = GetString(perfume, "id");
+            var name = GetString(perfume, "name");
+            var slug = GetString(perfume, "slug");
+
+            if (string.IsNullOrWhiteSpace(id) ||
+                string.IsNullOrWhiteSpace(name) ||
+                string.IsNullOrWhiteSpace(slug))
+            {
+                throw new InvalidOperationException(
+                    "Chaque parfum doit avoir id, name et slug.");
+            }
+
+            if (!ids.Add(id))
+            {
+                throw new InvalidOperationException(
+                    $"Identifiant de parfum en double : {id}");
+            }
+        }
+    }
+
+
+
+    public async Task<int> MatchSavedGuideProductsAsync(
+        long guideId,
+        string brand,
+        CancellationToken cancellationToken = default)
+    {
+        var url =
+            $"perfumes?select=id,name,concentration" +
+            $"&brand_guide_id=eq.{guideId}";
+
+        using var response = await httpClient.GetAsync(
+            url, cancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur lecture des parfums : " +
+                $"{(int)response.StatusCode} - {body}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+
+        var totalMatches = 0;
+
+        foreach (var perfume in document.RootElement.EnumerateArray())
+        {
+            var perfumeId = perfume.GetProperty("id").GetInt64();
+            var name = GetString(perfume, "name");
+
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            var concentration = GetString(perfume, "concentration");
+
+            totalMatches += await MatchAffiliateProductsAsync(
+                perfumeId,
+                brand,
+                name,
+                concentration,
+                cancellationToken);
+        }
+
+        return totalMatches;
+    }
+
+
+    public async Task<object> GenerateAndSaveGuideAsync(
+        string brandName,
+        CancellationToken cancellationToken = default)
+    {
+        using var guide = await GenerateGuideJsonAsync(
+            brandName, cancellationToken);
+
+        var root = guide.RootElement;
+
+        var guideId = await SaveBrandGuideAsync(
+            root, cancellationToken);
+
+        var perfumeCount = await SavePerfumesAsync(
+            guideId, root, cancellationToken);
+
+        var matchedCount = await MatchSavedGuideProductsAsync(
+            guideId, brandName, cancellationToken);
+
+        return new
+        {
+            success = true,
+            guideId,
+            brand = GetString(root.GetProperty("brand"), "name"),
+            perfumeCount,
+            affiliateMatches = matchedCount,
+            researchStatus = "completed",
+            message = "Guide généré et enregistré. Les correspondances affiliées restent à vérifier."
+        };
+    }
 
 
 

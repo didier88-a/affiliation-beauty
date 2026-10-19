@@ -20,6 +20,8 @@ namespace wsaffiliation.Controllers
 
         private readonly NayaSearchService _searchService;
 
+        private readonly NayaGuideService _guideService;
+
         private class GuideSeoPayload
         {
             public string Title { get; set; } = "";
@@ -43,10 +45,12 @@ namespace wsaffiliation.Controllers
 
         public NayaController(
             IConfiguration configuration,
-            NayaSearchService searchService)
+            NayaSearchService searchService,
+            NayaGuideService guideService)
         {
             _configuration = configuration;
             _searchService = searchService;
+            _guideService = guideService;
         }
 
 
@@ -1975,6 +1979,88 @@ document.dispatchEvent(
                 });
             }
         }
+
+
+
+
+        // Naya Guide populaire comme givenchy , chanel, ....
+
+        [HttpPost("guides/import")]
+        public async Task<IActionResult> ImportGuide(
+            [FromBody] JsonElement guide,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (guide.ValueKind != JsonValueKind.Object ||
+                    !guide.TryGetProperty("brand", out var brand) ||
+                    brand.ValueKind != JsonValueKind.Object ||
+                    !brand.TryGetProperty("name", out var brandName) ||
+                    string.IsNullOrWhiteSpace(brandName.GetString()))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Le JSON doit contenir brand.name."
+                    });
+                }
+
+                if (!guide.TryGetProperty("seo", out var seo) ||
+                    seo.ValueKind != JsonValueKind.Object ||
+                    !seo.TryGetProperty("slug", out var slug) ||
+                    string.IsNullOrWhiteSpace(slug.GetString()))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Le JSON doit contenir seo.slug."
+                    });
+                }
+
+                if (!guide.TryGetProperty("perfumes", out var perfumes) ||
+                    perfumes.ValueKind != JsonValueKind.Array)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Le JSON doit contenir un tableau perfumes."
+                    });
+                }
+
+                var guideId = await _guideService.SaveBrandGuideAsync(
+                    guide,
+                    cancellationToken);
+
+                var perfumeCount = await _guideService.SavePerfumesAsync(
+                    guideId,
+                    guide,
+                    cancellationToken);
+
+                return Ok(new
+                {
+                    success = true,
+                    guideId,
+                    brand = brandName.GetString(),
+                    perfumeCount,
+                    message = "Guide et parfums enregistrés dans Supabase."
+                });
+            }
+            catch (Exception ex)
+            {
+                // Utiliser ILogger en production et éviter d'exposer
+                // les détails internes des exceptions au client.
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Erreur lors de l'enregistrement du guide."
+                });
+            }
+        }
+
+
+
+
+
 
         private async Task<List<PerfumeNote>> FetchPerfumeNotes(
             HttpClient client,

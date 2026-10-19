@@ -22,6 +22,7 @@ builder.Services.AddHttpClient();
 // ============================================================
 
 builder.Services.AddSingleton<NayaSearchService>();
+builder.Services.AddSingleton<NayaGuideService>();
 
 // Lance automatiquement le chargement du cache
 // et son rafraîchissement périodique

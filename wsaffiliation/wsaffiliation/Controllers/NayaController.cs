@@ -2097,15 +2097,21 @@ document.dispatchEvent(
                     error = "La génération a été annulée."
                 });
             }
+
             catch (Exception ex)
             {
-                // En production, journaliser ex avec ILogger.
+                // L'erreur complète apparaîtra dans les logs Render.
+                Console.Error.WriteLine(
+                    $"[NAYA GUIDE ERROR] {ex}");
+
                 return StatusCode(500, new
                 {
                     success = false,
-                    error = "La génération du guide a échoué."
+                    error = "La génération du guide a échoué.",
+                    details = ex.Message
                 });
             }
+
         }
 
 

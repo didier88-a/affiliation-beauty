@@ -752,7 +752,7 @@ public class NayaGuideService
                 {
                 new { type = "web_search" }
                 },
-            max_output_tokens = 20000
+            max_output_tokens = 30000
         };
 
         using var request = new HttpRequestMessage(
@@ -775,6 +775,17 @@ public class NayaGuideService
         }
 
         using var apiResponse = JsonDocument.Parse(responseBody);
+
+        var responseRoot = apiResponse.RootElement;
+
+        Console.WriteLine(
+            $"[NAYA OPENAI STATUS] {GetString(responseRoot, "status")}");
+
+        if (responseRoot.TryGetProperty("incomplete_details", out var details))
+        {
+            Console.WriteLine(
+                $"[NAYA OPENAI INCOMPLETE] {details.GetRawText()}");
+        }
 
         // Extraire le texte de la réponse Responses API.
         var outputTexts = new List<string>();
@@ -808,11 +819,28 @@ public class NayaGuideService
 
         var cleanJson = ExtractJson(json);
 
-        var guide = JsonDocument.Parse(cleanJson);
+        try
+        {
+            var guide = JsonDocument.Parse(cleanJson);
 
-        ValidateGuideJson(guide.RootElement);
+            ValidateGuideJson(guide.RootElement);
 
-        return guide;
+            return guide;
+        }
+        catch (JsonException ex)
+        {
+            Console.Error.WriteLine(
+                $"[NAYA GUIDE JSON ERROR] {ex.Message}");
+
+            Console.Error.WriteLine(
+                $"[NAYA GUIDE JSON LENGTH] {cleanJson.Length}");
+
+            Console.Error.WriteLine(
+                $"[NAYA GUIDE JSON END] " +
+                cleanJson.Substring(Math.Max(0, cleanJson.Length - 1500)));
+
+            throw;
+        }
     }
 
 

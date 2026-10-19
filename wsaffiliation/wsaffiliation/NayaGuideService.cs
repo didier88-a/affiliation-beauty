@@ -622,6 +622,33 @@ public class NayaGuideService
     catalogJson,
     cancellationToken);
 
+        using var researchDoc =
+            JsonDocument.Parse(researchedCatalogJson);
+
+        var researchRoot = researchDoc.RootElement;
+
+        Console.WriteLine("[NAYA RESEARCH COLLECTIONS]");
+
+        foreach (var collection in researchRoot
+            .GetProperty("collections").EnumerateArray())
+        {
+            Console.WriteLine(
+                GetString(collection, "name"));
+        }
+
+        Console.WriteLine("[NAYA RESEARCH PERFUMES]");
+
+        foreach (var perfume in researchRoot
+            .GetProperty("perfumes").EnumerateArray())
+        {
+            Console.WriteLine(
+                $"{GetString(perfume, "name")} | " +
+                $"{GetString(perfume, "collection_name")} | " +
+                $"{GetString(perfume, "concentration")}");
+        }
+
+
+
         var instructions = """
     Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
 

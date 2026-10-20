@@ -97,23 +97,32 @@ public class NayaGuideService
     }
 
 
+
     public async Task<JsonDocument> GetBrandProductsAsync(
-     string brand,
-     CancellationToken cancellationToken = default)
+        string brand,
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(brand))
+        {
+            throw new ArgumentException(
+                "La marque est obligatoire.",
+                nameof(brand));
+        }
+
         var encodedBrand = Uri.EscapeDataString(
-            $"ilike.{brand}");
+            $"ilike.{brand.Trim()}");
 
         var url =
-            $"products?select=id,brand,name,short_name," +
-            $"category,sub_category,type,image,description," +
-            $"product_data,naya_attributes" +
+            "products?select=id,brand,name,short_name," +
+            "category,sub_category,type,image,description," +
+            "product_data,naya_attributes,slug,slug_normalized" +
             $"&brand={encodedBrand}" +
-            $"&category=eq.Parfum" +
-            $"&order=name.asc";
+            "&category=eq.Parfum" +
+            "&order=name.asc";
 
         using var response = await httpClient.GetAsync(
-            url, cancellationToken);
+            url,
+            cancellationToken);
 
         var body = await response.Content.ReadAsStringAsync(
             cancellationToken);
@@ -129,58 +138,7 @@ public class NayaGuideService
 
 
 
-
     public async Task<string?> GetPerfumeImageAsync(
-    string brand,
-    string perfumeName,
-    CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(perfumeName))
-            return null;
-
-        var encodedName = Uri.EscapeDataString(
-            $"ilike.%{perfumeName.Trim()}%");
-
-        var url =
-            $"products?select=name,image,brand,category" +
-            $"&name={encodedName}" +
-            $"&limit=20";
-
-        Console.WriteLine($"[IMAGE SEARCH URL] {url}");
-
-        using var response = await httpClient.GetAsync(
-            url, cancellationToken);
-
-        var body = await response.Content.ReadAsStringAsync(
-            cancellationToken);
-
-        Console.WriteLine($"[IMAGE SEARCH STATUS] {(int)response.StatusCode}");
-        Console.WriteLine($"[IMAGE SEARCH BODY] {body}");
-
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        using var document = JsonDocument.Parse(body);
-
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
-            return null;
-
-        foreach (var product in document.RootElement.EnumerateArray())
-        {
-            var name = GetString(product, "name");
-            var image = GetString(product, "image");
-
-            Console.WriteLine(
-                $"[IMAGE CANDIDATE] name={name} | image={image}");
-
-            if (!string.IsNullOrWhiteSpace(image))
-                return image;
-        }
-
-        return null;
-    }
-
-    public async Task<string?> GetPerfumeImageAsync1(
     string brand,
     string perfumeName,
     CancellationToken cancellationToken = default)
@@ -373,6 +331,7 @@ public class NayaGuideService
 
 
 
+
     public async Task<int> SavePerfumesAsync(
         long brandGuideId,
         JsonElement guide,
@@ -386,8 +345,11 @@ public class NayaGuideService
         }
 
         var rows = new List<Dictionary<string, object?>>();
-        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var slugs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var keys = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+        var slugs = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+        var productIds = new HashSet<long>();
 
         foreach (var perfume in perfumes.EnumerateArray())
         {
@@ -403,6 +365,16 @@ public class NayaGuideService
                     "Chaque parfum doit avoir un id, un name et un slug.");
             }
 
+            if (!perfume.TryGetProperty(
+                    "product_id", out var productIdElement)
+                || productIdElement.ValueKind != JsonValueKind.Number
+                || !productIdElement.TryGetInt64(out var productId)
+                || productId <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Le parfum '{name}' doit avoir un product_id valide.");
+            }
+
             if (!keys.Add(key))
             {
                 throw new InvalidOperationException(
@@ -415,6 +387,12 @@ public class NayaGuideService
                     $"Slug de parfum en double : {slug}");
             }
 
+            if (!productIds.Add(productId))
+            {
+                throw new InvalidOperationException(
+                    $"product_id en double : {productId}");
+            }
+
             var editorial = perfume.TryGetProperty(
                 "editorial", out var editorialElement)
                 ? editorialElement.Clone()
@@ -423,6 +401,7 @@ public class NayaGuideService
             rows.Add(new Dictionary<string, object?>
             {
                 ["brand_guide_id"] = brandGuideId,
+                ["product_id"] = productId,
                 ["perfume_key"] = key,
                 ["name"] = name,
                 ["slug"] = slug,
@@ -478,7 +457,7 @@ public class NayaGuideService
             rows.Select(r => (string)r["perfume_key"]!),
             StringComparer.OrdinalIgnoreCase);
 
-        // 2. Upsert les nouvelles références et mettre à jour les existantes.
+        // 2. Insérer ou mettre à jour les parfums.
         using var upsertRequest = new HttpRequestMessage(
             HttpMethod.Post,
             "perfumes?on_conflict=brand_guide_id,perfume_key");
@@ -528,8 +507,10 @@ public class NayaGuideService
         }
 
         using var result = JsonDocument.Parse(upsertBody);
+
         return result.RootElement.GetArrayLength();
     }
+
 
 
     private static string? GetString(
@@ -748,309 +729,115 @@ public class NayaGuideService
 
 
     public async Task<JsonDocument> GenerateGuideJsonAsync(
-        string brandName,
-        CancellationToken cancellationToken = default)
+     string brandName,
+     CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(brandName))
             throw new ArgumentException("La marque est obligatoire.");
 
-        // Charge les produits existants de cette marque.
+        // =========================================================
+        // 1. CHARGER LES PRODUITS DEPUIS SUPABASE
+        // =========================================================
         using var productsDocument =
             await GetBrandProductsAsync(brandName, cancellationToken);
 
-        // On ne transmet pas les URL commerciales au modèle :
-        // elles seront récupérées directement depuis Supabase.
-        var productsForResearch = productsDocument.RootElement
+        var dbProducts = productsDocument.RootElement
             .EnumerateArray()
-            .Select(p => new
-            {
-                id = p.TryGetProperty("id", out var id) ? id.GetInt64() : 0,
-                brand = GetString(p, "brand"),
-                name = GetString(p, "name"),
-                short_name = GetString(p, "short_name"),
-                type = GetString(p, "type"),
-                image_url = GetString(p, "image"),
-                concentration = GetString(
-                    p.TryGetProperty("naya_attributes", out var attrs)
-                        ? attrs : default,
-                    "concentration"),
-                gender = GetString(
-                    p.TryGetProperty("naya_attributes", out attrs)
-                        ? attrs : default,
-                    "gender"),
-                notes = GetString(
-                    p.TryGetProperty("product_data", out var pd)
-                        ? pd : default,
-                    "notes")
-            })
             .ToList();
 
-        var catalogJson = JsonSerializer.Serialize(productsForResearch);
-
-        var researchedCatalogJson = await ResearchBrandCatalogAsync(
-    brandName,
-    catalogJson,
-    cancellationToken);
-
-        using var researchDoc =
-            JsonDocument.Parse(researchedCatalogJson);
-
-        var researchRoot = researchDoc.RootElement;
-
-        Console.WriteLine("[NAYA RESEARCH COLLECTIONS]");
-
-        foreach (var collection in researchRoot
-            .GetProperty("collections").EnumerateArray())
+        if (dbProducts.Count == 0)
         {
-            Console.WriteLine(
-                GetString(collection, "name"));
+            throw new InvalidOperationException(
+                $"Aucun parfum trouvé dans public.products pour '{brandName}'.");
         }
 
-        Console.WriteLine("[NAYA RESEARCH PERFUMES]");
+        Console.WriteLine(
+            $"[NAYA SUPABASE PRODUCTS] {brandName} : {dbProducts.Count}");
 
-        foreach (var perfume in researchRoot
-            .GetProperty("perfumes").EnumerateArray())
+        // Vérifier les identifiants et les noms avant de générer le guide.
+        foreach (var product in dbProducts)
         {
-            Console.WriteLine(
-                $"{GetString(perfume, "name")} | " +
-                $"{GetString(perfume, "collection_name")} | " +
-                $"{GetString(perfume, "concentration")}");
+            if (!product.TryGetProperty("id", out var idElement) ||
+                idElement.ValueKind != JsonValueKind.Number ||
+                string.IsNullOrWhiteSpace(GetString(product, "name")))
+            {
+                throw new InvalidOperationException(
+                    "Un produit Supabase ne possède pas d'id numérique ou de nom.");
+            }
         }
 
-
-
+        // =========================================================
+        // 2. DEMANDER À OPENAI UNIQUEMENT L'HISTOIRE DE LA MARQUE
+        // =========================================================
         var instructions = """
-    Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
+Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
 
-    Recherche des informations fiables sur la marque demandée, ses collections
-    et ses parfums essentiels. Utilise la recherche Web. Privilégie les sources
-    officielles et conserve les URL réellement consultées.
+Rédige en français un contenu éditorial élégant, précis et original
+sur l'histoire et l'identité de la marque demandée.
 
-    Rédige en français un guide lumineux, élégant, original et utile au client.
-    Inclus l'histoire, l'identité olfactive, les principales collections,
-    les parfums essentiels, leurs descriptions, leurs notes et les conseils
-    de découverte.
+Tu dois retourner uniquement un objet JSON avec ces deux propriétés :
+- seo
+- brand_story
 
-    Ne prétends pas que le catalogue est exhaustif sans vérification.
-    N'invente aucune note, date, concentration, citation ou source.
-    Pour toute donnée inconnue, utilise null ou [].
-    Le contenu doit être rédigé, pas seulement constitué de listes.
+La propriété seo contient :
+title, meta_description, slug, introduction.
 
-    Les produits fournis sont le catalogue commercial disponible dans Supabase.
-    Ne crée aucune URL commerciale. Ne génère aucun product_id fictif.
-    Les associations commerciales seront faites séparément par le backend.
+La propriété brand_story contient :
+title, history, identity, olfactory_signature,
+editorial_conclusion, sources.
 
-    
-    IMPORTANT — RECHERCHE ET COUVERTURE DU CATALOGUE
+history doit être un tableau de paragraphes ou d'étapes historiques.
+sources doit être un tableau de sources réellement connues et vérifiables.
 
-    1. Recherche d'abord le site officiel de la marque :
-       son catalogue, ses collections et ses fiches produits.
+N'inclus aucun tableau de parfums.
+N'inclus aucune collection.
+Ne génère aucun nom de produit, product_id, image_url ou slug de parfum.
+Ne crée pas de références commerciales.
 
-    2. Identifie les principales collections et les parfums associés.
-       Recherche plusieurs références dans chaque collection pertinente.
+N'invente pas de dates, de citations ou de faits historiques.
+Si une information est incertaine, formule-la prudemment.
+Ne prétends pas avoir effectué une recherche Web si aucun outil de recherche
+n'est disponible dans cette requête.
 
-    3. Pour chaque parfum, vérifie autant que possible :
-       - son nom commercial exact ;
-       - sa collection ;
-       - sa concentration ;
-       - son genre, si la marque le précise ;
-       - ses notes olfactives ;
-       - les sources réellement consultées.
-
-    4. Génère un objectif de 15 à 20 références distinctes.
-       Retourne au moins 10 références lorsque ce nombre peut être
-       vérifié à partir des sources disponibles.
-
-    5. Si la recherche initiale ne trouve qu'un ou deux parfums,
-       approfondis la recherche sur les collections et les fiches officielles
-       avant de rédiger le guide final.
-
-    6. N'invente jamais de références pour atteindre un nombre cible.
-       Si les informations sont insuffisantes, retourne uniquement
-       les références identifiables et signale les limites de recherche.
-
-    7. Ne compte pas les coffrets, déodorants, gels douche ou autres
-       produits dérivés comme des parfums distincts.
-
-    8. Les différentes concentrations d'un même parfum peuvent être
-       des références distinctes uniquement si elles existent réellement.
-       Ne crée pas de doublons artificiels.
-
-    9. Recherche également les parfums essentiels absents du catalogue
-       Supabase. Ils peuvent figurer dans le guide sans lien affilié.
-
-    10. Chaque parfum doit avoir un identifiant stable, un nom exact,
-        un slug unique, un objet editorial et un objet verification.
-
-    11. Chaque parfum doit posséder ses propres sources de vérification.
-        N'invente aucune URL et ne déclare pas une référence vérifiée
-        si les sources consultées ne le permettent pas.
-
-    12. Pour chaque parfum, ajoute le champ "image_url".
-        Utilise uniquement une URL d'image réellement trouvée
-        et vérifiée, correspondant exactement au flacon.
-        Si aucune image fiable n'est disponible, utilise null.
-        N'invente jamais d'URL.
-
-    13. Le tableau JSON "perfumes" doit contenir toutes les références
-        identifiées et suffisamment documentées, pas seulement
-        le parfum le plus populaire.
-
-    14. Mets à jour "coverage" en fonction de la recherche réellement faite.
-        Ne marque jamais le catalogue comme exhaustif sans preuve.
-    
-        
-    Retourne uniquement un objet JSON valide ayant cette structure :
-
-    {
-      "brand": {
-        "id": "slug-de-marque",
-        "name": "Nom de la marque"
-      },
-      "metadata": {
-        "language": "fr",
-        "generation_status": "draft",
-        "research_status": "completed",
-        "editorial_status": "generated",
-        "coverage_status": "needs_review"
-      },
-      "seo": {
-        "title": "Titre SEO",
-        "meta_description": "Description SEO",
-        "slug": "guide-parfums-marque",
-        "introduction": "Introduction éditoriale"
-      },
-      "brand_story": {
-        "title": "Histoire de la marque",
-        "history": [],
-        "identity": "Identité de la maison",
-        "olfactory_signature": "Signature olfactive",
-        "editorial_conclusion": "Conclusion",
-        "sources": []
-      },
-      "coverage": {
-        "strategy": "essential_fragrances",
-        "collections_identified": [],
-        "collections_researched": [],
-        "collections_remaining": [],
-        "essential_perfume_count": 0,
-        "catalogue_scope": "current_and_iconic",
-        "is_complete": false,
-        "limitations": []
-      },
-      "collections": [
-        {
-          "id": "collection-slug",
-          "name": "Nom de collection",
-          "description": "Description documentée",
-          "perfume_ids": [],
-          "sources": [],
-          "verification_status": "needs_review"
-        }
-      ],
-      "perfumes": [
-        {
-          "id": "identifiant-stable-du-parfum",
-          "name": "Nom exact du parfum",
-          "slug": "slug-du-parfum",
-          "image_url": null,
-          "collection_name": null,
-          "concentration": null,
-          "gender": null,
-          "editorial": {
-            "title": "Titre de la fiche",
-            "introduction": "Texte éditorial original",
-            "description": "Description détaillée",
-            "olfactory_family": [],
-            "character": [],
-            "accords": [],
-            "notes": {
-              "top": [],
-              "heart": [],
-              "base": []
-            },
-            "olfactory_explanation": "Explication des notes",
-            "recommendation": "Conseil de découverte",
-            "occasions": [],
-            "seasons": [],
-            "sources": []
-          },
-          "verification": {
-            "status": "needs_review",
-            "verified_fields": [],
-            "unverified_fields": [],
-            "sources": []
-          }
-        }
-      ],
-      "guide_sections": [],
-      "recommendations": [],
-      "publication": {
-        "status": "draft",
-        "review_required": true,
-        "published_at": null
-      }
-    }
-
-    Chaque parfum doit posséder un id stable, un nom et un slug.
-    Les champs de vérification doivent refléter les recherches réellement faites.
-    Ne marque pas le guide comme complet si des collections importantes
-    restent à vérifier.
-    """;
-
-
-
-        var userPrompt = $"""
-Crée un guide éditorial complet pour la marque : {brandName}.
-
-CATALOGUE COMMERCIAL SUPABASE :
-{catalogJson}
-
-RÉSULTATS DE LA RECHERCHE PRÉALABLE :
-{researchedCatalogJson}
-
-INSTRUCTIONS :
-
-- Le tableau "collections" doit reprendre toutes les collections
-  distinctes présentes dans "collections" du résultat de recherche préalable.
-- Ne supprime pas une collection simplement parce qu'elle contient
-  peu de parfums ou aucun parfum vérifié.
-- Le tableau "coverage.collections_identified" doit refléter
-  les collections découvertes dans la recherche préalable.
-- Le tableau "coverage.collections_researched" doit refléter
-  les collections effectivement recherchées.
-- N'invente pas de collections supplémentaires.
-- Les noms des collections doivent rester cohérents entre
-  "collections", "coverage" et "perfumes".
-- Utilise les références de la recherche préalable comme base du guide.
-- Couvre les différentes collections identifiées.
-- Conserve les noms commerciaux exacts.
-- Ne crée pas de nouvelles références sans source vérifiable.
-- Élimine les doublons réels.
-- Conserve les concentrations distinctes lorsqu'elles correspondent
-  à des références réellement commercialisées.
-- Les parfums absents de Supabase peuvent figurer dans le guide,
-  sans lien affilié.
-- Conserve les URL sources disponibles dans les résultats de recherche.
-- N'invente aucune URL ni aucune note olfactive.
-- Signale les informations non vérifiées.
-- Génère les descriptions éditoriales en français.
-- Respecte exactement le schéma JSON demandé dans les instructions.
-
-Retourne uniquement le JSON final.
+Retourne uniquement du JSON valide, sans Markdown.
 """;
 
+        var userPrompt = $$$"""
+Rédige le contenu éditorial général du guide NAYA pour la marque :
+{brandName}
 
 
+Retourne exactement cette structure :
+
+{{
+  "seo": {{
+    "title": "",
+    "meta_description": "",
+    "slug": "",
+    "introduction": ""
+  }},
+  "brand_story": {{
+    "title": "",
+    "history": [],
+    "identity": "",
+    "olfactory_signature": "",
+    "editorial_conclusion": "",
+    "sources": []
+  }}
+}}
+
+
+
+Ne retourne aucune autre propriété.
+""";
 
         var requestBody = new
         {
             model = openAiModel,
             instructions,
             input = userPrompt,
-            max_output_tokens = 30000
+            max_output_tokens = 5000
         };
-
 
         using var request = new HttpRequestMessage(
             HttpMethod.Post, "responses");
@@ -1072,23 +859,26 @@ Retourne uniquement le JSON final.
         }
 
         using var apiResponse = JsonDocument.Parse(responseBody);
-
         var responseRoot = apiResponse.RootElement;
 
-        Console.WriteLine(
-            $"[NAYA OPENAI STATUS] {GetString(responseRoot, "status")}");
+        var responseStatus = GetString(responseRoot, "status");
 
-        if (responseRoot.TryGetProperty("incomplete_details", out var details))
+        Console.WriteLine($"[NAYA OPENAI STATUS] {responseStatus}");
+
+        if (responseStatus == "incomplete")
         {
-            Console.WriteLine(
-                $"[NAYA OPENAI INCOMPLETE] {details.GetRawText()}");
+            var details = responseRoot.TryGetProperty(
+                "incomplete_details", out var incompleteDetails)
+                ? incompleteDetails.GetRawText()
+                : "Aucun détail disponible.";
+
+            throw new InvalidOperationException(
+                $"La réponse OpenAI est incomplète : {details}");
         }
 
-        // Extraire le texte de la réponse Responses API.
         var outputTexts = new List<string>();
 
-        if (apiResponse.RootElement.TryGetProperty(
-            "output", out var output))
+        if (responseRoot.TryGetProperty("output", out var output))
         {
             foreach (var item in output.EnumerateArray())
             {
@@ -1106,423 +896,389 @@ Retourne uniquement le JSON final.
             }
         }
 
-
-        Console.WriteLine($"[NAYA OUTPUT BLOCKS] {outputTexts.Count}");
-
-        for (var i = 0; i < outputTexts.Count; i++)
-        {
-            Console.WriteLine(
-                $"[NAYA OUTPUT BLOCK {i}] Length={outputTexts[i].Length}, " +
-                $"Start={outputTexts[i][..Math.Min(150, outputTexts[i].Length)]}");
-        }
-
-
-
-        if (outputTexts.Count != 1)
+        if (outputTexts.Count != 1 ||
+            string.IsNullOrWhiteSpace(outputTexts[0]))
         {
             throw new InvalidOperationException(
-                $"OpenAI a retourné {outputTexts.Count} blocs de texte au lieu d'un seul.");
+                $"OpenAI a retourné {outputTexts.Count} blocs de texte exploitables.");
         }
 
-        var json = outputTexts[0];
+        var cleanJson = ExtractJson(outputTexts[0]);
 
+        using var editorialDocument = JsonDocument.Parse(cleanJson);
+        var editorialRoot = editorialDocument.RootElement;
 
-        Console.WriteLine($"[NAYA RAW OUTPUT LENGTH] {json.Length}");
-
-        Console.WriteLine(
-            $"[NAYA RAW OUTPUT END] " +
-            json.Substring(Math.Max(0, json.Length - 2500)));
-
-        if (string.IsNullOrWhiteSpace(json))
+        if (!editorialRoot.TryGetProperty("seo", out var seoElement) ||
+            seoElement.ValueKind != JsonValueKind.Object ||
+            !editorialRoot.TryGetProperty("brand_story", out var storyElement) ||
+            storyElement.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidOperationException(
-                "OpenAI n'a retourné aucun JSON exploitable.");
+                "Le JSON OpenAI doit contenir seo et brand_story.");
         }
 
-        var cleanJson = ExtractJson(json);
-
-
-        // Parse le guide éditorial généré par OpenAI.
-        var guideNode = JsonNode.Parse(cleanJson) as JsonObject;
-
-        if (guideNode == null)
-        {
-            throw new InvalidOperationException(
-                "Le guide généré n'est pas un objet JSON valide.");
-        }
-
-        // Garantit l'existence des tableaux.
-        var guideCollections =
-            guideNode["collections"] as JsonArray ?? new JsonArray();
-
-        var guidePerfumes =
-            guideNode["perfumes"] as JsonArray ?? new JsonArray();
-
-        guideNode["collections"] = guideCollections;
-        guideNode["perfumes"] = guidePerfumes;
-
-        // Clé normalisée : les formats 75 ml / 125 ml
-        // ne créent pas de parfums distincts.
-        static string NormalizeName(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return "";
-
-            var normalized = value.ToLowerInvariant();
-
-            normalized = Regex.Replace(
-                normalized,
-                @"\b\d+(?:[.,]\d+)?\s*(?:ml|mL|cl|oz)\b",
-                "");
-
-            normalized = Regex.Replace(
-                normalized,
-                @"[^a-z0-9]+",
-                "");
-
-            return normalized;
-        }
-
+        // =========================================================
+        // 3. PRÉPARER LES COLLECTIONS DEPUIS sub_category
+        // =========================================================
         static string MakeSlug(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return "reference";
 
-            var slug = Regex.Replace(
-                value.ToLowerInvariant(),
-                @"[^a-z0-9]+",
-                "-").Trim('-');
+            var slug = value.ToLowerInvariant();
+
+            slug = Regex.Replace(slug, @"[^a-z0-9]+", "-");
+            slug = slug.Trim('-');
 
             return string.IsNullOrWhiteSpace(slug)
                 ? "reference"
                 : slug;
         }
 
-        // Index des parfums déjà générés.
-        var knownPerfumes = new HashSet<string>(
-            guidePerfumes
-                .OfType<JsonObject>()
-                .Select(p => NormalizeName(
-                    p["name"]?.GetValue<string>())),
+        var collections = new JsonArray();
+        var collectionIds = new Dictionary<string, string>(
             StringComparer.OrdinalIgnoreCase);
 
-        // Index des collections déjà générées.
-        var knownCollections = new HashSet<string>(
-            guideCollections
-                .OfType<JsonObject>()
-                .Select(c => NormalizeName(
-                    c["name"]?.GetValue<string>())),
+        var usedCollectionSlugs = new HashSet<string>(
             StringComparer.OrdinalIgnoreCase);
 
-        var researchedCollections =
-            researchRoot.GetProperty("collections");
-
-        var researchedPerfumes =
-            researchRoot.GetProperty("perfumes");
-
-        // 1. Fusionner les collections découvertes.
-        foreach (var collection in researchedCollections.EnumerateArray())
+        foreach (var product in dbProducts)
         {
-            var name = GetString(collection, "name")?.Trim();
+            var collectionName = GetString(product, "sub_category")?.Trim();
 
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(collectionName))
                 continue;
 
-            var key = NormalizeName(name);
-
-            if (!knownCollections.Add(key))
+            if (collectionIds.ContainsKey(collectionName))
                 continue;
 
-            var sources = collection.TryGetProperty(
-                "source_urls", out var sourceUrls)
-                ? JsonNode.Parse(sourceUrls.GetRawText())
-                : new JsonArray();
-
-            guideCollections.Add(new JsonObject
-            {
-                ["id"] = MakeSlug(name),
-                ["name"] = name,
-                ["description"] =
-                    "Collection identifiée lors de la recherche. " +
-                    "Description éditoriale à vérifier.",
-                ["perfume_ids"] = new JsonArray(),
-                ["sources"] = sources,
-                ["verification_status"] = "needs_review"
-            });
-
-            Console.WriteLine(
-                $"[NAYA MERGE COLLECTION] {name}");
-        }
-
-        // 2. Fusionner les parfums recherchés absents du guide.
-        var addedPerfumes = 0;
-
-        Console.WriteLine(
-                $"[before researchedPerfumes]");
-        foreach (var perfume in researchedPerfumes.EnumerateArray())
-        {
-            Console.WriteLine(
-                $"[researchedPerfumes] {perfume}");
-
-            var name = GetString(perfume, "name")?.Trim();
-            var collectionName =
-                GetString(perfume, "collection_name")?.Trim();
-
-            if (string.IsNullOrWhiteSpace(name))
-                continue;
-
-            // Ne pas ajouter de produits dérivés.
-
-            // Exclure les coffrets et les produits dérivés.
-            var nonPerfumePattern =
-                @"\b(body\s+lotion|body\s+cream|lait\s+corps|" +
-                @"shower\s+gel|gel\s+douche|deodorants?|déodorants?|" +
-                @"coffrets?|gift\s+sets?|discovery\s+sets?|" +
-                @"discovery\s+kits?|kits?\s+de\s+découverte|" +
-                @"miniatures?|travel\s+sets?)\b";
-
-            if (Regex.IsMatch(
-                name,
-                nonPerfumePattern,
-                RegexOptions.IgnoreCase))
-            {
-                Console.WriteLine(
-                    $"[NAYA MERGE SKIP NON-PERFUME] {name}");
-                continue;
-            }
-
-
-            var key = NormalizeName(name);
-
-            if (!knownPerfumes.Add(key))
-                continue;
-
-            var concentration = GetString(perfume, "concentration");
-            var gender = GetString(perfume, "gender");
-
-            var sourceUrls = perfume.TryGetProperty(
-                "source_urls", out var urls)
-                ? JsonNode.Parse(urls.GetRawText()) ?? new JsonArray()
-                : new JsonArray();
-
-            var perfumeId = MakeSlug(name);
-            var perfumeSlug = perfumeId;
-
-            // Garantit un slug unique.
-            var existingSlugs = guidePerfumes
-                .OfType<JsonObject>()
-                .Select(p => p["slug"]?.GetValue<string>())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
+            var baseSlug = MakeSlug(collectionName);
+            var slug = baseSlug;
             var suffix = 2;
 
-            while (existingSlugs.Contains(perfumeSlug))
+            while (!usedCollectionSlugs.Add(slug))
+                slug = $"{baseSlug}-{suffix++}";
+
+            collectionIds[collectionName] = slug;
+
+            collections.Add(new JsonObject
             {
-                perfumeSlug = $"{perfumeId}-{suffix++}";
+                ["id"] = slug,
+                ["name"] = collectionName,
+                ["description"] = "",
+                ["perfume_ids"] = new JsonArray(),
+                ["sources"] = new JsonArray(),
+                ["verification_status"] = "needs_review"
+            });
+        }
+
+        // =========================================================
+        // 4. CONSTRUIRE TOUS LES PARFUMS EXCLUSIVEMENT DEPUIS products
+        // =========================================================
+        var perfumes = new JsonArray();
+        var usedPerfumeSlugs = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var product in dbProducts)
+        {
+            var productId = product.GetProperty("id").GetInt64();
+            var name = GetString(product, "name")!.Trim();
+
+            var brand = GetString(product, "brand") ?? brandName;
+            var shortName = GetString(product, "short_name");
+            var description = GetString(product, "description");
+            var image = GetString(product, "image");
+            var category = GetString(product, "category");
+            var subCategory = GetString(product, "sub_category");
+            var type = GetString(product, "type");
+
+            var attributes = product.TryGetProperty(
+                "naya_attributes", out var attributesElement)
+                ? attributesElement
+                : default;
+
+            var productData = product.TryGetProperty(
+                "product_data", out var productDataElement)
+                ? productDataElement
+                : default;
+
+            var concentration =
+                GetString(attributes, "concentration") ?? type;
+
+            var gender = GetString(attributes, "gender");
+
+            var sourceSlug =
+                GetString(product, "slug_normalized")
+                ?? GetString(product, "slug");
+
+            var baseSlug = MakeSlug(
+                string.IsNullOrWhiteSpace(sourceSlug) ? name : sourceSlug);
+
+            // Un slug unique, sans modifier l'identifiant source.
+            var perfumeSlug = baseSlug;
+            var suffix = 2;
+
+            while (!usedPerfumeSlugs.Add(perfumeSlug))
+                perfumeSlug = $"{baseSlug}-{suffix++}";
+
+            // Les notes ne sont reprises que si product_data.notes
+            // contient déjà un objet JSON avec cette structure.
+            var notes = new JsonObject
+            {
+                ["top"] = new JsonArray(),
+                ["heart"] = new JsonArray(),
+                ["base"] = new JsonArray()
+            };
+
+            if (productData.ValueKind == JsonValueKind.Object &&
+                productData.TryGetProperty("notes", out var notesElement) &&
+                notesElement.ValueKind == JsonValueKind.Object)
+            {
+                var parsedNotes = JsonNode.Parse(notesElement.GetRawText());
+
+                if (parsedNotes is JsonObject notesObject)
+                {
+                    foreach (var key in new[] { "top", "heart", "base" })
+                    {
+                        if (notesObject[key] is JsonArray noteArray)
+                        {
+                            notes[key] = JsonNode.Parse(noteArray.ToJsonString());
+                        }
+                    }
+                }
             }
 
-            var editorialSources = JsonNode.Parse(
-                sourceUrls.ToJsonString()) ?? new JsonArray();
-
-            var verificationSources = JsonNode.Parse(
-                sourceUrls.ToJsonString()) ?? new JsonArray();
-
-            Console.WriteLine(
-                $"[before GetPerfumeImageAsync] {name}");
-            var imageUrl = await GetPerfumeImageAsync(
-                brandName,
-                name,
-                cancellationToken);
-            Console.WriteLine(
-                $"[after GetPerfumeImageAsync] {brandName}");
-
-            guidePerfumes.Add(new JsonObject
+            var editorial = new JsonObject
             {
-                ["id"] = perfumeId,
+                ["title"] = name,
+                ["introduction"] = description ?? "",
+                ["description"] = description ?? "",
+                ["olfactory_family"] = new JsonArray(),
+                ["character"] = new JsonArray(),
+                ["accords"] = new JsonArray(),
+                ["notes"] = notes,
+                ["olfactory_explanation"] = "",
+                ["recommendation"] = "",
+                ["occasions"] = new JsonArray(),
+                ["seasons"] = new JsonArray(),
+                ["sources"] = new JsonArray()
+            };
+
+            var perfume = new JsonObject
+            {
+                // SavePerfumesAsync utilise id comme perfume_key.
+                ["id"] = $"product-{productId}",
+
+                // Identifiant réel de public.products.
+                ["product_id"] = productId,
+
+                ["brand"] = brand,
                 ["name"] = name,
+                ["short_name"] = shortName,
                 ["slug"] = perfumeSlug,
-                ["image_url"] = string.IsNullOrWhiteSpace(imageUrl)
+                ["image_url"] = string.IsNullOrWhiteSpace(image)
                     ? null
-                    : JsonValue.Create(imageUrl),
-                ["collection_name"] = collectionName,
+                    : JsonValue.Create(image),
+                ["category"] = category,
+                ["collection_name"] = subCategory,
                 ["concentration"] = concentration,
                 ["gender"] = gender,
-
-                ["editorial"] = new JsonObject
-                {
-                    ["title"] = name,
-                    ["introduction"] =
-                        "Fiche en attente de vérification éditoriale.",
-                    ["description"] =
-                        "Les informations descriptives doivent être " +
-                        "confirmées à partir de sources fiables.",
-                    ["olfactory_family"] = new JsonArray(),
-                    ["character"] = new JsonArray(),
-                    ["accords"] = new JsonArray(),
-                    ["notes"] = new JsonObject
-                    {
-                        ["top"] = new JsonArray(),
-                        ["heart"] = new JsonArray(),
-                        ["base"] = new JsonArray()
-                    },
-                    ["olfactory_explanation"] = "",
-                    ["recommendation"] = "",
-                    ["occasions"] = new JsonArray(),
-                    ["seasons"] = new JsonArray(),
-                    ["sources"] = editorialSources
-                },
-
+                ["editorial"] = editorial,
                 ["verification"] = new JsonObject
                 {
                     ["status"] = "needs_review",
-                    ["verified_fields"] = new JsonArray(),
-                    ["unverified_fields"] = new JsonArray
-                    {
-                        "name",
-                        "collection_name",
-                        "concentration",
-                        "gender",
-                        "olfactory_notes"
-                    },
-                    ["sources"] = verificationSources
+                    ["verified_fields"] = new JsonArray
+                {
+                    "product_id",
+                    "name"
+                },
+                    ["unverified_fields"] = new JsonArray(),
+                    ["sources"] = new JsonArray()
                 }
-            });
+            };
 
-            addedPerfumes++;
+            perfumes.Add(perfume);
 
-            Console.WriteLine(
-                $"[NAYA MERGE PERFUME] {name} | {collectionName}");
+            // Remplir perfume_ids dans la collection correspondante.
+            if (!string.IsNullOrWhiteSpace(subCategory) &&
+                collectionIds.TryGetValue(subCategory, out var collectionId))
+            {
+                foreach (var collectionNode in collections)
+                {
+                    if (collectionNode is not JsonObject collection)
+                        continue;
+
+                    if (GetString(
+                        JsonDocument.Parse(collection.ToJsonString()).RootElement,
+                        "id") != collectionId)
+                    {
+                        continue;
+                    }
+
+                    if (collection["perfume_ids"] is JsonArray perfumeIds)
+                        perfumeIds.Add($"product-{productId}");
+
+                    break;
+                }
+            }
         }
 
-        // 3. Mettre à jour la couverture avec les résultats de recherche.
-        if (guideNode["coverage"] is not JsonObject coverage)
+        if (perfumes.Count == 0)
         {
-            coverage = new JsonObject();
-            guideNode["coverage"] = coverage;
+            throw new InvalidOperationException(
+                "Aucun parfum exploitable : le guide ne sera pas sauvegardé.");
         }
 
-        var collectionNames = guideCollections
+        // =========================================================
+        // 5. ASSEMBLER LE JSON FINAL DU GUIDE
+        // =========================================================
+        var seo = JsonNode.Parse(seoElement.GetRawText()) as JsonObject
+            ?? new JsonObject();
+
+        var brandStory = JsonNode.Parse(storyElement.GetRawText()) as JsonObject
+            ?? new JsonObject();
+
+        var brandSlug = MakeSlug(brandName);
+
+        // Garantir les champs SEO indispensables.
+        seo["title"] ??= $"Guide des parfums {brandName} | NAYA";
+        seo["meta_description"] ??= $"Découvrez l'univers olfactif de {brandName}.";
+        seo["slug"] ??= $"guide-parfums-{brandSlug}";
+        seo["introduction"] ??= "";
+
+        var collectionNames = collections
             .OfType<JsonObject>()
             .Select(c => c["name"]?.GetValue<string>())
             .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(n => (JsonNode?)JsonValue.Create(n))
             .ToArray();
 
-        coverage["collections_identified"] =
-            new JsonArray(collectionNames.Select(
-                n => (JsonNode?)JsonValue.Create(n)).ToArray());
-
-        // Ne pas prétendre que toutes les collections ont été vérifiées.
-        coverage["collections_researched"] ??= new JsonArray();
-
-        coverage["limitations"] ??= new JsonArray();
-
-        coverage["is_complete"] = false;
-
-        coverage["limitations"] ??= new JsonArray();
-
-        //var finalJson = guideNode.ToJsonString(
-        //    new JsonSerializerOptions
-        //    {
-        //        WriteIndented = true
-        //    });
-
-        // Dédupliquer les parfums par identifiant avant validation.
-        if (guideNode["perfumes"] is JsonArray perfumesArray)
+        var guide = new JsonObject
         {
-            var knownIds = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase);
-
-            var uniquePerfumes = new JsonArray();
-
-            foreach (var perfume in perfumesArray)
+            ["brand"] = new JsonObject
             {
-                if (perfume is not JsonObject perfumeObject)
-                    continue;
+                ["id"] = brandSlug,
+                ["name"] = brandName
+            },
 
-                var id = perfumeObject["id"]?.GetValue<string>()?.Trim();
+            ["metadata"] = new JsonObject
+            {
+                ["language"] = "fr",
+                ["generation_status"] = "draft",
+                ["research_status"] = "not_requested",
+                ["editorial_status"] = "generated",
+                ["coverage_status"] = "needs_review"
+            },
 
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    Console.WriteLine(
-                        "[NAYA MERGE SKIP] Parfum sans identifiant");
-                    continue;
-                }
+            ["seo"] = seo,
+            ["brand_story"] = brandStory,
 
-                if (!knownIds.Add(id))
-                {
-                    Console.WriteLine(
-                        $"[NAYA MERGE SKIP DUPLICATE ID] {id}");
-                    continue;
-                }
+            ["coverage"] = new JsonObject
+            {
+                ["strategy"] = "supabase_products",
+                ["collections_identified"] = new JsonArray(collectionNames),
+                ["collections_researched"] = new JsonArray(),
+                ["collections_remaining"] = new JsonArray(),
+                ["essential_perfume_count"] = perfumes.Count,
+                ["catalogue_scope"] = "supabase_products",
+                ["is_complete"] = false,
+                ["limitations"] = new JsonArray
+            {
+                "Les parfums proviennent exclusivement de public.products.",
+                "Les informations olfactives absentes de la base ne sont pas inventées."
+            }
+            },
 
-                uniquePerfumes.Add(
-                    perfume is null
-                        ? null
-                        : JsonNode.Parse(perfume.ToJsonString()));
-                            }
+            ["collections"] = collections,
+            ["perfumes"] = perfumes,
+            ["guide_sections"] = new JsonArray(),
+            ["recommendations"] = new JsonArray(),
 
-            guideNode["perfumes"] = uniquePerfumes;
-        }
+            ["publication"] = new JsonObject
+            {
+                ["status"] = "draft",
+                ["review_required"] = true,
+                ["published_at"] = null
+            }
+        };
 
-        // Générer le JSON final une seule fois.
-        var finalJson = guideNode.ToJsonString(
+        var finalJson = guide.ToJsonString(
             new JsonSerializerOptions
             {
                 WriteIndented = true
             });
 
-        using var checkDocument = JsonDocument.Parse(finalJson);
+        using var finalDocument = JsonDocument.Parse(finalJson);
+
+        ValidateGuideJson(finalDocument.RootElement);
 
         Console.WriteLine(
-            $"[NAYA GENERATED COLLECTIONS] " +
-            $"{checkDocument.RootElement.GetProperty("collections").GetArrayLength()}");
+            $"[NAYA FINAL COLLECTIONS] {collections.Count}");
 
         Console.WriteLine(
-            $"[NAYA GENERATED PERFUMES] " +
-            $"{checkDocument.RootElement.GetProperty("perfumes").GetArrayLength()}");
-
-        Console.WriteLine(
-            $"[NAYA MERGE ADDED PERFUMES] {addedPerfumes}");
-
-        ValidateGuideJson(checkDocument.RootElement);
+            $"[NAYA FINAL PERFUMES] {perfumes.Count}");
 
         return JsonDocument.Parse(finalJson);
-
     }
+
 
 
     private static void ValidateGuideJson(JsonElement guide)
     {
         if (guide.ValueKind != JsonValueKind.Object)
+        {
             throw new InvalidOperationException(
                 "Le guide doit être un objet JSON.");
+        }
 
+        // 1. Vérifier la marque.
         if (!guide.TryGetProperty("brand", out var brand) ||
+            brand.ValueKind != JsonValueKind.Object ||
             string.IsNullOrWhiteSpace(GetString(brand, "name")))
+        {
             throw new InvalidOperationException(
                 "Le champ brand.name est obligatoire.");
+        }
 
+        // 2. Vérifier le SEO.
         if (!guide.TryGetProperty("seo", out var seo) ||
+            seo.ValueKind != JsonValueKind.Object ||
             string.IsNullOrWhiteSpace(GetString(seo, "slug")))
+        {
             throw new InvalidOperationException(
                 "Le champ seo.slug est obligatoire.");
+        }
 
+        // 3. Vérifier la liste des parfums.
         if (!guide.TryGetProperty("perfumes", out var perfumes) ||
             perfumes.ValueKind != JsonValueKind.Array ||
             perfumes.GetArrayLength() == 0)
+        {
             throw new InvalidOperationException(
                 "Le guide doit contenir au moins un parfum.");
+        }
 
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ids = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+
+        var slugs = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+
+        var productIds = new HashSet<long>();
 
         foreach (var perfume in perfumes.EnumerateArray())
         {
+            if (perfume.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidOperationException(
+                    "Chaque parfum doit être un objet JSON.");
+            }
+
             var id = GetString(perfume, "id");
             var name = GetString(perfume, "name");
             var slug = GetString(perfume, "slug");
 
+            // 4. Vérifier les champs obligatoires.
             if (string.IsNullOrWhiteSpace(id) ||
                 string.IsNullOrWhiteSpace(name) ||
                 string.IsNullOrWhiteSpace(slug))
@@ -1531,23 +1287,51 @@ Retourne uniquement le JSON final.
                     "Chaque parfum doit avoir id, name et slug.");
             }
 
+            // 5. Vérifier l'unicité de l'identifiant.
             if (!ids.Add(id))
             {
                 throw new InvalidOperationException(
                     $"Identifiant de parfum en double : {id}");
+            }
+
+            // 6. Vérifier l'unicité du slug.
+            if (!slugs.Add(slug))
+            {
+                throw new InvalidOperationException(
+                    $"Slug de parfum en double : {slug}");
+            }
+
+            // 7. Vérifier product_id, qui référence products.id.
+            if (!perfume.TryGetProperty(
+                    "product_id", out var productIdElement) ||
+                productIdElement.ValueKind != JsonValueKind.Number ||
+                !productIdElement.TryGetInt64(out var productId) ||
+                productId <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Le parfum '{name}' doit avoir un product_id " +
+                    "numérique et positif.");
+            }
+
+            // 8. Un produit Supabase ne doit apparaître qu'une fois.
+            if (!productIds.Add(productId))
+            {
+                throw new InvalidOperationException(
+                    $"product_id en double : {productId}");
             }
         }
     }
 
 
 
+
     public async Task<int> MatchSavedGuideProductsAsync(
-        long guideId,
-        string brand,
-        CancellationToken cancellationToken = default)
+     long guideId,
+     string brand,
+     CancellationToken cancellationToken = default)
     {
         var url =
-            $"perfumes?select=id,name,concentration" +
+            $"perfumes?select=id,product_id" +
             $"&brand_guide_id=eq.{guideId}";
 
         using var response = await httpClient.GetAsync(
@@ -1565,27 +1349,56 @@ Retourne uniquement le JSON final.
 
         using var document = JsonDocument.Parse(body);
 
-        var totalMatches = 0;
+        var rows = new List<Dictionary<string, object?>>();
 
         foreach (var perfume in document.RootElement.EnumerateArray())
         {
             var perfumeId = perfume.GetProperty("id").GetInt64();
-            var name = GetString(perfume, "name");
 
-            if (string.IsNullOrWhiteSpace(name))
-                continue;
+            if (!perfume.TryGetProperty("product_id", out var productIdElement)
+                || productIdElement.ValueKind != JsonValueKind.Number)
+            {
+                throw new InvalidOperationException(
+                    $"Le parfum {perfumeId} n'a pas de product_id.");
+            }
 
-            var concentration = GetString(perfume, "concentration");
-
-            totalMatches += await MatchAffiliateProductsAsync(
-                perfumeId,
-                brand,
-                name,
-                concentration,
-                cancellationToken);
+            rows.Add(new Dictionary<string, object?>
+            {
+                ["perfume_id"] = perfumeId,
+                ["product_id"] = productIdElement.GetInt64(),
+                ["match_status"] = "needs_review",
+                ["match_reason"] =
+                    "Association directe avec le produit source Supabase."
+            });
         }
 
-        return totalMatches;
+        if (rows.Count == 0)
+            return 0;
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "perfume_product_matches?on_conflict=perfume_id,product_id");
+
+        request.Headers.TryAddWithoutValidation(
+            "Prefer",
+            "resolution=merge-duplicates,return=minimal");
+
+        request.Content = JsonContent.Create(rows);
+
+        using var saveResponse = await httpClient.SendAsync(
+            request, cancellationToken);
+
+        var saveBody = await saveResponse.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!saveResponse.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur sauvegarde correspondances : " +
+                $"{(int)saveResponse.StatusCode} - {saveBody}");
+        }
+
+        return rows.Count;
     }
 
 

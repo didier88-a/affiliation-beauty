@@ -1098,17 +1098,40 @@ public class NayaGuideService
                 "tete",
                 perfumeNotes);
 
+            var top_notes_name = FindNoteNameByImageUrl(
+                            top_notes_img,
+                            perfumeNotes);
+
+
             var heart_notes_img = FindNoteImage(
                 attrib,
                 "heart_notes",
                 "coeur",
                 perfumeNotes);
 
+            var heart_notes_name = FindNoteNameByImageUrl(
+                            heart_notes_img,
+                            perfumeNotes);
+
+
             var base_notes_img = FindNoteImage(
                 attrib,
                 "base_notes",
                 "fond",
                 perfumeNotes);
+
+            var base_notes_name = FindNoteNameByImageUrl(
+                            base_notes_img,
+                            perfumeNotes);
+
+
+            var olfactoryFamily = GetOlfactoryFamily(
+                        topNotes: new[] { top_notes_name ?? "" },
+                        heartNotes: new[] { heart_notes_name ?? "" },
+                        baseNotes: new[] { base_notes_name ?? "" }
+);
+
+            Console.WriteLine($"Famille olfactive : {olfactoryFamily}");
 
             // Récupérer les notes existantes depuis product_data.notes
             var notes = new JsonObject();
@@ -1166,7 +1189,7 @@ public class NayaGuideService
                     : JsonValue.Create(image),
 
                 ["product_url"] = product_url,
-                    
+                ["olfactoryFamily"] = olfactoryFamily,
                 ["category"] = category,
                 ["collection_name"] = subCategory,
                 ["concentration"] = concentration,
@@ -2607,5 +2630,241 @@ sans inventer de références pour atteindre un nombre cible.
         return result;
     }
 
+    private static string GetOlfactoryFamily(
+    IEnumerable<string>? topNotes,
+    IEnumerable<string>? heartNotes,
+    IEnumerable<string>? baseNotes)
+    {
+        var keywords = new Dictionary<string, string[]>
+        {
+            ["Frais"] = new[]
+            {
+            "Bergamote", "Citron", "Citron vert", "Yuzu",
+            "Pamplemousse", "Pamplemousse 2", "Pomélo",
+            "Orange", "Orange amère", "Orange sanguine",
+            "Mandarine", "Tangerine", "Kumquat", "Calamansi",
+            "Petitgrain", "Néroli", "Néroli 2",
+            "Verveine", "Verveine citronnée",
+            "Gingembre", "Aldéhydes"
+        },
+
+            ["Floral"] = new[]
+            {
+            "Rose", "Jasmin", "Muguet", "Violette",
+            "Fleur violette non identifiée", "Iris",
+            "Pivoine", "Magnolia", "Freesia", "Gardénia",
+            "Ylang-Ylang", "Frangipanier", "Mimosa",
+            "Nénuphar", "Lotus", "Lys", "Jacinthe",
+            "Narcisse", "Œillet", "Chèvrefeuille",
+            "Fleur d’oranger", "Tubéreuse", "Osmanthus",
+            "Géranium", "Néroli", "Fleur de tabac"
+        },
+
+            ["Boisé"] = new[]
+            {
+            "Bois de santal", "Bois de cèdre", "Cèdre",
+            "Bois de gaïac", "Résine de gaïac",
+            "Bois de cachemire", "Bois d'ébène",
+            "Bois de pin", "Bois de rose", "Notes boisées",
+            "Hinoki", "Oud", "Patchouli", "Vétiver",
+            "Racine de vétiver", "Cyprès", "Sapin",
+            "Sapin baumier", "Sapin baumier 2", "Pin",
+            "Genévrier", "Bambou", "Bois ambré"
+        },
+
+            ["Fruité"] = new[]
+            {
+            "Prune", "Fruits rouges", "Goyave", "Pastèque",
+            "Kumquat", "Canneberge", "Pêche", "Abricot",
+            "Cerise", "Figue", "Grenade", "Myrtille",
+            "Mangue", "Litchi", "Pomme", "Pomme verte",
+            "Poire", "Cassis", "Fraise", "Fruit de la passion",
+            "Framboise", "Kiwi", "Banane", "Melon",
+            "Mûre", "Papaye", "Raisin", "Nectarine",
+            "Ananas", "Groseille rouge", "Noix de coco"
+        },
+
+            ["Aromatique"] = new[]
+            {
+            "Lavande", "Thym", "Basilic", "Romarin",
+            "Sauge", "Marjolaine", "Estragon", "Camomille",
+            "Menthe", "Shiso", "Maté", "Feuille de thé",
+            "Thé vert", "Thé noir", "Coriandre",
+            "Verveine", "Eucalyptus", "Camphre",
+            "Anis", "Anis étoilé", "Genévrier"
+        },
+
+            ["Épicé"] = new[]
+            {
+            "Safran", "Cardamome", "Poivre noir",
+            "Poivre rose", "Poivre vert",
+            "Poivre du Sichuan", "Cannelle",
+            "Clou de girofle", "Noix de muscade",
+            "Cumin", "Coriandre", "Gingembre",
+            "Anis", "Anis étoilé"
+        },
+
+            ["Ambré"] = new[]
+            {
+            "Ambre", "Ambre gris", "Baume du Pérou",
+            "Baume de Tolu", "Benjoin", "Résine de benjoin",
+            "Styrax", "Ciste", "Myrrhe", "Opopanax",
+            "Encens", "Copal", "Élémi",
+            "Notes résineuses", "Notes balsamiques",
+            "Résine douce", "Mastic"
+        },
+
+            ["Gourmand"] = new[]
+            {
+            "Vanille", "Absolu de vanille", "Fève tonka",
+            "Accord tonka", "Coumarine", "Praliné",
+            "Cacao", "Absolu de cacao", "Chocolat",
+            "Café", "Caramel", "Miel", "Lait",
+            "Amande", "Noisette", "Pistache",
+            "Châtaigne", "Amaretto", "Cognac",
+            "Whisky", "Rhum", "Fruits secs",
+            "Notes sucrées"
+        },
+
+            ["Musqué"] = new[]
+            {
+            "Musc", "Ambrette", "Accord propre"
+        },
+
+            ["Poudré"] = new[]
+            {
+            "Notes poudrées", "Iris", "Héliotrope",
+            "Violette", "Ambrette"
+        },
+
+            ["Vert"] = new[]
+            {
+            "Feuille de tomate", "Herbe", "Feuilles vertes",
+            "Notes vertes", "Galbanum", "Lierre",
+            "Feuille de figuier", "Feuille de violette",
+            "Céleri", "Bambou", "Shiso", "Mousse",
+            "Mousse de chêne", "Thé vert", "Sapin"
+        },
+
+            ["Aquatique"] = new[]
+            {
+            "Brise marine", "Algue marine", "Calone",
+            "Accord aquatique", "Accord marin",
+            "Accord océanique", "Sel marin", "Sel",
+            "Concombre", "Aloe vera", "Rosée", "Pluie"
+        },
+
+            ["Cuir"] = new[]
+            {
+            "Cuir", "Accord cuir", "Daim",
+            "Castoréum", "Civette", "Notes animales",
+            "Tabac", "Fleur de tabac"
+        },
+
+            ["Terreux"] = new[]
+            {
+            "Notes terreuses", "Patchouli", "Vétiver",
+            "Racine de vétiver", "Mousse de chêne",
+            "Mousse", "Ciste"
+        }
+        };
+
+        var scores = keywords.Keys.ToDictionary(
+            family => family,
+            _ => 0.0,
+            StringComparer.OrdinalIgnoreCase);
+
+        // Une note est comparée à un nom complet pour éviter
+        // les correspondances partielles accidentelles.
+        static string NormalizeNote(string value)
+        {
+            var normalized = value.Trim().ToLowerInvariant()
+                .Normalize(System.Text.NormalizationForm.FormD);
+
+            var sb = new System.Text.StringBuilder();
+
+            foreach (var c in normalized)
+            {
+                if (System.Globalization.CharUnicodeInfo
+                    .GetUnicodeCategory(c) !=
+                    System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return System.Text.RegularExpressions.Regex
+                .Replace(sb.ToString()
+                    .Normalize(System.Text.NormalizationForm.FormC),
+                    @"[^\p{L}\p{N}]+", " ")
+                .Trim();
+        }
+
+        void AddNotes(IEnumerable<string>? notes, double weight)
+        {
+            if (notes == null)
+                return;
+
+            foreach (var note in notes)
+            {
+                if (string.IsNullOrWhiteSpace(note))
+                    continue;
+
+                var normalizedNote = NormalizeNote(note);
+
+                foreach (var family in keywords)
+                {
+                    if (family.Value.Any(keyword =>
+                        NormalizeNote(keyword) == normalizedNote))
+                    {
+                        scores[family.Key] += weight;
+                    }
+                }
+            }
+        }
+
+        // Pondération : tête 20 %, cœur 40 %, fond 40 %.
+        AddNotes(topNotes, 1.0);
+        AddNotes(heartNotes, 2.0);
+        AddNotes(baseNotes, 2.0);
+
+        var ordered = scores
+            .Where(x => x.Value > 0)
+            .OrderByDescending(x => x.Value)
+            .ToList();
+
+        if (ordered.Count == 0)
+            return "Indéterminée";
+
+        var first = ordered[0];
+
+        if (ordered.Count == 1)
+            return first.Key;
+
+        var second = ordered[1];
+
+        // Une famille domine si son score dépasse nettement le second.
+        if (first.Value >= second.Value * 1.5)
+            return first.Key;
+
+        return $"{first.Key} {second.Key.ToLowerInvariant()}";
+    }
+
+    private static string? FindNoteNameByImageUrl(
+    string? imageUrl,
+    List<PerfumeNoteRecord1> perfumeNotes)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return null;
+
+        return perfumeNotes
+            .FirstOrDefault(n =>
+                !string.IsNullOrWhiteSpace(n.ImageUrl) &&
+                string.Equals(
+                    n.ImageUrl.Trim(),
+                    imageUrl.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+            ?.NameFr;
+    }
 
 }

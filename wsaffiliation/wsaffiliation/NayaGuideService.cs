@@ -113,11 +113,12 @@ public class NayaGuideService
             $"ilike.{brand.Trim()}");
 
         var url =
-            "products?select=id,brand,name,short_name," +
-            "category,sub_category,type,image,description," +
-            "product_data,naya_attributes,slug,slug_normalized" +
-            $"&brand={encodedBrand}" +            
-            "&order=name.asc";
+                "products?select=id,brand,name,short_name," +
+                "category,sub_category,type,image,description," +
+                "product_data,naya_attributes,slug,slug_normalized," +
+                "product_offers(product_url)" +
+                $"&brand={encodedBrand}" +
+                "&order=name.asc";
 
         using var response = await httpClient.GetAsync(
             url,
@@ -769,66 +770,66 @@ public class NayaGuideService
         // 2. DEMANDER À OPENAI UNIQUEMENT L'HISTOIRE DE LA MARQUE
         // =========================================================
         var instructions = """
-Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
+                    Tu es le rédacteur en chef de NAYA, un guide indépendant de parfumerie.
 
-Rédige en français un contenu éditorial élégant, précis et original
-sur l'histoire et l'identité de la marque demandée.
+                    Rédige en français un contenu éditorial élégant, précis et original
+                    sur l'histoire et l'identité de la marque demandée.
 
-Tu dois retourner uniquement un objet JSON avec ces deux propriétés :
-- seo
-- brand_story
+                    Tu dois retourner uniquement un objet JSON avec ces deux propriétés :
+                    - seo
+                    - brand_story
 
-La propriété seo contient :
-title, meta_description, slug, introduction.
+                    La propriété seo contient :
+                    title, meta_description, slug, introduction.
 
-La propriété brand_story contient :
-title, history, identity, olfactory_signature,
-editorial_conclusion, sources.
+                    La propriété brand_story contient :
+                    title, history, identity, olfactory_signature,
+                    editorial_conclusion, sources.
 
-history doit être un tableau de paragraphes ou d'étapes historiques.
-sources doit être un tableau de sources réellement connues et vérifiables.
+                    history doit être un tableau de paragraphes ou d'étapes historiques.
+                    sources doit être un tableau de sources réellement connues et vérifiables.
 
-N'inclus aucun tableau de parfums.
-N'inclus aucune collection.
-Ne génère aucun nom de produit, product_id, image_url ou slug de parfum.
-Ne crée pas de références commerciales.
+                    N'inclus aucun tableau de parfums.
+                    N'inclus aucune collection.
+                    Ne génère aucun nom de produit, product_id, image_url ou slug de parfum.
+                    Ne crée pas de références commerciales.
 
-N'invente pas de dates, de citations ou de faits historiques.
-Si une information est incertaine, formule-la prudemment.
-Ne prétends pas avoir effectué une recherche Web si aucun outil de recherche
-n'est disponible dans cette requête.
+                    N'invente pas de dates, de citations ou de faits historiques.
+                    Si une information est incertaine, formule-la prudemment.
+                    Ne prétends pas avoir effectué une recherche Web si aucun outil de recherche
+                    n'est disponible dans cette requête.
 
-Retourne uniquement du JSON valide, sans Markdown.
-""";
+                    Retourne uniquement du JSON valide, sans Markdown.
+                    """;
 
         var userPrompt = $$$"""
-Rédige le contenu éditorial général du guide NAYA pour la marque :
-{brandName}
+                    Rédige le contenu éditorial général du guide NAYA pour la marque :
+                    {brandName}
 
 
-Retourne exactement cette structure :
+                    Retourne exactement cette structure :
 
-{{
-  "seo": {{
-    "title": "",
-    "meta_description": "",
-    "slug": "",
-    "introduction": ""
-  }},
-  "brand_story": {{
-    "title": "",
-    "history": [],
-    "identity": "",
-    "olfactory_signature": "",
-    "editorial_conclusion": "",
-    "sources": []
-  }}
-}}
+                    {{
+                      "seo": {{
+                        "title": "",
+                        "meta_description": "",
+                        "slug": "",
+                        "introduction": ""
+                      }},
+                      "brand_story": {{
+                        "title": "",
+                        "history": [],
+                        "identity": "",
+                        "olfactory_signature": "",
+                        "editorial_conclusion": "",
+                        "sources": []
+                      }}
+                    }}
 
 
 
-Ne retourne aucune autre propriété.
-""";
+                    Ne retourne aucune autre propriété.
+                    """;
 
         var requestBody = new
         {
@@ -985,8 +986,18 @@ Ne retourne aucune autre propriété.
 
             var brand = GetString(product, "brand") ?? brandName;
             var shortName = GetString(product, "short_name");
-            var description = GetString(product, "description");
+            Console.WriteLine(
+                    $"[description before] {GetString(product, "description")}");
+            var description = await SummarizeDescriptionAsync(
+                        GetString(product, "description") ?? "",
+                        cancellationToken);
+            Console.WriteLine(
+                    $"[description] {description}");
             var image = GetString(product, "image");
+            var product_url = GetString(product, "product_url");
+            Console.WriteLine(
+                    $"[product_url] {product_url}");
+
             var category = GetString(product, "category");
             var subCategory = GetString(product, "sub_category");
             var type = GetString(product, "type");
@@ -1220,6 +1231,99 @@ Ne retourne aucune autre propriété.
         return JsonDocument.Parse(finalJson);
     }
 
+    public async Task<string> SummarizeDescriptionAsync(
+    string description,
+    CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        var apiKey = openAiKey;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException(
+                "La clé API OpenAI est manquante.");
+
+        var requestBody = new
+        {
+            model = "gpt-4.1-mini",
+            instructions =
+                "Tu es un rédacteur spécialisé en parfumerie. " +
+                "Résume la description fournie en français, " +
+                "en conservant les informations les plus importantes " +
+                "sur le parfum, son caractère et ses notes olfactives. " +
+                "Ignore les prix, promotions, produits associés, " +
+                "publicités, cookies et contenus de navigation. " +
+                "N'invente aucune information. " +
+                "Retourne uniquement le résumé, sans titre, " +
+                "en 300 caractères maximum.",
+            input = description,
+            max_output_tokens = 150
+        };
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "https://api.openai.com/v1/responses");
+
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer", apiKey);
+
+        request.Content = JsonContent.Create(requestBody);
+
+        using var response = await httpClient.SendAsync(
+            request, cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur OpenAI {(int)response.StatusCode} : " +
+                responseBody);
+        }
+
+        using var document = JsonDocument.Parse(responseBody);
+
+        var outputText = new System.Text.StringBuilder();
+
+        if (document.RootElement.TryGetProperty(
+                "output", out var output))
+        {
+            foreach (var item in output.EnumerateArray())
+            {
+                if (!item.TryGetProperty("content", out var content))
+                    continue;
+
+                foreach (var contentItem in content.EnumerateArray())
+                {
+                    if (contentItem.TryGetProperty(
+                            "type", out var type) &&
+                        type.GetString() == "output_text" &&
+                        contentItem.TryGetProperty(
+                            "text", out var text))
+                    {
+                        outputText.Append(text.GetString());
+                    }
+                }
+            }
+        }
+
+        var summary = outputText.ToString().Trim();
+
+        // Sécurité : garantir une limite stricte de 300 caractères.
+        if (summary.Length > 300)
+        {
+            summary = summary[..300].TrimEnd();
+
+            var lastSpace = summary.LastIndexOf(' ');
+            if (lastSpace > 0)
+                summary = summary[..lastSpace];
+        }
+
+        return summary;
+    }
 
 
     private static void ValidateGuideJson(JsonElement guide)

@@ -1152,9 +1152,9 @@ public class NayaGuideService
                 ["image_url"] = string.IsNullOrWhiteSpace(image)
                     ? null
                     : JsonValue.Create(image),
-                ["product_url"] = string.IsNullOrWhiteSpace(product_url)
-                    ? null
-                    : JsonValue.Create(product_url),
+
+                ["product_url"] = product_url,
+                    
                 ["category"] = category,
                 ["collection_name"] = subCategory,
                 ["concentration"] = concentration,

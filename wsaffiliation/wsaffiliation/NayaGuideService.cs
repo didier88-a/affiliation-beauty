@@ -2637,7 +2637,7 @@ sans inventer de références pour atteindre un nombre cible.
     {
         var keywords = new Dictionary<string, string[]>
         {
-            ["Frais"] = new[]
+            ["frais"] = new[]
             {
             "Bergamote", "Citron", "Citron vert", "Yuzu",
             "Pamplemousse", "Pamplemousse 2", "Pomélo",
@@ -2648,7 +2648,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Gingembre", "Aldéhydes"
         },
 
-            ["Floral"] = new[]
+            ["floral"] = new[]
             {
             "Rose", "Jasmin", "Muguet", "Violette",
             "Fleur violette non identifiée", "Iris",
@@ -2660,7 +2660,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Géranium", "Néroli", "Fleur de tabac"
         },
 
-            ["Boise"] = new[]
+            ["boise"] = new[]
             {
             "Bois de santal", "Bois de cèdre", "Cèdre",
             "Bois de gaïac", "Résine de gaïac",
@@ -2672,7 +2672,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Genévrier", "Bambou", "Bois ambré"
         },
 
-            ["Fruite"] = new[]
+            ["fruite"] = new[]
             {
             "Prune", "Fruits rouges", "Goyave", "Pastèque",
             "Kumquat", "Canneberge", "Pêche", "Abricot",
@@ -2684,7 +2684,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Ananas", "Groseille rouge", "Noix de coco"
         },
 
-            ["Aromatique"] = new[]
+            ["aromatique"] = new[]
             {
             "Lavande", "Thym", "Basilic", "Romarin",
             "Sauge", "Marjolaine", "Estragon", "Camomille",
@@ -2694,7 +2694,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Anis", "Anis étoilé", "Genévrier"
         },
 
-            ["Epice"] = new[]
+            ["epice"] = new[]
             {
             "Safran", "Cardamome", "Poivre noir",
             "Poivre rose", "Poivre vert",
@@ -2704,7 +2704,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Anis", "Anis étoilé"
         },
 
-            ["Ambre"] = new[]
+            ["ambre"] = new[]
             {
             "Ambre", "Ambre gris", "Baume du Pérou",
             "Baume de Tolu", "Benjoin", "Résine de benjoin",
@@ -2714,7 +2714,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Résine douce", "Mastic"
         },
 
-            ["Gourmand"] = new[]
+            ["gourmand"] = new[]
             {
             "Vanille", "Absolu de vanille", "Fève tonka",
             "Accord tonka", "Coumarine", "Praliné",
@@ -2726,18 +2726,18 @@ sans inventer de références pour atteindre un nombre cible.
             "Notes sucrées"
         },
 
-            ["Musque"] = new[]
+            ["musque"] = new[]
             {
             "Musc", "Ambrette", "Accord propre"
         },
 
-            ["Poudre"] = new[]
+            ["poudre"] = new[]
             {
             "Notes poudrées", "Iris", "Héliotrope",
             "Violette", "Ambrette"
         },
 
-            ["Vert"] = new[]
+            ["vert"] = new[]
             {
             "Feuille de tomate", "Herbe", "Feuilles vertes",
             "Notes vertes", "Galbanum", "Lierre",
@@ -2746,7 +2746,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Mousse de chêne", "Thé vert", "Sapin"
         },
 
-            ["Aquatique"] = new[]
+            ["aquatique"] = new[]
             {
             "Brise marine", "Algue marine", "Calone",
             "Accord aquatique", "Accord marin",
@@ -2754,14 +2754,14 @@ sans inventer de références pour atteindre un nombre cible.
             "Concombre", "Aloe vera", "Rosée", "Pluie"
         },
 
-            ["Cuir"] = new[]
+            ["cuir"] = new[]
             {
             "Cuir", "Accord cuir", "Daim",
             "Castoréum", "Civette", "Notes animales",
             "Tabac", "Fleur de tabac"
         },
 
-            ["Terreux"] = new[]
+            ["terreux"] = new[]
             {
             "Notes terreuses", "Patchouli", "Vétiver",
             "Racine de vétiver", "Mousse de chêne",

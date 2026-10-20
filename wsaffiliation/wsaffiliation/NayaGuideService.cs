@@ -127,7 +127,60 @@ public class NayaGuideService
         return JsonDocument.Parse(body);
     }
 
+
+
+
     public async Task<string?> GetPerfumeImageAsync(
+    string brand,
+    string perfumeName,
+    CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(perfumeName))
+            return null;
+
+        var encodedName = Uri.EscapeDataString(
+            $"ilike.%{perfumeName.Trim()}%");
+
+        var url =
+            $"products?select=name,image,brand,category" +
+            $"&name={encodedName}" +
+            $"&limit=20";
+
+        Console.WriteLine($"[IMAGE SEARCH URL] {url}");
+
+        using var response = await httpClient.GetAsync(
+            url, cancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        Console.WriteLine($"[IMAGE SEARCH STATUS] {(int)response.StatusCode}");
+        Console.WriteLine($"[IMAGE SEARCH BODY] {body}");
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        using var document = JsonDocument.Parse(body);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+            return null;
+
+        foreach (var product in document.RootElement.EnumerateArray())
+        {
+            var name = GetString(product, "name");
+            var image = GetString(product, "image");
+
+            Console.WriteLine(
+                $"[IMAGE CANDIDATE] name={name} | image={image}");
+
+            if (!string.IsNullOrWhiteSpace(image))
+                return image;
+        }
+
+        return null;
+    }
+
+    public async Task<string?> GetPerfumeImageAsync1(
     string brand,
     string perfumeName,
     CancellationToken cancellationToken = default)
@@ -195,6 +248,12 @@ public class NayaGuideService
                 $"[encodedName] {encodedName}");
 
             return null;
+        }
+        else
+        {
+            Console.WriteLine(
+                $"[NAYA IMAGE FOUND] {perfumeName}");
+            
         }
 
         // 1. Correspondance exacte, sans tenir compte de la casse.

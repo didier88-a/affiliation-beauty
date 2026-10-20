@@ -189,6 +189,10 @@ public class NayaGuideService
         {
             Console.WriteLine(
                 $"[NAYA IMAGE NOT FOUND] {perfumeName}");
+            Console.WriteLine(
+                $"[encodedBrand] {encodedBrand}");
+            Console.WriteLine(
+                $"[encodedName] {encodedName}");
 
             return null;
         }

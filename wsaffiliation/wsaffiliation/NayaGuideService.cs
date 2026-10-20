@@ -41,6 +41,23 @@ public sealed class ProductMatchInput
     public string Reason { get; set; } = "";
 }
 
+public sealed class PerfumeNoteRecord1
+{
+    [JsonPropertyName("name_fr")]
+    public string NameFr { get; set; } = "";
+
+    [JsonPropertyName("name_en")]
+    public string NameEn { get; set; } = "";
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";
+
+    [JsonPropertyName("image_url")]
+    public string? ImageUrl { get; set; }
+
+    [JsonPropertyName("is_active")]
+    public bool IsActive { get; set; }
+}
 
 
 public class NayaGuideService
@@ -50,14 +67,14 @@ public class NayaGuideService
 
     private readonly string? supabaseKey =
         Environment.GetEnvironmentVariable("SUPABASE_KEY");
-    
+
     private readonly string openAiKey =
         Environment.GetEnvironmentVariable("OPENAI_API")
         ?? throw new InvalidOperationException(
             "OPENAI_API_KEY est manquante.");
 
     private readonly string openAiModel = "gpt-4o-mini";
-    
+
 
     private readonly HttpClient openAiHttpClient = new()
     {
@@ -211,7 +228,7 @@ public class NayaGuideService
         {
             Console.WriteLine(
                 $"[NAYA IMAGE FOUND] {perfumeName}");
-            
+
         }
 
         // 1. Correspondance exacte, sans tenir compte de la casse.
@@ -735,6 +752,11 @@ public class NayaGuideService
         if (string.IsNullOrWhiteSpace(brandName))
             throw new ArgumentException("La marque est obligatoire.");
 
+
+        var perfumeNotes = await GetPerfumeNotesAsync(
+                cancellationToken);
+
+
         // =========================================================
         // 1. CHARGER LES PRODUITS DEPUIS SUPABASE
         // =========================================================
@@ -1054,30 +1076,50 @@ public class NayaGuideService
 
             // Les notes ne sont reprises que si product_data.notes
             // contient déjà un objet JSON avec cette structure.
-            var notes = new JsonObject
-            {
-                ["top"] = new JsonArray(),
-                ["heart"] = new JsonArray(),
-                ["base"] = new JsonArray()
-            };
+            // Images des notes récupérées depuis Supabase
+
+            var attrib = product.GetProperty("naya_attributes");
+
+            var top_notes_img = FindNoteImage(
+                attrib,
+                "top_notes",
+                "tete",
+                perfumeNotes);
+
+            var heart_notes_img = FindNoteImage(
+                attrib,
+                "heart_notes",
+                "coeur",
+                perfumeNotes);
+
+            var base_notes_img = FindNoteImage(
+                attrib,
+                "base_notes",
+                "fond",
+                perfumeNotes);
+
+            // Récupérer les notes existantes depuis product_data.notes
+            var notes = new JsonObject();
 
             if (productData.ValueKind == JsonValueKind.Object &&
                 productData.TryGetProperty("notes", out var notesElement) &&
                 notesElement.ValueKind == JsonValueKind.Object)
             {
-                var parsedNotes = JsonNode.Parse(notesElement.GetRawText());
-
-                if (parsedNotes is JsonObject notesObject)
+                if (JsonNode.Parse(notesElement.GetRawText())
+                    is JsonObject existingNotes)
                 {
-                    foreach (var key in new[] { "top", "heart", "base" })
-                    {
-                        if (notesObject[key] is JsonArray noteArray)
-                        {
-                            notes[key] = JsonNode.Parse(noteArray.ToJsonString());
-                        }
-                    }
+                    notes = existingNotes;
                 }
             }
+
+            // Ajouter les images aux trois familles de notes.
+            notes["top_image"] = top_notes_img;
+            notes["heart_image"] = heart_notes_img;
+            notes["base_image"] = base_notes_img;
+
+
+            Console.WriteLine(
+            $"[NOTE-NOTE] {notes}");
 
             var editorial = new JsonObject
             {
@@ -2306,6 +2348,249 @@ sans inventer de références pour atteindre un nombre cible.
     }
 
 
+
+    private async Task<List<PerfumeNoteRecord1>> GetPerfumeNotesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var url =
+            $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
+            "?select=name_fr,name_en,type,image_url,is_active" +
+            "&is_active=eq.true" +
+            "&order=name_fr.asc";
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, url);
+
+        using var response = await httpClient.SendAsync(
+            request, cancellationToken);
+
+        var body = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur Supabase {(int)response.StatusCode} : {body}");
+        }
+
+        return JsonSerializer.Deserialize<List<PerfumeNoteRecord1>>(
+            body,
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            })
+            ?? new List<PerfumeNoteRecord1>();
+    }
+
+
+
+    private static string? FindNoteImage(
+    JsonElement attributes,
+    string propertyName,
+    string noteType,
+    List<PerfumeNoteRecord1> notes)
+    {
+        var productNotes = GetStringArray(attributes, propertyName);
+
+        var activeNotes = notes
+            .Where(n => n.IsActive && !string.IsNullOrWhiteSpace(n.ImageUrl))
+            .ToList();
+
+        foreach (var productNote in productNotes)
+        {
+            var normalized = Normalize(productNote);
+
+            // 1. Recherche exacte dans le type attendu.
+            var exactMatch = activeNotes
+                .Where(n => string.Equals(
+                    n.Type, noteType, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(n =>
+                    Normalize(n.NameFr) == normalized ||
+                    Normalize(n.NameEn) == normalized);
+
+            if (exactMatch != null)
+                return exactMatch.ImageUrl;
+
+            // 2. Recherche exacte dans tous les types.
+            exactMatch = activeNotes.FirstOrDefault(n =>
+                Normalize(n.NameFr) == normalized ||
+                Normalize(n.NameEn) == normalized);
+
+            if (exactMatch != null)
+                return exactMatch.ImageUrl;
+
+            // 3. Extraire les mots significatifs du texte produit.
+            var searchWords = NormalizeNoteSearch(productNote)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(NormalizeNoteWord)
+                .Where(w => w.Length >= 3)
+                .Distinct()
+                .ToList();
+
+            if (searchWords.Count == 0)
+                continue;
+
+            // Recherche dans un type, puis dans les autres.
+            foreach (var typeNotes in new[]
+            {
+            activeNotes.Where(n => string.Equals(
+                n.Type, noteType, StringComparison.OrdinalIgnoreCase)),
+            activeNotes.Where(n => !string.Equals(
+                n.Type, noteType, StringComparison.OrdinalIgnoreCase))
+        })
+            {
+                // Préparer les noms français et anglais.
+                var candidates = typeNotes.Select(n => new
+                {
+                    Note = n,
+                    FrenchWords = GetNormalizedNoteWords(n.NameFr),
+                    EnglishWords = GetNormalizedNoteWords(n.NameEn)
+                }).ToList();
+
+                // Favoriser la note qui correspond au plus grand nombre de mots.
+                var bestMatch = candidates
+                    .Select(c => new
+                    {
+                        c.Note,
+                        Score = searchWords.Count(word =>
+                            c.FrenchWords.Any(nameWord =>
+                                IsNoteWordMatch(nameWord, word)) ||
+                            c.EnglishWords.Any(nameWord =>
+                                IsNoteWordMatch(nameWord, word)))
+                    })
+                    .Where(x => x.Score > 0)
+                    .OrderByDescending(x => x.Score)
+                    .FirstOrDefault();
+
+                if (bestMatch != null)
+                    return bestMatch.Note.ImageUrl;
+            }
+        }
+
+        return null;
+    }
+
+    private static readonly HashSet<string> IgnoredNoteWords =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+        "accord", "huile", "essence", "essentielle",
+        "absolu", "duo", "pulpeux", "pulpeuse",
+        "notes", "note", "riche", "riches",
+        "de", "du", "des", "la", "le", "les",
+        "un", "une", "et", "avec", "pour", "the",
+        "and", "of", "with", "rich", "richly"
+            };
+
+    private static string NormalizeNoteSearch(string value)
+    {
+        var words = GetNormalizedNoteWords(value)
+            .Where(w => !IgnoredNoteWords.Contains(w));
+
+        return string.Join(" ", words);
+    }
+
+    private static List<string> GetNormalizedNoteWords(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new List<string>();
+
+        var normalized = Normalize(value)
+            .Replace("'", " ")
+            .Replace("’", " ")
+            .Replace("-", " ");
+
+        return normalized
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(NormalizeNoteWord)
+            .Where(w => w.Length > 0)
+            .ToList();
+    }
+
+    private static string NormalizeNoteWord(string value)
+    {
+        var word = Normalize(value).Trim();
+
+        // Normalisation grammaticale générique.
+        // Exemples : florales -> floral, boisées -> boise,
+        // vanillées -> vanille, vanille -> vanill.
+        if (word.Length > 6 && word.EndsWith("es"))
+            word = word[..^2];
+        else if (word.Length > 5 && word.EndsWith("s"))
+            word = word[..^1];
+
+        if (word.Length > 5 && word.EndsWith("e"))
+            word = word[..^1];
+
+        return word;
+    }
+
+    private static bool IsNoteWordMatch(string nameWord, string searchWord)
+    {
+        if (nameWord == searchWord)
+            return true;
+
+        // Évite les correspondances trop courtes ou accidentelles.
+        return nameWord.Length >= 4 &&
+               searchWord.Length >= 4 &&
+               (nameWord.StartsWith(searchWord, StringComparison.Ordinal) ||
+                searchWord.StartsWith(nameWord, StringComparison.Ordinal));
+    }
+
+    private static string Normalize(string value)
+    {
+        var normalized = value
+            .Normalize(NormalizationForm.FormD);
+
+        var builder = new StringBuilder();
+
+        foreach (var c in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo
+                .GetUnicodeCategory(c) !=
+                UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(char.ToLowerInvariant(c));
+            }
+        }
+
+        return builder.ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Trim();
+    }
+
+    private static List<string> GetStringArray(
+            JsonElement element,
+            string propertyName)
+    {
+        var result = new List<string>();
+
+        if (element.ValueKind != JsonValueKind.Object ||
+            !element.TryGetProperty(propertyName, out var value))
+            return result;
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in value.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                {
+                    var text = item.GetString();
+
+                    if (!string.IsNullOrWhiteSpace(text))
+                        result.Add(text);
+                }
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.String)
+        {
+            var text = value.GetString();
+
+            if (!string.IsNullOrWhiteSpace(text))
+                result.Add(text);
+        }
+
+        return result;
+    }
 
 
 }

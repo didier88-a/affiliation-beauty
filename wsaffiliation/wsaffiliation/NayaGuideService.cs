@@ -802,34 +802,39 @@ public class NayaGuideService
                     Retourne uniquement du JSON valide, sans Markdown.
                     """;
 
+
         var userPrompt = $$$"""
-                    Rédige le contenu éditorial général du guide NAYA pour la marque :
-                    {brandName}
+                Rédige le contenu éditorial général du guide NAYA pour la marque :
+                {{{brandName}}}
 
+                Retourne exactement cette structure :
 
-                    Retourne exactement cette structure :
+                {{
+                  "seo": {{
+                    "title": "",
+                    "meta_description": "",
+                    "slug": "",
+                    "introduction": ""
+                  }},
+                  "brand_story": {{
+                    "title": "",
+                    "history": [],
+                    "identity": "",
+                    "olfactory_signature": "",
+                    "editorial_conclusion": "",
+                    "sources": []
+                  }}
+                }}
 
-                    {{
-                      "seo": {{
-                        "title": "",
-                        "meta_description": "",
-                        "slug": "",
-                        "introduction": ""
-                      }},
-                      "brand_story": {{
-                        "title": "",
-                        "history": [],
-                        "identity": "",
-                        "olfactory_signature": "",
-                        "editorial_conclusion": "",
-                        "sources": []
-                      }}
-                    }}
+                Ne retourne aucune autre propriété.
 
+                IMPORTANT :
+                - Utilise le vrai nom de la marque : {{{brandName}}}.
+                - Ne retourne jamais le texte littéral "{brandName}".
+                - Remplace toute référence à la variable par le nom réel de la marque
+                  dans les titres et les textes lorsque cela est pertinent.
+                """;
 
-
-                    Ne retourne aucune autre propriété.
-                    """;
 
         var requestBody = new
         {

@@ -116,8 +116,7 @@ public class NayaGuideService
             "products?select=id,brand,name,short_name," +
             "category,sub_category,type,image,description," +
             "product_data,naya_attributes,slug,slug_normalized" +
-            $"&brand={encodedBrand}" +
-            "&category=eq.Parfum" +
+            $"&brand={encodedBrand}" +            
             "&order=name.asc";
 
         using var response = await httpClient.GetAsync(

@@ -2660,7 +2660,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Géranium", "Néroli", "Fleur de tabac"
         },
 
-            ["Boisé"] = new[]
+            ["Boise"] = new[]
             {
             "Bois de santal", "Bois de cèdre", "Cèdre",
             "Bois de gaïac", "Résine de gaïac",
@@ -2672,7 +2672,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Genévrier", "Bambou", "Bois ambré"
         },
 
-            ["Fruité"] = new[]
+            ["Fruite"] = new[]
             {
             "Prune", "Fruits rouges", "Goyave", "Pastèque",
             "Kumquat", "Canneberge", "Pêche", "Abricot",
@@ -2694,7 +2694,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Anis", "Anis étoilé", "Genévrier"
         },
 
-            ["Épicé"] = new[]
+            ["Epice"] = new[]
             {
             "Safran", "Cardamome", "Poivre noir",
             "Poivre rose", "Poivre vert",
@@ -2704,7 +2704,7 @@ sans inventer de références pour atteindre un nombre cible.
             "Anis", "Anis étoilé"
         },
 
-            ["Ambré"] = new[]
+            ["Ambre"] = new[]
             {
             "Ambre", "Ambre gris", "Baume du Pérou",
             "Baume de Tolu", "Benjoin", "Résine de benjoin",
@@ -2726,12 +2726,12 @@ sans inventer de références pour atteindre un nombre cible.
             "Notes sucrées"
         },
 
-            ["Musqué"] = new[]
+            ["Musque"] = new[]
             {
             "Musc", "Ambrette", "Accord propre"
         },
 
-            ["Poudré"] = new[]
+            ["Poudre"] = new[]
             {
             "Notes poudrées", "Iris", "Héliotrope",
             "Violette", "Ambrette"

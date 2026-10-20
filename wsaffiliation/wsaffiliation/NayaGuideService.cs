@@ -140,7 +140,7 @@ public class NayaGuideService
 
         // Recherche par nom contenant le nom du parfum.
         var encodedName = Uri.EscapeDataString(
-            $"ilike.*{perfumeName.Trim()}*");
+            $"ilike.%{perfumeName.Trim()}%");
 
         var encodedBrand = Uri.EscapeDataString(
             $"ilike.{brand.Trim()}");

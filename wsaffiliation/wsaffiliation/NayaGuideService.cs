@@ -710,6 +710,7 @@ public class NayaGuideService
                 name = GetString(p, "name"),
                 short_name = GetString(p, "short_name"),
                 type = GetString(p, "type"),
+                image_url = GetString(p, "image"),
                 concentration = GetString(
                     p.TryGetProperty("naya_attributes", out var attrs)
                         ? attrs : default,

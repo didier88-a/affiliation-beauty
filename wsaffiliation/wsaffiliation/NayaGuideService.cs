@@ -994,9 +994,25 @@ public class NayaGuideService
             Console.WriteLine(
                     $"[description] {description}");
             var image = GetString(product, "image");
-            var product_url = GetString(product, "product_url");
-            Console.WriteLine(
-                    $"[product_url] {product_url}");
+
+
+
+            string? product_url = null;
+
+            if (product.TryGetProperty("product_offers", out var offers)
+                && offers.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var offer in offers.EnumerateArray())
+                {
+                    product_url = GetString(offer, "product_url");
+
+                    if (!string.IsNullOrWhiteSpace(product_url))
+                        break;
+                }
+            }
+
+            Console.WriteLine($"[product_url] {product_url}");
+
 
             var category = GetString(product, "category");
             var subCategory = GetString(product, "sub_category");

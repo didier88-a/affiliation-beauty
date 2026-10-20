@@ -1257,8 +1257,13 @@ Retourne uniquement le JSON final.
         // 2. Fusionner les parfums recherchés absents du guide.
         var addedPerfumes = 0;
 
+        Console.WriteLine(
+                $"[before researchedPerfumes]");
         foreach (var perfume in researchedPerfumes.EnumerateArray())
         {
+            Console.WriteLine(
+                $"[researchedPerfumes] {perfume}");
+
             var name = GetString(perfume, "name")?.Trim();
             var collectionName =
                 GetString(perfume, "collection_name")?.Trim();
@@ -1323,10 +1328,14 @@ Retourne uniquement le JSON final.
             var verificationSources = JsonNode.Parse(
                 sourceUrls.ToJsonString()) ?? new JsonArray();
 
+            Console.WriteLine(
+                $"[before GetPerfumeImageAsync] {name}");
             var imageUrl = await GetPerfumeImageAsync(
                 brandName,
                 name,
-                cancellationToken);             
+                cancellationToken);
+            Console.WriteLine(
+                $"[after GetPerfumeImageAsync] {brandName}");
 
             guidePerfumes.Add(new JsonObject
             {

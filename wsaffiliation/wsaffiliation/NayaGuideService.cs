@@ -57,6 +57,16 @@ public sealed class PerfumeNoteRecord1
 
     [JsonPropertyName("is_active")]
     public bool IsActive { get; set; }
+
+    [JsonPropertyName("category_fr")]
+    public string CategoryFr { get; set; } = "";
+
+    [JsonPropertyName("category_en")]
+    public string CategoryEn { get; set; } = "";
+
+    [JsonPropertyName("category_url")]
+    public string CategoryUrl { get; set; } = "";
+    
 }
 
 
@@ -756,6 +766,8 @@ public class NayaGuideService
         var perfumeNotes = await GetPerfumeNotesAsync(
                 cancellationToken);
 
+        Console.WriteLine(
+            $"[perfumeNotes] {perfumeNotes}");
 
         // =========================================================
         // 1. CHARGER LES PRODUITS DEPUIS SUPABASE
@@ -2357,7 +2369,7 @@ sans inventer de références pour atteindre un nombre cible.
     {
         var url =
             $"{supabaseUrl.TrimEnd('/')}/rest/v1/perfume_notes" +
-            "?select=name_fr,name_en,type,image_url,is_active" +
+            "?select=name_fr,name_en,type,image_url,is_active,category_fr,category_en,category_url" +
             "&is_active=eq.true" +
             "&order=name_fr.asc";
 

@@ -864,6 +864,7 @@ public class NayaGuideService
                   }},
                   "brand_story": {
                   "title": "",
+                  "background_image": "",
                   "history": [],
                   "identity": "",
                   "olfactory_signature": "",

@@ -66,7 +66,7 @@ public sealed class PerfumeNoteRecord1
 
     [JsonPropertyName("category_url")]
     public string CategoryUrl { get; set; } = "";
-    
+
 }
 
 
@@ -1133,6 +1133,20 @@ public class NayaGuideService
 
             Console.WriteLine($"Famille olfactive : {olfactoryFamily}");
 
+            var categories = (olfactoryFamily ?? "")
+                    .Split(
+                        new[] { ',', ';', '|', '/' },
+                        StringSplitOptions.RemoveEmptyEntries
+                    )
+                    .Select(c => c.Trim())
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+
+            var TendanceParfum = await GenererTendanceParfumAsync(categories);
+            Console.WriteLine($"Tendance du parfum : {TendanceParfum}");
+
             // Récupérer les notes existantes depuis product_data.notes
             var notes = new JsonObject();
 
@@ -1190,6 +1204,7 @@ public class NayaGuideService
 
                 ["product_url"] = product_url,
                 ["olfactoryFamily"] = olfactoryFamily,
+                ["TendanceParfum"] = TendanceParfum,
                 ["category"] = category,
                 ["collection_name"] = subCategory,
                 ["concentration"] = concentration,
@@ -2865,6 +2880,116 @@ sans inventer de références pour atteindre un nombre cible.
                     imageUrl.Trim(),
                     StringComparison.OrdinalIgnoreCase))
             ?.NameFr;
+    }
+
+    private async Task<string> GenererTendanceParfumAsync(
+    IEnumerable<string> categories,
+    string langue = "fr")
+    {
+        var categoriesList = categories?
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? new List<string>();
+
+        if (categoriesList.Count == 0)
+            return string.Empty;
+
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException(
+                "La variable OPENAI_API_KEY est manquante.");
+
+        var model = "gpt-5.4-mini";
+
+        var categoriesText = string.Join(", ", categoriesList);
+
+        var prompt = $"""
+        Tu es un expert en parfumerie de luxe et en tendances olfactives.
+        Tu rédiges les textes éditoriaux de NAYA, une marque élégante
+        spécialisée dans l'univers du parfum.
+
+        Familles olfactives du parfum : {categoriesText}
+
+        Génère en français un texte marketing qui explique la tendance
+        olfactive représentée par ces familles combinées.
+
+        Retourne exactement ce format :
+        TITRE: un titre élégant de 3 à 7 mots
+        DESCRIPTION: une description naturelle de 30 à 45 mots
+
+        Règles :
+        - Explique le caractère et l'atmosphère du parfum.
+        - Explique ce que la combinaison des familles évoque.
+        - Si pertinent, décris une impression de fraîcheur,
+          sensualité, élégance, énergie ou chaleur.
+        - Ne prétends pas connaître les notes précises du parfum.
+        - Ne fais pas de généralités sans rapport avec les catégories.
+        - N'invente ni ingrédients ni propriétés.
+        - Ton premium, raffiné, naturel et séduisant.
+        - Langue de sortie : {langue}.
+        - Retourne uniquement le titre et la description.
+        """;
+
+        using var http = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
+        http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", apiKey);
+
+        var payload = new
+        {
+            model,
+            instructions =
+                "Tu écris des textes de parfumerie concis et élégants.",
+            input = prompt,
+            max_output_tokens = 180
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+
+        using var response = await http.PostAsync(
+            "https://api.openai.com/v1/responses",
+            new StringContent(json, Encoding.UTF8, "application/json"));
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Erreur OpenAI ({(int)response.StatusCode}) : " +
+                responseBody);
+        }
+
+        using var document = JsonDocument.Parse(responseBody);
+
+        var result = new StringBuilder();
+
+        if (document.RootElement.TryGetProperty("output", out var output))
+        {
+            foreach (var item in output.EnumerateArray())
+            {
+                if (!item.TryGetProperty("content", out var content))
+                    continue;
+
+                foreach (var part in content.EnumerateArray())
+                {
+                    if (part.TryGetProperty("text", out var text))
+                        result.Append(text.GetString());
+                }
+            }
+        }
+
+        var generatedText = result.ToString().Trim();
+
+        if (string.IsNullOrWhiteSpace(generatedText))
+            throw new InvalidOperationException(
+                "OpenAI n'a retourné aucun texte.");
+
+        return generatedText;
     }
 
 }

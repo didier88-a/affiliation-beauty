@@ -818,10 +818,22 @@ public class NayaGuideService
 
                     La propriété brand_story contient :
                     title, history, identity, olfactory_signature,
-                    editorial_conclusion, sources.
+                    editorial_conclusion, sources, creator, store, timeline.
 
-                    history doit être un tableau de paragraphes ou d'étapes historiques.
-                    sources doit être un tableau de sources réellement connues et vérifiables.
+                    creator contient :
+                    name, birth_year, death_year, portrait_url, biography.
+
+                    store contient :
+                    image_url, caption, source_url.
+
+                    timeline est un tableau d'événements comprenant :
+                    year, title, description, image_url.
+
+                    Les URLs d'images doivent être des URLs réelles et vérifiables.
+                    Ne fabrique jamais d'URL ni de référence de source.
+                    Si une photo vérifiée et utilisable n'est pas disponible,
+                    retourne une chaîne vide pour son URL.
+                    Les dates doivent être historiquement fiables.
 
                     N'inclus aucun tableau de parfums.
                     N'inclus aucune collection.
@@ -850,14 +862,34 @@ public class NayaGuideService
                     "slug": "",
                     "introduction": ""
                   }},
-                  "brand_story": {{
-                    "title": "",
-                    "history": [],
-                    "identity": "",
-                    "olfactory_signature": "",
-                    "editorial_conclusion": "",
-                    "sources": []
-                  }}
+                  "brand_story": {
+                  "title": "",
+                  "history": [],
+                  "identity": "",
+                  "olfactory_signature": "",
+                  "editorial_conclusion": "",
+                  "sources": [],
+                  "creator": {
+                    "name": "",
+                    "birth_year": null,
+                    "death_year": null,
+                    "portrait_url": "",
+                    "biography": ""
+                  },
+                  "store": {
+                    "image_url": "",
+                    "caption": "",
+                    "source_url": ""
+                  },
+                  "timeline": [
+                    {
+                      "year": null,
+                      "title": "",
+                      "description": "",
+                      "image_url": ""
+                    }
+                  ]
+                }
                 }}
 
                 Ne retourne aucune autre propriété.

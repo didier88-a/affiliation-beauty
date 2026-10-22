@@ -1959,7 +1959,7 @@ namespace wsaffiliation.Controllers
 window.NAYA_SIMILAR = " + jsonStr1 + @";
 console.log('NAYA_SIMILAR =', window.NAYA_SIMILAR);
 </script>
-
+{% render 'main-header-naya' %}
 {% section 'page-similar-hero' %}
 {% section 'page-similar-result' %}
 {% section 'page-similar-5-parfum' %}

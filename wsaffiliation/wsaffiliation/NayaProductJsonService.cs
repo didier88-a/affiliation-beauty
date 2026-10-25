@@ -117,11 +117,53 @@ namespace wsaffiliation
             // 5. Calculs
             // --------------------------------------------------------
 
-            List<AllProductOffer> currentOffers =
-                currentProduct.ProductOffers
-                    .Where(x => x.IsAvailable)
-                    .OrderBy(x => x.Price ?? decimal.MaxValue)
-                    .ToList();
+            //List<AllProductOffer> currentOffers =
+            //    currentProduct.ProductOffers
+            //        .Where(x => x.IsAvailable)
+            //        .OrderBy(x => x.Price ?? decimal.MaxValue)
+            //        .ToList();
+
+            // --------------------------------------------------------
+            // 5. Offres du produit et des autres marketplaces
+            // --------------------------------------------------------
+
+            var currentCanonicalId = currentProduct.CanonicalProductId;
+
+            List<AllProductOffer> currentOffers = allOffers
+                .Where(offer =>
+                {
+                    // Offre du produit demandé
+                    if (offer.ProductId == currentProduct.Id)
+                        return true;
+
+                    // Offre d'un autre produit ayant le même identifiant canonique
+                    if (currentCanonicalId == null)
+                        return false;
+
+                    var matchingProduct = allProducts.FirstOrDefault(
+                        p => p.Id == offer.ProductId);
+
+                    return matchingProduct != null
+                        && matchingProduct.CanonicalProductId != null
+                        && matchingProduct.CanonicalProductId == currentCanonicalId;
+                })
+                .Where(offer => offer.IsAvailable)
+                .GroupBy(offer => new
+                {
+                    offer.Marketplace,
+                    offer.MarketplaceProductId,
+                    offer.Sku
+                })
+                .Select(group => group.First())
+                .OrderBy(offer => offer.Price ?? decimal.MaxValue)
+                .ToList();
+
+
+            Console.Error.WriteLine(
+                        $"[AllProductOffer] {AllProductOffer}");
+
+
+
 
             JObject naya =
                 currentProduct.NayaAttributes ??
@@ -2846,6 +2888,10 @@ private List<string> GetNoteTokensForMatch(string? value)
 
             [JsonProperty("slug_normalized")]
             public string? SlugNormalized { get; set; }
+
+            [JsonProperty("canonical_product_id")]
+            public long CanonicalProductId { get; set; }
+            
 
             [System.Text.Json.Serialization.JsonIgnore]
             public List<AllProductOffer> ProductOffers { get; set; } =

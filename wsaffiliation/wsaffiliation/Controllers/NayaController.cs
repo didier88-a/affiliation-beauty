@@ -2293,7 +2293,116 @@ document.dispatchEvent(
             };
         }
 
+
         private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIds(
+    HttpClient client,
+    string root,
+    List<long> productIds)
+        {
+            var result = new Dictionary<long, List<JsonElement>>();
+
+            if (productIds == null || productIds.Count == 0)
+                return result;
+
+            var ids = productIds.Distinct().ToList();
+            var idList = string.Join(",", ids);
+
+            // 1. Récupérer le produit canonique et la marketplace d'origine
+            var productsUrl =
+                $"{root}/rest/v1/product_offers" +
+                "?select=product_id,marketplace,products!inner(canonical_product_id)" +
+                $"&product_id=in.({idList})";
+
+            using var productsResponse = await client.GetAsync(productsUrl);
+
+            if (!productsResponse.IsSuccessStatusCode)
+            {
+                var error = await productsResponse.Content.ReadAsStringAsync();
+
+                throw new HttpRequestException(
+                    $"Erreur récupération des produits ({(int)productsResponse.StatusCode}) : {error}");
+            }
+
+            using var productsDocument = JsonDocument.Parse(
+                await productsResponse.Content.ReadAsStringAsync());
+
+            // product_id -> canonical_product_id + marketplace d'origine
+            var sourceProducts = new List<(long ProductId, string Marketplace, JsonElement CanonicalId)>();
+
+            foreach (var row in productsDocument.RootElement.EnumerateArray())
+            {
+                var productId = row.GetProperty("product_id").GetInt64();
+                var marketplace = row.GetProperty("marketplace").GetString() ?? "";
+
+                if (!row.TryGetProperty("products", out var product) ||
+                    !product.TryGetProperty("canonical_product_id", out var canonicalId) ||
+                    canonicalId.ValueKind == JsonValueKind.Null)
+                {
+                    continue;
+                }
+
+                sourceProducts.Add((
+                    productId,
+                    marketplace,
+                    canonicalId.Clone()
+                ));
+            }
+
+            if (sourceProducts.Count == 0)
+                return result;
+
+            // 2. Pour chaque produit, chercher les offres du même produit canonique
+            //    sur une marketplace différente.
+            foreach (var source in sourceProducts)
+            {
+                string canonicalValue = source.CanonicalId.ValueKind == JsonValueKind.String
+                    ? source.CanonicalId.GetString()!
+                    : source.CanonicalId.GetRawText();
+
+                string canonicalFilter = Uri.EscapeDataString($"eq.{canonicalValue}");
+
+                string url =
+                    $"{root}/rest/v1/product_offers" +
+                    "?select=id,product_id,marketplace,marketplace_product_id," +
+                    "sku,price,currency,variant_name,product_url,is_available," +
+                    "rating,reviews,marketplace_data," +
+                    "products!inner(canonical_product_id)" +
+                    $"&products.canonical_product_id={canonicalFilter}" +
+                    $"&marketplace=neq.{Uri.EscapeDataString(source.Marketplace)}" +
+                    "&order=price.asc";
+
+                using var response = await client.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+
+                    throw new HttpRequestException(
+                        $"Erreur recherche offres ({(int)response.StatusCode}) : {error}");
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync());
+
+                foreach (var row in document.RootElement.EnumerateArray())
+                {
+                    // Clé = ID du produit source, pour conserver la compatibilité
+                    // avec le dictionnaire attendu par le code appelant.
+                    if (!result.TryGetValue(source.ProductId, out var list))
+                    {
+                        list = new List<JsonElement>();
+                        result[source.ProductId] = list;
+                    }
+
+                    list.Add(row.Clone());
+                }
+            }
+
+            return result;
+        }
+
+
+        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIdsOld(
             HttpClient client,
             string root,
             List<long> productIds)

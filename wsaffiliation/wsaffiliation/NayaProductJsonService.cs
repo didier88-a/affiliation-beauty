@@ -160,7 +160,7 @@ namespace wsaffiliation
 
 
             Console.Error.WriteLine(
-                        $"[AllProductOffer] {AllProductOffer}");
+                        $"[AllProductOffer] {currentOffers}");
 
 
 

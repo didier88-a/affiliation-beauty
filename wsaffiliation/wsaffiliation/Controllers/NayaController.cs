@@ -1758,6 +1758,8 @@ namespace wsaffiliation.Controllers
 
                 var offersByProduct = await FetchOffersByProductIds(
                     client, root, ids);
+                Console.Error.WriteLine(
+                   $"[offersByProduct] {offersByProduct}");
 
                 var referenceOffers = offersByProduct.TryGetValue(
                     reference.Id, out var refOffers)

@@ -2296,7 +2296,7 @@ document.dispatchEvent(
         }
 
 
-        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIds(
+        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIdsOld(
     HttpClient client,
     string root,
     List<long> productIds)
@@ -2404,7 +2404,7 @@ document.dispatchEvent(
         }
 
 
-        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIdsOld(
+        private async Task<Dictionary<long, List<JsonElement>>> FetchOffersByProductIds(
             HttpClient client,
             string root,
             List<long> productIds)

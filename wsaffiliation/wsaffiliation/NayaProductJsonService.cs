@@ -301,7 +301,7 @@ namespace wsaffiliation
                 o.Marketplace,
                 o.ProductUrl,
                 o.Price
-            }), Formatting.Indented));
+            }), Newtonsoft.Json.Formatting.Indented));
 
             return result.ToString(Newtonsoft.Json.Formatting.Indented);
         }

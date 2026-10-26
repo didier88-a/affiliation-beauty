@@ -7,6 +7,7 @@ using System.Xml;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Net.Http.Json;
 
 namespace wsaffiliation
 {
@@ -294,6 +295,13 @@ namespace wsaffiliation
                     ["guide"] = guide,
                     ["seo"] = seo
                 };
+            Console.WriteLine(
+            JsonConvert.SerializeObject(currentOffers.Select(o => new
+            {
+                o.Marketplace,
+                o.ProductUrl,
+                o.Price
+            }), Formatting.Indented));
 
             return result.ToString(Newtonsoft.Json.Formatting.Indented);
         }
